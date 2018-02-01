@@ -4,3 +4,8 @@ version = "0.1.0"
 authors = ["myuon <ioi.joi.koi.loi@gmail.com>"]
 
 [dependencies]
+gtk = "0.3.0"
+gdk = "0.7.0"
+glib = "0.4.1"
+gstreamer = "0.10.1"
+gstreamer-video = "0.10.1"
