@@ -27,7 +27,7 @@ struct AviRenderer {
 }
 
 impl AviRenderer {
-    fn init(width: usize, height: usize) -> AviRenderer {
+    fn new(uri: &str, width: usize, height: usize) -> AviRenderer {
         let pipeline = gst::Pipeline::new(None);
         let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
         let avimux = gst::ElementFactory::make("avimux", None).unwrap();
@@ -35,13 +35,13 @@ impl AviRenderer {
         appsrc.set_property("emit-signals", &glib::Value::from(&true)).unwrap();
 
         let sink = gst::ElementFactory::make("filesink", None).unwrap();
-        sink.set_property("location", &glib::Value::from("output/output.avi")).unwrap();
+        sink.set_property("location", &glib::Value::from(uri)).unwrap();
 
         pipeline.add_many(&[&appsrc, &videoconvert, &avimux, &sink]).unwrap();
         gst::Element::link_many(&[&appsrc, &videoconvert, &avimux, &sink]).unwrap();
 
         let appsrc = appsrc.clone().dynamic_cast::<gsta::AppSrc>().unwrap();
-        let info = gstv::VideoInfo::new(gstv::VideoFormat::Rgb, width as u32, height as u32).fps(gst::Fraction::new(2,1)).build().unwrap();
+        let info = gstv::VideoInfo::new(gstv::VideoFormat::Rgb, width as u32, height as u32).fps(gst::Fraction::new(20,1)).build().unwrap();
         appsrc.set_caps(&info.to_caps().unwrap());
         appsrc.set_property_format(gst::Format::Time);
         appsrc.set_max_bytes(1);
@@ -83,23 +83,23 @@ impl AviRenderer {
         }
     }
 
-    fn render(&self, pixbuf: &gdk_pixbuf::Pixbuf, frames: u64) {
-        for i in 0..frames {
-            let mut buffer = gst::Buffer::with_size(self.size.0*self.size.1*3).unwrap();
-            {
-                let buffer = buffer.get_mut().unwrap();
-                buffer.set_pts(500 * i * gst::MSECOND);
+    fn render_step(&self, pixbuf: &gdk_pixbuf::Pixbuf, time: gst::ClockTime) {
+        let mut buffer = gst::Buffer::with_size(self.size.0*self.size.1*3).unwrap();
+        {
+            let buffer = buffer.get_mut().unwrap();
+            buffer.set_pts(time);
 
-                let mut data = buffer.map_writable().unwrap();
-                let mut data = data.as_mut_slice();
-                let pixels = unsafe { pixbuf.get_pixels() };
+            let mut data = buffer.map_writable().unwrap();
+            let mut data = data.as_mut_slice();
+            let pixels = unsafe { pixbuf.get_pixels() };
 
-                use std::io::Write;
-                data.write_all(pixels).unwrap();
-            }
-            self.appsrc.push_buffer(buffer).into_result().unwrap();
+            use std::io::Write;
+            data.write_all(pixels).unwrap();
         }
+        self.appsrc.push_buffer(buffer).into_result().unwrap();
+    }
 
+    fn render_finish(&self) {
         self.appsrc.end_of_stream().into_result().unwrap();
 
         println!("Rendering finished!");
@@ -165,6 +165,20 @@ impl Timeline {
         cr.paint();
         Inhibit(false)
     }
+
+    fn write(&mut self, uri: &str, frames: u64, delta: u64) {
+        let avi_renderer = AviRenderer::new(uri, self.width as usize, self.height as usize);
+
+        for i in 0..frames {
+            if i % 10 == 0 {
+                println!("{} / {}", i, frames);
+            }
+            &avi_renderer.render_step(&self.get_current_pixbuf(), i*delta*gst::MSECOND);
+            self.seek_to(i*delta*gst::MSECOND);
+        }
+
+        avi_renderer.render_finish();
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -217,13 +231,10 @@ impl VideoFileComponent {
         gst::Element::link_many(&[&src, &decodebin]).unwrap();
         gst::Element::link_many(&[&queue, &convert, &pixbufsink]).unwrap();
 
-        {
-            let pipeline = pipeline.clone();
-            decodebin.connect_pad_added(move |_, src_pad| {
-                let sink_pad = queue.get_static_pad("sink").unwrap();
-                let _ = src_pad.link(&sink_pad);
-            });
-        }
+        decodebin.connect_pad_added(move |_, src_pad| {
+            let sink_pad = queue.get_static_pad("sink").unwrap();
+            let _ = src_pad.link(&sink_pad);
+        });
 
         pipeline.set_state(gst::State::Paused).into_result().unwrap();
 
@@ -276,9 +287,7 @@ fn create_ui(path: &String) {
         let timeline = timeline.clone();
         btn.connect_clicked(move |_| {
             let timeline: &RefCell<Timeline> = &timeline.borrow();
-            let pixbuf = timeline.borrow().get_current_pixbuf();
-            let renderer = AviRenderer::init(pixbuf.get_width() as usize, pixbuf.get_height() as usize);
-            renderer.render(&pixbuf, 10);
+            timeline.borrow_mut().write("output/output.avi", 100, 5);
         });
     }
 
