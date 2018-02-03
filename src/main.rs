@@ -1,5 +1,6 @@
 use std::env;
 use std::rc::Rc;
+use std::borrow::{Borrow, BorrowMut};
 use std::cell::RefCell;
 
 extern crate gstreamer as gst;
@@ -106,20 +107,20 @@ impl AviRenderer {
 
 #[derive(Debug, Clone)]
 enum Component {
-    AppSinkContainer(gsta::AppSink),
+    SinkContainer(gst::Element),
 }
 
 impl Component {
-    fn new_from_appsink(appsink: gsta::AppSink) -> Component {
-        Component::AppSinkContainer(appsink)
+    fn new_from_gdkpixbufsink(sink: gst::Element) -> Component {
+        Component::SinkContainer(sink)
     }
 
     fn request(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
         use Component::*;
 
         match self {
-            &AppSinkContainer(ref appsink) => {
-                appsink.seek_simple(gst::SeekFlags::NONE, time).ok();
+            &SinkContainer(ref appsink) => {
+                appsink.seek_simple(gst::SeekFlags::FLUSH, time).ok();
                 self.peek()
             },
         }
@@ -129,7 +130,10 @@ impl Component {
         use Component::*;
 
         match self {
-            &AppSinkContainer(ref appsink) => {
+            &SinkContainer(ref sink) => {
+//                sink.emit("preroll-pixbuf", &[]).unwrap().and_then(|x| x.get::<gdk_pixbuf::Pixbuf>())
+                sink.get_property("last-pixbuf").ok().and_then(|x| x.get::<gdk_pixbuf::Pixbuf>())
+                /*
                 appsink.emit("pull-preroll", &[]).ok().and_then(|emitted| {
                     let sample = emitted.unwrap().get::<gst::Sample>().unwrap();
                     let caps = sample.get_caps().unwrap();
@@ -147,6 +151,7 @@ impl Component {
 
                     Some(gdk_pixbuf::Pixbuf::new_from_vec(bmap.as_slice().to_vec(), 0, false, 8, width, height, round_up_4(width*3)))
                 })
+                 */
             }
         }
     }
@@ -191,18 +196,17 @@ impl Timeline {
             }
         }
 
-        /*
         for elem in &self.elements {
             if let Some(dest) = elem.peek() {
-                &pixbuf.composite(&dest, 0, 0, dest.get_width(), dest.get_height(), 0f64, 0f64, 1f64, 1f64, 0, 0);
+                &dest.composite(&pixbuf, 0, 0, dest.get_width(), dest.get_height(), 0f64, 0f64, 1f64, 1f64, 0, 255);
             }
         }
-        */
 
         pixbuf
     }
 
     fn renderer(&self, cr: &cairo::Context) -> gtk::Inhibit {
+        println!("{}", self.position);
         cr.set_source_pixbuf(&self.get_current_pixbuf(), 0 as f64, 0 as f64);
         cr.paint();
         Inhibit(false)
@@ -215,16 +219,11 @@ fn create_ui(path: &String) {
     let src = gst::ElementFactory::make("videotestsrc", None).unwrap();
 //    src.set_property("location", &glib::Value::from(path)).unwrap();
 
-//    let decodebin = gst::ElementFactory::make("decodebin", None).unwrap();
-    let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
+    let pixbufsink = gst::ElementFactory::make("gdkpixbufsink", None).unwrap();
+    pixbufsink.set_property("emit_signals", &glib::Value::from(&true)).unwrap();
 
-    let appsink = gst::ElementFactory::make("appsink", None).unwrap();
-
-//    let queue = gst::ElementFactory::make("queue", None).unwrap();
-    pipeline.add_many(&[&src, &videoconvert, &appsink]).unwrap();
-    gst::Element::link_many(&[&src, &videoconvert, &appsink]).unwrap();
-
-    pipeline.set_state(gst::State::Paused).into_result().unwrap();
+    pipeline.add_many(&[&src, &pixbufsink]).unwrap();
+    src.link(&pixbufsink).unwrap();
 
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
     window.set_default_size(640,600);
@@ -248,38 +247,42 @@ fn create_ui(path: &String) {
     let btn = gtk::Button::new();
     btn.set_label("render");
 
-    let appsink = appsink.dynamic_cast::<gsta::AppSink>().unwrap();
-    appsink.set_caps(&gst::Caps::new_simple(
-        "video/x-raw",
-        &[
-            ("format", &gstv::VideoFormat::Rgb.to_string()),
-        ]
-    ));
-
-    let mut timeline = Timeline::new(640,480);
-    timeline.register(Component::new_from_appsink(appsink));
+    let timeline: Rc<RefCell<Timeline>> = Rc::new(RefCell::new(Timeline::new(640,480)));
 
     {
-        let timeline = timeline.clone();
-        canvas.connect_draw(move |_,cr| timeline.renderer(cr));
+        let timeline: &RefCell<Timeline> = timeline.borrow();
+        timeline.borrow_mut().register(Component::new_from_gdkpixbufsink(pixbufsink));
     }
 
     {
         let timeline = timeline.clone();
         btn.connect_clicked(move |_| {
-            let pixbuf = timeline.elements[0].peek().unwrap();
+            let timeline: &RefCell<Timeline> = &timeline.borrow();
+            let pixbuf = timeline.borrow().elements[0].peek().unwrap();
             let renderer = AviRenderer::init(pixbuf.get_width() as usize, pixbuf.get_height() as usize);
             renderer.render(&pixbuf, 10);
         });
     }
 
     {
-        let timeline = RefCell::new(timeline);
+        let timeline: Rc<RefCell<Timeline>> = timeline.clone();
+        canvas.connect_draw(move |_,cr| {
+            let timeline: &RefCell<Timeline> = timeline.borrow();
+            timeline.borrow_mut().renderer(cr)
+        });
+    }
+
+    {
+
         let entry = entry.clone();
         let entry = Rc::new(entry);
+
+        let timeline: Rc<RefCell<Timeline>> = timeline.clone();
+
         go_btn.set_label("Go");
         go_btn.connect_clicked(move |_| {
             if let Ok(time) = entry.get_text().unwrap().parse::<u64>() {
+                let timeline: &RefCell<Timeline> = timeline.borrow();
                 timeline.borrow_mut().seek_to(time * gst::MSECOND);
             }
         });
@@ -294,6 +297,8 @@ fn create_ui(path: &String) {
         gtk::main_quit();
         Inhibit(false)
     });
+
+    pipeline.set_state(gst::State::Paused).into_result().unwrap();
 }
 
 fn main() {
