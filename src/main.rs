@@ -2,6 +2,7 @@ use std::env;
 use std::rc::Rc;
 use std::borrow::{Borrow, BorrowMut};
 use std::cell::RefCell;
+use std::cmp;
 
 extern crate gstreamer as gst;
 extern crate gstreamer_video as gstv;
@@ -149,7 +150,10 @@ impl Timeline {
 
         for elem in &self.elements {
             if let Some(dest) = elem.peek(self.position) {
-                &dest.composite(&pixbuf, 0, 0, dest.get_width(), dest.get_height(), 0f64, 0f64, 1f64, 1f64, 0, 255);
+                &dest.composite(
+                    &pixbuf, 0, 0,
+                    cmp::min(dest.get_width(), self.width), cmp::min(dest.get_height(), self.height),
+                    0f64, 0f64, 1f64, 1f64, 0, 255);
             }
         }
 
@@ -193,9 +197,51 @@ impl Component for VideoTestComponent {
     }
 }
 
-fn create_ui(path: &String) {
-//    src.set_property("location", &glib::Value::from(path)).unwrap();
+#[derive(Debug, Clone)]
+struct VideoFileComponent {
+    sink: gst::Element,
+}
 
+impl VideoFileComponent {
+    fn new(uri: &str) -> VideoFileComponent {
+        let pipeline = gst::Pipeline::new(None);
+        let src = gst::ElementFactory::make("filesrc", None).unwrap();
+        let decodebin = gst::ElementFactory::make("decodebin", None).unwrap();
+        let queue = gst::ElementFactory::make("queue", None).unwrap();
+        let convert = gst::ElementFactory::make("videoconvert", None).unwrap();
+        let pixbufsink = gst::ElementFactory::make("gdkpixbufsink", None).unwrap();
+
+        src.set_property("location", &glib::Value::from(uri)).unwrap();
+
+        pipeline.add_many(&[&src, &decodebin, &queue, &convert, &pixbufsink]).unwrap();
+        gst::Element::link_many(&[&src, &decodebin]).unwrap();
+        gst::Element::link_many(&[&queue, &convert, &pixbufsink]).unwrap();
+
+        {
+            let pipeline = pipeline.clone();
+            decodebin.connect_pad_added(move |_, src_pad| {
+                let sink_pad = queue.get_static_pad("sink").unwrap();
+                let _ = src_pad.link(&sink_pad);
+            });
+        }
+
+        pipeline.set_state(gst::State::Paused).into_result().unwrap();
+
+        VideoFileComponent {
+            sink: pixbufsink,
+        }
+    }
+}
+
+impl Component for VideoFileComponent {
+    fn peek(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
+        self.sink.seek_simple(gst::SeekFlags::FLUSH, time).ok().and_then(|_| {
+            self.sink.get_property("last-pixbuf").ok().and_then(|x| x.get::<gdk_pixbuf::Pixbuf>())
+        })
+    }
+}
+
+fn create_ui(path: &String) {
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
     window.set_default_size(640,600);
 
@@ -222,7 +268,8 @@ fn create_ui(path: &String) {
 
     {
         let timeline: &RefCell<Timeline> = timeline.borrow();
-        timeline.borrow_mut().register(Box::new(VideoTestComponent::new()));
+//        timeline.borrow_mut().register(Box::new(VideoTestComponent::new()));
+        timeline.borrow_mut().register(Box::new(VideoFileComponent::new(path)));
     }
 
     {
