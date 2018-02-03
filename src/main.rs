@@ -13,9 +13,123 @@ extern crate glib;
 extern crate gdk;
 extern crate gdk_pixbuf;
 
+struct AviRenderer {
+    appsrc: gsta::AppSrc,
+    size: (usize, usize),
+}
+
+impl AviRenderer {
+    fn init(width: usize, height: usize) -> AviRenderer {
+        let pipeline = gst::Pipeline::new(None);
+        let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
+        let avimux = gst::ElementFactory::make("avimux", None).unwrap();
+        let appsrc = gst::ElementFactory::make("appsrc", None).unwrap();
+        appsrc.set_property("emit-signals", &glib::Value::from(&true)).unwrap();
+
+        let sink = gst::ElementFactory::make("filesink", None).unwrap();
+        sink.set_property("location", &glib::Value::from("output/output.avi")).unwrap();
+
+        pipeline.add_many(&[&appsrc, &videoconvert, &avimux, &sink]).unwrap();
+        gst::Element::link_many(&[&appsrc, &videoconvert, &avimux, &sink]).unwrap();
+
+        let appsrc = appsrc.clone().dynamic_cast::<gsta::AppSrc>().unwrap();
+        let info = gstv::VideoInfo::new(gstv::VideoFormat::Rgb, width as u32, height as u32).fps(gst::Fraction::new(2,1)).build().unwrap();
+        appsrc.set_caps(&info.to_caps().unwrap());
+        appsrc.set_property_format(gst::Format::Time);
+        appsrc.set_max_bytes(1);
+        appsrc.set_property_block(true);
+
+        let bus = pipeline.get_bus().unwrap();
+
+        {
+            let pipeline = pipeline.clone();
+            bus.add_watch(move |_,msg| {
+                use gst::MessageView;
+
+                match msg.view() {
+                    MessageView::Eos(..) => {
+                        pipeline.set_state(gst::State::Null).into_result().unwrap();
+                        gtk::main_quit();
+                    },
+                    MessageView::Error(err) => {
+                        println!(
+                            "Error from {:?}: {:?}",
+                            err.get_error(),
+                            err.get_debug(),
+                        );
+                        pipeline.set_state(gst::State::Null).into_result().unwrap();
+                        gtk::main_quit();
+                    }
+                    _ => (),
+                };
+
+                glib::Continue(true)
+            });
+        }
+
+        pipeline.set_state(gst::State::Playing).into_result().unwrap();
+
+        AviRenderer {
+            appsrc: appsrc,
+            size: (width,height),
+        }
+    }
+
+    fn render(&self, pixbuf: &gdk_pixbuf::Pixbuf) {
+        for i in 0..20 {
+            let mut buffer = gst::Buffer::with_size(self.size.0*self.size.1*3).unwrap();
+
+            {
+                let buffer = buffer.get_mut().unwrap();
+                buffer.set_pts(i * 500 * gst::MSECOND);
+
+                let mut data = buffer.map_writable().unwrap();
+
+                let r = if i % 2 == 0 { 0 } else { 255 };
+                for p in data.as_mut_slice().chunks_mut(3) {
+                    p[0] = r;
+                    p[1] = 128;
+                    p[2] = 255;
+                }
+            }
+
+            let r = self.appsrc.push_buffer(buffer);
+            if r != gst::FlowReturn::Ok {
+                println!("{:?}", r);
+                break;
+            }
+
+        }
+
+        for i in 20..30 {
+            let mut buffer = gst::Buffer::with_size(self.size.0*self.size.1*3).unwrap();
+            {
+                let buffer = buffer.get_mut().unwrap();
+                buffer.set_pts(500 * i * gst::MSECOND);
+
+                let mut data = buffer.map_writable().unwrap();
+                let mut data = data.as_mut_slice();
+                let pixels = unsafe { pixbuf.get_pixels() };
+
+                use std::io::Write;
+                data.write_all(pixels).unwrap();
+            }
+            self.appsrc.push_buffer(buffer).into_result().unwrap();
+        }
+
+        self.appsrc.end_of_stream().into_result().unwrap();
+
+        println!("Rendering finished!");
+    }
+}
+
 fn create_ui(path: &String) {
     let src = gst::ElementFactory::make("videotestsrc", None).unwrap();
-    //    src.set_property("location", &glib::Value::from(format!("file://{}", path).as_str())).unwrap();
+//    src.set_property("location", &glib::Value::from(path)).unwrap();
+
+//    let decodebin = gst::ElementFactory::make("decodebin", None).unwrap();
+    let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
+
     let tee = gst::ElementFactory::make("tee", None).unwrap();
 
     let pipeline = gst::Pipeline::new(None);
@@ -46,8 +160,9 @@ fn create_ui(path: &String) {
         ));
     }
 
-    pipeline.add_many(&[&src, &tee, &appsink, &sink] as &[&gst::Element]).unwrap();
-    src.link(&tee).unwrap();
+//    let queue = gst::ElementFactory::make("queue", None).unwrap();
+    pipeline.add_many(&[&src, &videoconvert, &tee, &sink, &appsink]).unwrap();
+    gst::Element::link_many(&[&src, &videoconvert, &tee]).unwrap();
     tee.link_pads("src_1", &sink, "sink").unwrap();
     tee.link_pads("src_2", &appsink, "sink").unwrap();
 
@@ -84,102 +199,8 @@ fn create_ui(path: &String) {
             }
 
             let pixbuf = gdk_pixbuf::Pixbuf::new_from_vec(bmap.as_slice().to_vec(), 0, false, 8, width, height, round_up_4(width*3));
-
-            {
-                let pipeline = gst::Pipeline::new(None);
-                let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
-                let avimux = gst::ElementFactory::make("avimux", None).unwrap();
-                let appsrc = gst::ElementFactory::make("appsrc", None).unwrap();
-                appsrc.set_property("emit-signals", &glib::Value::from(&true)).unwrap();
-
-                let sink = gst::ElementFactory::make("filesink", None).unwrap();
-                sink.set_property("location", &glib::Value::from("output.avi")).unwrap();
-
-                pipeline.add_many(&[&appsrc, &videoconvert, &avimux, &sink]).unwrap();
-                gst::Element::link_many(&[&appsrc, &videoconvert, &avimux, &sink]).unwrap();
-
-                let appsrc = appsrc.clone().dynamic_cast::<gsta::AppSrc>().unwrap();
-                let info = gstv::VideoInfo::new(gstv::VideoFormat::Rgb, width as u32, height as u32).fps(gst::Fraction::new(2,1)).build().unwrap();
-                appsrc.set_caps(&info.to_caps().unwrap());
-                appsrc.set_property_format(gst::Format::Time);
-                appsrc.set_max_bytes(1);
-                appsrc.set_property_block(true);
-
-                let bus = pipeline.get_bus().unwrap();
-
-                {
-                    let pipeline = pipeline.clone();
-                    bus.add_watch(move |_,msg| {
-                        use gst::MessageView;
-
-                        match msg.view() {
-                            MessageView::Eos(..) => {
-                                pipeline.set_state(gst::State::Null).into_result().unwrap();
-                                gtk::main_quit();
-                            },
-                            MessageView::Error(err) => {
-                                println!(
-                                    "Error from {:?}: {:?}",
-                                    err.get_error(),
-                                    err.get_debug(),
-                                );
-                                pipeline.set_state(gst::State::Null).into_result().unwrap();
-                                gtk::main_quit();
-                            }
-                            _ => (),
-                        };
-
-                        glib::Continue(true)
-                    });
-                }
-
-                pipeline.set_state(gst::State::Playing).into_result().unwrap();
-
-                for i in 0..20 {
-                    println!("{}",i);
-                    let mut buffer = gst::Buffer::with_size((width as usize)*(height as usize)*3).unwrap();
-
-                    {
-                        let buffer = buffer.get_mut().unwrap();
-                        buffer.set_pts(i * 500 * gst::MSECOND);
-
-                        let mut data = buffer.map_writable().unwrap();
-
-                        let r = if i % 2 == 0 { 0 } else { 255 };
-                        for p in data.as_mut_slice().chunks_mut(3) {
-                            p[0] = r;
-                            p[1] = 128;
-                            p[2] = 255;
-                        }
-                    }
-
-                    let r = appsrc.push_buffer(buffer);
-                    if r != gst::FlowReturn::Ok {
-                        println!("{:?}", r);
-                        break;
-                    }
-
-                }
-
-                for i in 20..30 {
-                    println!("{}",i);
-                    let mut buffer = gst::Buffer::with_size((width as usize)*(height as usize)*3).unwrap();
-                    {
-                        let buffer = buffer.get_mut().unwrap();
-                        buffer.set_pts(500 * i * gst::MSECOND);
-
-                        let mut data = buffer.map_writable().unwrap();
-                        let mut data = data.as_mut_slice();
-                        let pixels = unsafe { pixbuf.get_pixels() };
-
-                        use std::io::Write;
-                        data.write_all(pixels).unwrap();
-                    }
-                    appsrc.push_buffer(buffer).into_result().unwrap();
-                }
-
-                appsrc.end_of_stream().into_result().unwrap();
-            }
+            let renderer = AviRenderer::init(width as usize, height as usize);
+            renderer.render(&pixbuf);
         });
     }
     vbox.pack_start(&btn, true, true, 5);
@@ -224,9 +245,12 @@ fn create_ui(path: &String) {
         glib::Continue(true)
     });
 
-    window.connect_unrealize(move |_| {
-        pipeline.set_state(gst::State::Null).into_result().unwrap();
-    });
+    {
+        let pipeline = pipeline.clone();
+        window.connect_unrealize(move |_| {
+            pipeline.set_state(gst::State::Null).into_result().unwrap();
+        });
+    }
 }
 
 fn main() {
