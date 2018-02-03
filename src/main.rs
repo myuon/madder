@@ -1,4 +1,5 @@
 use std::env;
+use std::rc::Rc;
 
 extern crate gtk;
 use gtk::prelude::*;
@@ -204,6 +205,15 @@ fn create_ui(path: &String) {
     let label = gtk::Label::new("Position: 00:00:00");
     vbox.pack_start(&label, true, true, 5);
 
+    let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+
+    let entry = gtk::Entry::new();
+    let go_btn = gtk::Button::new();
+
+    hbox.pack_start(&entry, true, true, 0);
+    hbox.pack_start(&go_btn, true, true, 5);
+    vbox.pack_start(&hbox, true, true, 5);
+
     let btn = gtk::Button::new();
     btn.set_label("render");
 
@@ -219,6 +229,7 @@ fn create_ui(path: &String) {
     timeline.register(Component::new_from_appsink(appsink));
 
     {
+        let timeline = timeline.clone();
         let pipeline = pipeline.clone();
         btn.connect_clicked(move |_| {
             pipeline.set_state(gst::State::Paused).into_result().unwrap();
@@ -226,6 +237,20 @@ fn create_ui(path: &String) {
             let pixbuf = timeline.elements[0].peek().unwrap();
             let renderer = AviRenderer::init(pixbuf.get_width() as usize, pixbuf.get_height() as usize);
             renderer.render(&pixbuf, 10);
+        });
+    }
+
+    {
+        let timeline = timeline.clone();
+        let entry = entry.clone();
+        let entry = Rc::new(entry);
+        go_btn.set_label("Go");
+        go_btn.connect_clicked(move |go_btn| {
+            if let Ok(time) = entry.get_text().unwrap().parse::<u64>() {
+                let pixbuf = timeline.elements[0].request(time * gst::MSECOND).unwrap();
+                let renderer = AviRenderer::init(pixbuf.get_width() as usize, pixbuf.get_height() as usize);
+                renderer.render(&pixbuf, 10);
+            }
         });
     }
 
