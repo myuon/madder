@@ -1,18 +1,23 @@
 use std::env;
 use std::rc::Rc;
-
-extern crate gtk;
-use gtk::prelude::*;
+use std::cell::RefCell;
 
 extern crate gstreamer as gst;
 extern crate gstreamer_video as gstv;
 extern crate gstreamer_app as gsta;
 use gstv::prelude::*;
 
+extern crate gtk;
+use gtk::prelude::*;
+
 extern crate glib;
 
 extern crate gdk;
+use gdk::prelude::*;
+
 extern crate gdk_pixbuf;
+
+extern crate cairo;
 
 struct AviRenderer {
     appsrc: gsta::AppSrc,
@@ -169,57 +174,67 @@ impl Timeline {
         self.elements.push(elem);
     }
 
-    fn render(&self) -> gdk_pixbuf::Pixbuf {
+    fn seek_to(&mut self, time: gst::ClockTime) {
+        self.position = time;
+    }
+
+    fn get_current_pixbuf(&self) -> gdk_pixbuf::Pixbuf {
         let pixbuf = unsafe { gdk_pixbuf::Pixbuf::new(0, false, 8, self.width, self.height).unwrap() };
-        for i in 0..self.width {
-            for j in 0..self.height {
-                pixbuf.put_pixel(i,j,0,0,0,0);
+        {
+            let pixbuf = &mut pixbuf.clone();
+            let pixels = unsafe { pixbuf.get_pixels() };
+
+            for p in pixels.chunks_mut(3) {
+                p[0] = 0;
+                p[1] = 0;
+                p[2] = 0;
             }
         }
+
+        /*
+        for elem in &self.elements {
+            if let Some(dest) = elem.peek() {
+                &pixbuf.composite(&dest, 0, 0, dest.get_width(), dest.get_height(), 0f64, 0f64, 1f64, 1f64, 0, 0);
+            }
+        }
+        */
+
         pixbuf
+    }
+
+    fn renderer(&self, cr: &cairo::Context) -> gtk::Inhibit {
+        cr.set_source_pixbuf(&self.get_current_pixbuf(), 0 as f64, 0 as f64);
+        cr.paint();
+        Inhibit(false)
     }
 }
 
 fn create_ui(path: &String) {
+    let pipeline = gst::Pipeline::new(None);
+
     let src = gst::ElementFactory::make("videotestsrc", None).unwrap();
 //    src.set_property("location", &glib::Value::from(path)).unwrap();
 
 //    let decodebin = gst::ElementFactory::make("decodebin", None).unwrap();
     let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
 
-    let tee = gst::ElementFactory::make("tee", None).unwrap();
-
-    let pipeline = gst::Pipeline::new(None);
-    let (sink,widget) = if let Some(gtkglsink) = gst::ElementFactory::make("gtkglsink", None) {
-        let glsinkbin = gst::ElementFactory::make("glsinkbin", None).unwrap();
-        glsinkbin.set_property("sink", &gtkglsink.to_value()).unwrap();
-
-        let widget = gtkglsink.get_property("widget").unwrap();
-        (glsinkbin, widget.get::<gtk::Widget>().unwrap())
-    } else {
-        let sink = gst::ElementFactory::make("gtksink", None).unwrap();
-        let widget = sink.get_property("widget").unwrap();
-        (sink, widget.get::<gtk::Widget>().unwrap())
-    };
-    sink.set_property("async", &glib::Value::from(&false)).unwrap();
-
     let appsink = gst::ElementFactory::make("appsink", None).unwrap();
-    appsink.set_property("async", &glib::Value::from(&false)).unwrap();
 
 //    let queue = gst::ElementFactory::make("queue", None).unwrap();
-    pipeline.add_many(&[&src, &videoconvert, &tee, &sink, &appsink]).unwrap();
-    gst::Element::link_many(&[&src, &videoconvert, &tee]).unwrap();
-    tee.link_pads("src_1", &sink, "sink").unwrap();
-    tee.link_pads("src_2", &appsink, "sink").unwrap();
+    pipeline.add_many(&[&src, &videoconvert, &appsink]).unwrap();
+    gst::Element::link_many(&[&src, &videoconvert, &appsink]).unwrap();
+
+    pipeline.set_state(gst::State::Paused).into_result().unwrap();
 
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
-    window.set_default_size(500,400);
+    window.set_default_size(640,600);
 
     let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    vbox.pack_start(&widget, true, true, 0);
 
-    let label = gtk::Label::new("Position: 00:00:00");
-    vbox.pack_start(&label, true, true, 5);
+    let canvas = gtk::DrawingArea::new();
+    canvas.set_size_request(640, 480);
+
+    vbox.pack_start(&canvas, true, true, 0);
 
     let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 
@@ -246,10 +261,12 @@ fn create_ui(path: &String) {
 
     {
         let timeline = timeline.clone();
-        let pipeline = pipeline.clone();
-        btn.connect_clicked(move |_| {
-            pipeline.set_state(gst::State::Paused).into_result().unwrap();
+        canvas.connect_draw(move |_,cr| timeline.renderer(cr));
+    }
 
+    {
+        let timeline = timeline.clone();
+        btn.connect_clicked(move |_| {
             let pixbuf = timeline.elements[0].peek().unwrap();
             let renderer = AviRenderer::init(pixbuf.get_width() as usize, pixbuf.get_height() as usize);
             renderer.render(&pixbuf, 10);
@@ -257,15 +274,13 @@ fn create_ui(path: &String) {
     }
 
     {
-        let timeline = timeline.clone();
+        let timeline = RefCell::new(timeline);
         let entry = entry.clone();
         let entry = Rc::new(entry);
         go_btn.set_label("Go");
-        go_btn.connect_clicked(move |go_btn| {
+        go_btn.connect_clicked(move |_| {
             if let Ok(time) = entry.get_text().unwrap().parse::<u64>() {
-                let pixbuf = timeline.elements[0].request(time * gst::MSECOND).unwrap();
-                let renderer = AviRenderer::init(pixbuf.get_width() as usize, pixbuf.get_height() as usize);
-                renderer.render(&pixbuf, 10);
+                timeline.borrow_mut().seek_to(time * gst::MSECOND);
             }
         });
     }
@@ -275,49 +290,10 @@ fn create_ui(path: &String) {
     window.add(&vbox);
     window.show_all();
 
-    {
-        let pipeline = pipeline.clone();
-        gtk::timeout_add(500, move || {
-            let pipeline = &pipeline.clone();
-            let position = pipeline.query_position::<gst::ClockTime>().unwrap_or_else(|| 0.into());
-            label.set_text(&format!("Position: {:.0}", position));
-
-            glib::Continue(true)
-        });
-    }
-
     window.connect_delete_event(move |_,_| {
         gtk::main_quit();
         Inhibit(false)
     });
-
-    pipeline.set_state(gst::State::Playing).into_result().unwrap();
-
-    let bus = pipeline.get_bus().unwrap();
-    bus.add_watch(move |_,msg| {
-        use gst::MessageView;
-
-        match msg.view() {
-            MessageView::Eos(..) => gtk::main_quit(),
-            MessageView::Error(err) => {
-                println!(
-                    "Error from {:?}: {:?}",
-                    err.get_error(),
-                    err.get_debug(),
-                );
-            }
-            _ => (),
-        };
-
-        glib::Continue(true)
-    });
-
-    {
-        let pipeline = pipeline.clone();
-        window.connect_unrealize(move |_| {
-            pipeline.set_state(gst::State::Null).into_result().unwrap();
-        });
-    }
 }
 
 fn main() {
