@@ -149,18 +149,34 @@ impl Component {
 
 #[derive(Debug, Clone)]
 struct Timeline {
-    elements: Vec<Component>
+    elements: Vec<Component>,
+    position: gst::ClockTime,
+    width: i32,
+    height: i32,
 }
 
 impl Timeline {
-    fn new() -> Timeline {
+    fn new(width: i32, height: i32) -> Timeline {
         Timeline {
-            elements: vec![]
+            elements: vec![],
+            position: 0 * gst::MSECOND,
+            width: width,
+            height: height,
         }
     }
 
     fn register(&mut self, elem: Component) {
         self.elements.push(elem);
+    }
+
+    fn render(&self) -> gdk_pixbuf::Pixbuf {
+        let pixbuf = unsafe { gdk_pixbuf::Pixbuf::new(0, false, 8, self.width, self.height).unwrap() };
+        for i in 0..self.width {
+            for j in 0..self.height {
+                pixbuf.put_pixel(i,j,0,0,0,0);
+            }
+        }
+        pixbuf
     }
 }
 
@@ -225,7 +241,7 @@ fn create_ui(path: &String) {
         ]
     ));
 
-    let mut timeline = Timeline::new();
+    let mut timeline = Timeline::new(640,480);
     timeline.register(Component::new_from_appsink(appsink));
 
     {
