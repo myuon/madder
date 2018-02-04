@@ -1,7 +1,7 @@
 use std::env;
 use std::rc::Rc;
-use std::borrow::{Borrow, BorrowMut};
-use std::cell::RefCell;
+use std::borrow::Borrow;
+use std::cell::{Cell, RefCell};
 use std::cmp;
 
 extern crate gstreamer as gst;
@@ -252,7 +252,7 @@ impl Component for VideoFileComponent {
     }
 }
 
-fn create_ui(path: &String) {
+fn create_ui(uri: &String) {
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
     window.set_default_size(640,600);
 
@@ -280,7 +280,7 @@ fn create_ui(path: &String) {
     {
         let timeline: &RefCell<Timeline> = timeline.borrow();
 //        timeline.borrow_mut().register(Box::new(VideoTestComponent::new()));
-        timeline.borrow_mut().register(Box::new(VideoFileComponent::new(path)));
+        timeline.borrow_mut().register(Box::new(VideoFileComponent::new(uri)));
     }
 
     {
@@ -315,6 +315,48 @@ fn create_ui(path: &String) {
     }
 
     vbox.pack_start(&btn, true, true, 5);
+
+    let fixed = gtk::Fixed::new();
+    {
+        fixed.set_size_request(640,100);
+
+        let evbox = gtk::EventBox::new();
+        {
+            let label = gtk::Label::new(format!("{}", uri).as_str());
+            label.set_size_request(100,30);
+            label.override_background_color(gtk::StateFlags::NORMAL, &gdk::RGBA::blue());
+
+            evbox.add(&label);
+
+            let evbox = evbox.clone();
+            let fixed = fixed.clone();
+            let offset: Rc<Cell<i32>> = Rc::new(Cell::new(0));
+
+            {
+                let offset = offset.clone();
+                evbox.connect_button_press_event(move |evbox,button| {
+                    let (rx,_) = evbox.get_parent().unwrap().get_window().unwrap().get_position();
+                    let (x,_) = button.get_position();
+                    let offset: &Cell<i32> = offset.borrow();
+                    offset.set(rx + x as i32);
+                    Inhibit(false)
+                });
+            }
+            evbox.connect_motion_notify_event(move |evbox,motion| {
+                let (rx,_) = motion.get_window().unwrap().get_position();
+                let (x,_) = motion.get_position();
+                let offset: &Cell<i32> = offset.borrow();
+                let x_max = evbox.get_parent().unwrap().get_allocation().width - evbox.get_allocation().width;
+
+                fixed.move_(evbox, cmp::max(cmp::min(rx + x as i32 - offset.get(), x_max), 0), 50);
+                Inhibit(false)
+            });
+        }
+
+        fixed.put(&evbox, 0, 50);
+    }
+
+    vbox.pack_start(&fixed, true, true, 5);
 
     window.add(&vbox);
     window.show_all();
