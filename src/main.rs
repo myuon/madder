@@ -124,6 +124,7 @@ impl Peekable for gst::Element {
 }
 
 struct Component {
+    name: String,
     start_time: gst::ClockTime,
     end_time: gst::ClockTime,
     component: Box<Peekable>,
@@ -214,6 +215,7 @@ impl VideoTestComponent {
         pipeline.set_state(gst::State::Paused).into_result().unwrap();
 
         VideoTestComponent(Component {
+            name: "videotest".to_string(),
             start_time: 0 * gst::MSECOND,
             end_time: 100 * gst::MSECOND,
             component: Box::new(pixbufsink),
@@ -246,6 +248,7 @@ impl VideoFileComponent {
         pipeline.set_state(gst::State::Paused).into_result().unwrap();
 
         VideoFileComponent(Component {
+            name: uri.to_string(),
             start_time: 0 * gst::MSECOND,
             end_time: 100 * gst::MSECOND,
             component: Box::new(pixbufsink),
@@ -280,7 +283,7 @@ fn create_ui(uri: &String) {
 
     {
         let timeline: &RefCell<Timeline> = timeline.borrow();
-//        timeline.borrow_mut().register(Box::new(VideoTestComponent::new().0));
+        timeline.borrow_mut().register(Box::new(VideoTestComponent::new().0));
         timeline.borrow_mut().register(Box::new(VideoFileComponent::new(uri).0));
     }
 
@@ -318,44 +321,53 @@ fn create_ui(uri: &String) {
     vbox.pack_start(&btn, true, true, 5);
 
     let fixed = gtk::Fixed::new();
-    {
-        fixed.set_size_request(640,100);
+    fixed.set_size_request(640,100);
 
+    let new_component_widget = move |fixed: &gtk::Fixed, label: &str| {
         let evbox = gtk::EventBox::new();
         evbox.set_size_request(100,30);
 
+        let label = gtk::Label::new(label);
+        label.override_background_color(gtk::StateFlags::NORMAL, &gdk::RGBA::blue());
+
+        evbox.add(&label);
+
+        let evbox = evbox.clone();
+        let fixed = fixed.clone();
+        let offset: Rc<Cell<i32>> = Rc::new(Cell::new(0));
+
         {
-            let label = gtk::Label::new(format!("{}", uri).as_str());
-            label.override_background_color(gtk::StateFlags::NORMAL, &gdk::RGBA::blue());
+            let offset = offset.clone();
+            evbox.connect_button_press_event(move |evbox,button| {
+                let (rx,_) = evbox.get_parent().unwrap().get_window().unwrap().get_position();
+                let (x,_) = button.get_position();
+                let offset: &Cell<i32> = offset.borrow();
+                offset.set(rx + x as i32);
+                Inhibit(false)
+            });
+        }
 
-            evbox.add(&label);
-
-            let evbox = evbox.clone();
+        {
             let fixed = fixed.clone();
-            let offset: Rc<Cell<i32>> = Rc::new(Cell::new(0));
-
-            {
-                let offset = offset.clone();
-                evbox.connect_button_press_event(move |evbox,button| {
-                    let (rx,_) = evbox.get_parent().unwrap().get_window().unwrap().get_position();
-                    let (x,_) = button.get_position();
-                    let offset: &Cell<i32> = offset.borrow();
-                    offset.set(rx + x as i32);
-                    Inhibit(false)
-                });
-            }
             evbox.connect_motion_notify_event(move |evbox,motion| {
                 let (rx,_) = motion.get_window().unwrap().get_position();
                 let (x,_) = motion.get_position();
                 let offset: &Cell<i32> = offset.borrow();
                 let x_max = evbox.get_parent().unwrap().get_allocation().width - evbox.get_allocation().width;
 
-                fixed.move_(evbox, cmp::max(cmp::min(rx + x as i32 - offset.get(), x_max), 0), 50);
+                &fixed.move_(evbox, cmp::max(cmp::min(rx + x as i32 - offset.get(), x_max), 0), 50);
                 Inhibit(false)
             });
         }
 
-        fixed.put(&evbox, 0, 50);
+        &fixed.put(&evbox, 0, 50);
+    };
+
+    let timeline: &RefCell<Timeline> = timeline.borrow();
+
+    for elem in &timeline.borrow().elements {
+        let fixed = fixed.clone();
+        new_component_widget(&fixed, &elem.name);
     }
 
     vbox.pack_start(&fixed, true, true, 5);
