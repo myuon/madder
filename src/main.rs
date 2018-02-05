@@ -106,8 +106,27 @@ impl AviRenderer {
     }
 }
 
-trait Component {
+trait Peekable {
+    fn get_duration(&self) -> gst::ClockTime;
     fn peek(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf>;
+}
+
+impl Peekable for gst::Element {
+    fn get_duration(&self) -> gst::ClockTime {
+        100 * 1000 * gst::MSECOND
+    }
+
+    fn peek(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
+        self.seek_simple(gst::SeekFlags::FLUSH, time).ok().and_then(|_| {
+            self.get_property("last-pixbuf").ok().and_then(|x| x.get::<gdk_pixbuf::Pixbuf>())
+        })
+    }
+}
+
+struct Component {
+    start_time: gst::ClockTime,
+    end_time: gst::ClockTime,
+    component: Box<Peekable>,
 }
 
 struct Timeline {
@@ -149,7 +168,7 @@ impl Timeline {
         }
 
         for elem in &self.elements {
-            if let Some(dest) = elem.peek(self.position) {
+            if let Some(dest) = elem.component.peek(self.position) {
                 &dest.composite(
                     &pixbuf, 0, 0,
                     cmp::min(dest.get_width(), self.width), cmp::min(dest.get_height(), self.height),
@@ -161,7 +180,7 @@ impl Timeline {
     }
 
     fn renderer(&self, cr: &cairo::Context) -> gtk::Inhibit {
-        cr.set_source_pixbuf(&self.get_current_pixbuf(), 0 as f64, 0 as f64);
+        cr.set_source_pixbuf(&self.get_current_pixbuf(), 0f64, 0f64);
         cr.paint();
         Inhibit(false)
     }
@@ -181,10 +200,7 @@ impl Timeline {
     }
 }
 
-#[derive(Debug, Clone)]
-struct VideoTestComponent {
-    sink: gst::Element,
-}
+struct VideoTestComponent(Component);
 
 impl VideoTestComponent {
     fn new() -> VideoTestComponent {
@@ -197,24 +213,15 @@ impl VideoTestComponent {
 
         pipeline.set_state(gst::State::Paused).into_result().unwrap();
 
-        VideoTestComponent {
-            sink: pixbufsink,
-        }
-    }
-}
-
-impl Component for VideoTestComponent {
-    fn peek(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
-        self.sink.seek_simple(gst::SeekFlags::FLUSH, time).ok().and_then(|_| {
-            self.sink.get_property("last-pixbuf").ok().and_then(|x| x.get::<gdk_pixbuf::Pixbuf>())
+        VideoTestComponent(Component {
+            start_time: 0 * gst::MSECOND,
+            end_time: 100 * gst::MSECOND,
+            component: Box::new(pixbufsink),
         })
     }
 }
 
-#[derive(Debug, Clone)]
-struct VideoFileComponent {
-    sink: gst::Element,
-}
+struct VideoFileComponent(Component);
 
 impl VideoFileComponent {
     fn new(uri: &str) -> VideoFileComponent {
@@ -238,16 +245,10 @@ impl VideoFileComponent {
 
         pipeline.set_state(gst::State::Paused).into_result().unwrap();
 
-        VideoFileComponent {
-            sink: pixbufsink,
-        }
-    }
-}
-
-impl Component for VideoFileComponent {
-    fn peek(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
-        self.sink.seek_simple(gst::SeekFlags::FLUSH, time).ok().and_then(|_| {
-            self.sink.get_property("last-pixbuf").ok().and_then(|x| x.get::<gdk_pixbuf::Pixbuf>())
+        VideoFileComponent(Component {
+            start_time: 0 * gst::MSECOND,
+            end_time: 100 * gst::MSECOND,
+            component: Box::new(pixbufsink),
         })
     }
 }
@@ -279,8 +280,8 @@ fn create_ui(uri: &String) {
 
     {
         let timeline: &RefCell<Timeline> = timeline.borrow();
-//        timeline.borrow_mut().register(Box::new(VideoTestComponent::new()));
-        timeline.borrow_mut().register(Box::new(VideoFileComponent::new(uri)));
+//        timeline.borrow_mut().register(Box::new(VideoTestComponent::new().0));
+        timeline.borrow_mut().register(Box::new(VideoFileComponent::new(uri).0));
     }
 
     {
@@ -321,9 +322,10 @@ fn create_ui(uri: &String) {
         fixed.set_size_request(640,100);
 
         let evbox = gtk::EventBox::new();
+        evbox.set_size_request(100,30);
+
         {
             let label = gtk::Label::new(format!("{}", uri).as_str());
-            label.set_size_request(100,30);
             label.override_background_color(gtk::StateFlags::NORMAL, &gdk::RGBA::blue());
 
             evbox.add(&label);
@@ -377,6 +379,5 @@ fn main() {
     gst::init().expect("Gstreamer initialization error");
 
     create_ui(&args[1]);
-
     gtk::main();
 }
