@@ -323,14 +323,14 @@ fn create_ui(uri: &String) {
     let fixed = gtk::Fixed::new();
     fixed.set_size_request(640,100);
 
-    let new_component_widget = move |fixed: &gtk::Fixed, label: &str| {
+    let new_component_widget = move |fixed: &gtk::Fixed, label_text: &str| {
         let evbox = gtk::EventBox::new();
-        evbox.set_size_request(100,30);
+        fixed.put(&evbox, 0, 50);
 
-        let label = gtk::Label::new(label);
-        label.override_background_color(gtk::StateFlags::NORMAL, &gdk::RGBA::blue());
-
+        let label = gtk::Label::new(label_text);
         evbox.add(&label);
+        label.override_background_color(gtk::StateFlags::NORMAL, &gdk::RGBA::blue());
+        label.set_size_request(110,30);
 
         let evbox = evbox.clone();
         let fixed = fixed.clone();
@@ -349,18 +349,34 @@ fn create_ui(uri: &String) {
 
         {
             let fixed = fixed.clone();
-            evbox.connect_motion_notify_event(move |evbox,motion| {
-                let (rx,_) = motion.get_window().unwrap().get_position();
-                let (x,_) = motion.get_position();
-                let offset: &Cell<i32> = offset.borrow();
-                let x_max = evbox.get_parent().unwrap().get_allocation().width - evbox.get_allocation().width;
 
-                &fixed.move_(evbox, cmp::max(cmp::min(rx + x as i32 - offset.get(), x_max), 0), 50);
+            evbox.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
+            evbox.connect_motion_notify_event(move |evbox,motion| {
+                let (x,_) = motion.get_position();
+                let evbox_window = motion.get_window().unwrap();
+                let (rx,_) = evbox_window.get_position();
+
+                {
+                    let GRAB_EDGE = 5;
+                    if (evbox_window.get_width() - x as i32) <= GRAB_EDGE {
+                        evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "e-resize"));
+                    } else if (x as i32) <= GRAB_EDGE {
+                        evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "w-resize"));
+                    } else {
+                        evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "default"));
+                    }
+                }
+
+                if motion.get_state().contains(gdk::ModifierType::BUTTON1_MASK) {
+                    let offset: &Cell<i32> = offset.borrow();
+                    let x_max = evbox.get_parent().unwrap().get_allocation().width - evbox.get_allocation().width;
+
+                    fixed.move_(evbox, cmp::max(cmp::min(rx + x as i32 - offset.get(), x_max), 0), 50);
+                }
+
                 Inhibit(false)
             });
         }
-
-        &fixed.put(&evbox, 0, 50);
     };
 
     let timeline: &RefCell<Timeline> = timeline.borrow();
