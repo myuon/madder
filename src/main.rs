@@ -53,7 +53,7 @@ fn create_ui(uri: &String) {
                 serializer::ComponentStructure {
                     component_type: serializer::ComponentType::Video,
                     start_time: 100 * gst::MSECOND,
-                    end_time: 200 * gst::MSECOND,
+                    end_time: 600 * gst::MSECOND,
                     entity: uri.to_string(),
                 }
             ])
@@ -96,14 +96,14 @@ fn create_ui(uri: &String) {
     let fixed = gtk::Fixed::new();
     fixed.set_size_request(640,100);
 
-    let new_component_widget = move |fixed: &gtk::Fixed, label_text: &str| {
+    let new_component_widget = move |fixed: &gtk::Fixed, label_text: &str, offset_x: i32, width: i32| {
         let evbox = gtk::EventBox::new();
-        fixed.put(&evbox, 0, 50);
+        fixed.put(&evbox, offset_x, 50);
 
         let label = gtk::Label::new(label_text);
         evbox.add(&label);
         label.override_background_color(gtk::StateFlags::NORMAL, &gdk::RGBA::blue());
-        label.set_size_request(110,30);
+        label.set_size_request(width,30);
 
         let evbox = evbox.clone();
         let fixed = fixed.clone();
@@ -156,7 +156,8 @@ fn create_ui(uri: &String) {
 
     for elem in &timeline.borrow().elements {
         let fixed = fixed.clone();
-        new_component_widget(&fixed, &elem.name);
+        let time_to_length = |p: gst::ClockTime| p.mseconds().unwrap() as i32;
+        new_component_widget(&fixed, &elem.name, time_to_length(elem.start_time), time_to_length(elem.end_time - elem.start_time));
     }
 
     vbox.pack_start(&fixed, true, true, 5);
