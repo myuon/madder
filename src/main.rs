@@ -21,7 +21,7 @@ extern crate gdk_pixbuf;
 extern crate cairo;
 
 extern crate madder;
-use madder::{Timeline, VideoTestComponent, VideoFileComponent};
+use madder::{Timeline, serializer};
 
 fn create_ui(uri: &String) {
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
@@ -46,13 +46,19 @@ fn create_ui(uri: &String) {
     let btn = gtk::Button::new();
     btn.set_label("render");
 
-    let timeline: Rc<RefCell<Timeline>> = Rc::new(RefCell::new(Timeline::new(640,480)));
-
-    {
-        let timeline: &RefCell<Timeline> = timeline.borrow();
-        timeline.borrow_mut().register(Box::new(VideoTestComponent::new().0));
-        timeline.borrow_mut().register(Box::new(VideoFileComponent::new(uri).0));
-    }
+    let timeline: Rc<RefCell<Timeline>> = Rc::new(RefCell::new(Timeline::new_from_structure(
+        &serializer::TimelineStructure {
+            size: (640, 480),
+            components: Box::new([
+                serializer::ComponentStructure {
+                    component_type: serializer::ComponentType::Video,
+                    start_time: 100 * gst::MSECOND,
+                    end_time: 200 * gst::MSECOND,
+                    entity: uri.to_string(),
+                }
+            ])
+        }
+    )));
 
     {
         let timeline = timeline.clone();

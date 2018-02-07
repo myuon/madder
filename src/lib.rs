@@ -20,6 +20,8 @@ extern crate cairo;
 mod avi_renderer;
 use avi_renderer::AviRenderer;
 
+pub mod serializer;
+
 trait Peekable {
     fn get_duration(&self) -> gst::ClockTime;
     fn peek(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf>;
@@ -44,6 +46,21 @@ pub struct Component {
     component: Box<Peekable>,
 }
 
+impl Component {
+    pub fn new_from_structure(structure: &serializer::ComponentStructure) -> Component {
+        match structure.component_type {
+            serializer::ComponentType::Video => {
+                let mut c = VideoFileComponent::new(structure.entity.as_str()).0;
+                c.start_time = structure.start_time;
+                c.end_time = structure.end_time;
+
+                c
+            },
+            _ => unimplemented!(),
+        }
+    }
+}
+
 pub struct Timeline {
     pub elements: Vec<Box<Component>>,
     pub position: gst::ClockTime,
@@ -59,6 +76,16 @@ impl Timeline {
             width: width,
             height: height,
         }
+    }
+
+    pub fn new_from_structure(structure: &serializer::TimelineStructure) -> Timeline {
+        let mut timeline = Timeline::new(structure.size.0, structure.size.1);
+
+        for component in structure.components.iter() {
+            timeline.register(Box::new(Component::new_from_structure(component)));
+        }
+
+        timeline
     }
 
     pub fn register(&mut self, elem: Box<Component>) {
