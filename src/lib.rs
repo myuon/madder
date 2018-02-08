@@ -56,6 +56,13 @@ impl Component {
 
                 c
             },
+            serializer::ComponentType::Image => {
+                let mut c = ImageComponent::new(structure.entity.as_str()).0;
+                c.start_time = structure.start_time;
+                c.end_time = structure.end_time;
+
+                c
+            },
             _ => unimplemented!(),
         }
     }
@@ -196,3 +203,29 @@ impl VideoFileComponent {
         })
     }
 }
+
+impl Peekable for gtk::Image {
+    fn get_duration(&self) -> gst::ClockTime {
+        100 * gst::MSECOND
+    }
+
+    fn peek(&self, _: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
+        self.get_pixbuf()
+    }
+}
+
+pub struct ImageComponent(pub Component);
+
+impl ImageComponent {
+    pub fn new(uri: &str) -> ImageComponent {
+        let image = gtk::Image::new_from_file(uri);
+
+        ImageComponent(Component {
+            name: uri.to_string(),
+            start_time: 0 * gst::MSECOND,
+            end_time: 0 * gst::MSECOND,
+            component: Box::new(image),
+        })
+    }
+}
+
