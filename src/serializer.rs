@@ -10,6 +10,7 @@ pub struct ComponentStructure {
     pub start_time: gst::ClockTime,
     pub end_time: gst::ClockTime,
     pub entity: String,
+    pub coordinate: (i32, i32),
 }
 
 pub enum ComponentType {

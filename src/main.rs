@@ -55,12 +55,14 @@ fn create_ui(uri: &String) {
                     start_time: 100 * gst::MSECOND,
                     end_time: 600 * gst::MSECOND,
                     entity: uri.to_string(),
+                    coordinate: (0,0),
                 },
                 serializer::ComponentStructure {
                     component_type: serializer::ComponentType::Image,
                     start_time: 0 * gst::MSECOND,
                     end_time: 10 * gst::MSECOND,
                     entity: "/home/ioijoi/Pictures/sc/Screenshot at 2016-06-13 21:57:39.png".to_string(),
+                    coordinate: (100,200),
                 }
             ])
         }

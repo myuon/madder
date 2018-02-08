@@ -44,6 +44,7 @@ pub struct Component {
     pub start_time: gst::ClockTime,
     pub end_time: gst::ClockTime,
     component: Box<Peekable>,
+    coordinate: (i32,i32),
 }
 
 impl Component {
@@ -53,6 +54,7 @@ impl Component {
                 let mut c = VideoFileComponent::new(structure.entity.as_str()).0;
                 c.start_time = structure.start_time;
                 c.end_time = structure.end_time;
+                c.coordinate = structure.coordinate;
 
                 c
             },
@@ -60,6 +62,7 @@ impl Component {
                 let mut c = ImageComponent::new(structure.entity.as_str()).0;
                 c.start_time = structure.start_time;
                 c.end_time = structure.end_time;
+                c.coordinate = structure.coordinate;
 
                 c
             },
@@ -119,9 +122,9 @@ impl Timeline {
         for elem in &self.elements {
             if let Some(dest) = elem.component.peek(self.position) {
                 &dest.composite(
-                    &pixbuf, 0, 0,
-                    cmp::min(dest.get_width(), self.width), cmp::min(dest.get_height(), self.height),
-                    0f64, 0f64, 1f64, 1f64, 0, 255);
+                    &pixbuf, elem.coordinate.0, elem.coordinate.1,
+                    cmp::min(dest.get_width(), self.width - elem.coordinate.0), cmp::min(dest.get_height(), self.height - elem.coordinate.1),
+                    elem.coordinate.0.into(), elem.coordinate.1.into(), 1f64, 1f64, 0, 255);
             }
         }
 
@@ -166,6 +169,7 @@ impl VideoTestComponent {
             name: "videotest".to_string(),
             start_time: 0 * gst::MSECOND,
             end_time: 100 * gst::MSECOND,
+            coordinate: (0,0),
             component: Box::new(pixbufsink),
         })
     }
@@ -199,6 +203,7 @@ impl VideoFileComponent {
             name: uri.to_string(),
             start_time: 0 * gst::MSECOND,
             end_time: 100 * gst::MSECOND,
+            coordinate: (0,0),
             component: Box::new(pixbufsink),
         })
     }
@@ -224,6 +229,7 @@ impl ImageComponent {
             name: uri.to_string(),
             start_time: 0 * gst::MSECOND,
             end_time: 0 * gst::MSECOND,
+            coordinate: (0,0),
             component: Box::new(image),
         })
     }
