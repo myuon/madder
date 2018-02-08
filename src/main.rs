@@ -19,6 +19,7 @@ use gdk::prelude::*;
 extern crate gdk_pixbuf;
 
 extern crate cairo;
+extern crate pango;
 
 extern crate madder;
 use madder::{Timeline, serializer};
@@ -46,11 +47,18 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
             timeline_menu.append(&video_item);
 
             let window = window.clone();
+            let timeline = timeline.clone();
             video_item.connect_activate(move |_| {
                 let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&window), gtk::FileChooserAction::Open);
                 dialog.add_button("追加", 0);
+
+                {
+                    let filter = gtk::FileFilter::new();
+                    filter.add_pattern("*.mkv");
+                    dialog.add_filter(&filter);
+                }
                 dialog.run();
-                println!("{:?}", dialog.get_filename());
+//                timeline.add(dialog.get_filename().unwrap());
                 dialog.destroy();
             });
 
@@ -119,7 +127,8 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
 
         let label = gtk::Label::new(label_text);
         evbox.add(&label);
-        label.override_background_color(gtk::StateFlags::NORMAL, &gdk::RGBA::blue());
+        label.override_background_color(gtk::StateFlags::NORMAL, &gdk::RGBA::red());
+        label.set_ellipsize(pango::EllipsizeMode::End);
         label.set_size_request(width,30);
 
         let evbox = evbox.clone();
@@ -201,15 +210,15 @@ fn main() {
         components: Box::new([
             serializer::ComponentStructure {
                 component_type: serializer::ComponentType::Video,
-                start_time: 100 * gst::MSECOND,
-                end_time: 600 * gst::MSECOND,
+                start_time: 120 * gst::MSECOND,
+                end_time: 320 * gst::MSECOND,
                 entity: args[1].to_string(),
                 coordinate: (0,0),
             },
             serializer::ComponentStructure {
                 component_type: serializer::ComponentType::Image,
                 start_time: 0 * gst::MSECOND,
-                end_time: 10 * gst::MSECOND,
+                end_time: 100 * gst::MSECOND,
                 entity: args[2].to_string(),
                 coordinate: (100,200),
             }
