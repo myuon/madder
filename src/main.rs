@@ -23,11 +23,41 @@ extern crate cairo;
 extern crate madder;
 use madder::{Timeline, serializer};
 
-fn create_ui(uri: &String) {
+fn create_ui(timeline: &serializer::TimelineStructure) {
+    let timeline: Rc<RefCell<Timeline>> = Rc::new(RefCell::new(Timeline::new_from_structure(timeline)));
+
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
     window.set_default_size(640,600);
 
     let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+
+    let menubar = gtk::MenuBar::new();
+    vbox.pack_start(&menubar, true, true, 0);
+
+    {
+        let timeline_item = gtk::MenuItem::new_with_label("タイムライン");
+        menubar.append(&timeline_item);
+
+        let timeline_menu = gtk::Menu::new();
+        timeline_item.set_submenu(&timeline_menu);
+
+        {
+            let video_item = gtk::MenuItem::new_with_label("動画");
+            timeline_menu.append(&video_item);
+
+            let window = window.clone();
+            video_item.connect_activate(move |_| {
+                let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&window), gtk::FileChooserAction::Open);
+                dialog.add_button("追加", 0);
+                dialog.run();
+                println!("{:?}", dialog.get_filename());
+                dialog.destroy();
+            });
+
+            let image_item = gtk::MenuItem::new_with_label("画像");
+            timeline_menu.append(&image_item);
+        }
+    }
 
     let canvas = gtk::DrawingArea::new();
     canvas.set_size_request(640, 480);
@@ -45,28 +75,6 @@ fn create_ui(uri: &String) {
 
     let btn = gtk::Button::new();
     btn.set_label("render");
-
-    let timeline: Rc<RefCell<Timeline>> = Rc::new(RefCell::new(Timeline::new_from_structure(
-        &serializer::TimelineStructure {
-            size: (640, 480),
-            components: Box::new([
-                serializer::ComponentStructure {
-                    component_type: serializer::ComponentType::Video,
-                    start_time: 100 * gst::MSECOND,
-                    end_time: 600 * gst::MSECOND,
-                    entity: uri.to_string(),
-                    coordinate: (0,0),
-                },
-                serializer::ComponentStructure {
-                    component_type: serializer::ComponentType::Image,
-                    start_time: 0 * gst::MSECOND,
-                    end_time: 10 * gst::MSECOND,
-                    entity: "/home/ioijoi/Pictures/sc/Screenshot at 2016-06-13 21:57:39.png".to_string(),
-                    coordinate: (100,200),
-                }
-            ])
-        }
-    )));
 
     {
         let timeline = timeline.clone();
@@ -103,6 +111,7 @@ fn create_ui(uri: &String) {
 
     let fixed = gtk::Fixed::new();
     fixed.set_size_request(640,100);
+    vbox.pack_start(&fixed, true, true, 0);
 
     let new_component_widget = move |fixed: &gtk::Fixed, label_text: &str, offset_x: i32, width: i32| {
         let evbox = gtk::EventBox::new();
@@ -168,9 +177,8 @@ fn create_ui(uri: &String) {
         new_component_widget(&fixed, &elem.name, time_to_length(elem.start_time), time_to_length(elem.end_time - elem.start_time));
     }
 
-    vbox.pack_start(&fixed, true, true, 5);
-
     window.add(&vbox);
+
     window.show_all();
 
     window.connect_delete_event(move |_,_| {
@@ -188,6 +196,25 @@ fn main() {
     gtk::init().expect("Gtk initialization error");
     gst::init().expect("Gstreamer initialization error");
 
-    create_ui(&args[1]);
+    create_ui(&serializer::TimelineStructure {
+        size: (640, 480),
+        components: Box::new([
+            serializer::ComponentStructure {
+                component_type: serializer::ComponentType::Video,
+                start_time: 100 * gst::MSECOND,
+                end_time: 600 * gst::MSECOND,
+                entity: args[1].to_string(),
+                coordinate: (0,0),
+            },
+            serializer::ComponentStructure {
+                component_type: serializer::ComponentType::Image,
+                start_time: 0 * gst::MSECOND,
+                end_time: 10 * gst::MSECOND,
+                entity: args[2].to_string(),
+                coordinate: (100,200),
+            }
+        ])
+    });
+
     gtk::main();
 }
