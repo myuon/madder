@@ -51,19 +51,13 @@ impl Component {
     pub fn new_from_structure(structure: &serializer::ComponentStructure) -> Component {
         match structure.component_type {
             serializer::ComponentType::Video => {
-                let mut c = VideoFileComponent::new(structure.entity.as_str()).0;
-                c.start_time = structure.start_time;
+                let mut c = VideoFileComponent::new(structure.entity.as_str(), structure.start_time, structure.coordinate).get_component();
                 c.end_time = structure.end_time;
-                c.coordinate = structure.coordinate;
-
                 c
             },
             serializer::ComponentType::Image => {
-                let mut c = ImageComponent::new(structure.entity.as_str()).0;
-                c.start_time = structure.start_time;
+                let mut c = ImageComponent::new(structure.entity.as_str(), structure.start_time, structure.coordinate).get_component();
                 c.end_time = structure.end_time;
-                c.coordinate = structure.coordinate;
-
                 c
             },
             _ => unimplemented!(),
@@ -123,7 +117,8 @@ impl Timeline {
             if let Some(dest) = elem.component.peek(self.position) {
                 &dest.composite(
                     &pixbuf, elem.coordinate.0, elem.coordinate.1,
-                    cmp::min(dest.get_width(), self.width - elem.coordinate.0), cmp::min(dest.get_height(), self.height - elem.coordinate.1),
+                    cmp::min(dest.get_width(), self.width - elem.coordinate.0),
+                    cmp::min(dest.get_height(), self.height - elem.coordinate.1),
                     elem.coordinate.0.into(), elem.coordinate.1.into(), 1f64, 1f64, 0, 255);
             }
         }
@@ -152,10 +147,10 @@ impl Timeline {
     }
 }
 
-pub struct VideoTestComponent(pub Component);
+pub struct VideoTestComponent(Component);
 
 impl VideoTestComponent {
-    pub fn new() -> VideoTestComponent {
+    pub fn new(start_time: gst::ClockTime, coordinate: (i32,i32)) -> VideoTestComponent {
         let pipeline = gst::Pipeline::new(None);
         let src = gst::ElementFactory::make("videotestsrc", None).unwrap();
         let pixbufsink = gst::ElementFactory::make("gdkpixbufsink", None).unwrap();
@@ -167,18 +162,22 @@ impl VideoTestComponent {
 
         VideoTestComponent(Component {
             name: "videotest".to_string(),
-            start_time: 0 * gst::MSECOND,
-            end_time: 100 * gst::MSECOND,
-            coordinate: (0,0),
+            start_time: start_time,
+            end_time: start_time + 100 * gst::MSECOND,
+            coordinate: coordinate,
             component: Box::new(pixbufsink),
         })
     }
+
+    pub fn get_component(self) -> Component {
+        self.0
+    }
 }
 
-pub struct VideoFileComponent(pub Component);
+pub struct VideoFileComponent(Component);
 
 impl VideoFileComponent {
-    pub fn new(uri: &str) -> VideoFileComponent {
+    pub fn new(uri: &str, start_time: gst::ClockTime, coordinate: (i32,i32)) -> VideoFileComponent {
         let pipeline = gst::Pipeline::new(None);
         let src = gst::ElementFactory::make("filesrc", None).unwrap();
         let decodebin = gst::ElementFactory::make("decodebin", None).unwrap();
@@ -201,11 +200,15 @@ impl VideoFileComponent {
 
         VideoFileComponent(Component {
             name: uri.to_string(),
-            start_time: 0 * gst::MSECOND,
-            end_time: 100 * gst::MSECOND,
-            coordinate: (0,0),
+            start_time: start_time,
+            end_time: start_time + 100 * gst::MSECOND,
+            coordinate: coordinate,
             component: Box::new(pixbufsink),
         })
+    }
+
+    pub fn get_component(self) -> Component {
+        self.0
     }
 }
 
@@ -222,16 +225,20 @@ impl Peekable for gtk::Image {
 pub struct ImageComponent(pub Component);
 
 impl ImageComponent {
-    pub fn new(uri: &str) -> ImageComponent {
+    pub fn new(uri: &str, start_time: gst::ClockTime, coordinate: (i32,i32)) -> ImageComponent {
         let image = gtk::Image::new_from_file(uri);
 
         ImageComponent(Component {
             name: uri.to_string(),
-            start_time: 0 * gst::MSECOND,
-            end_time: 0 * gst::MSECOND,
-            coordinate: (0,0),
+            start_time: start_time,
+            end_time: start_time + 100 * gst::MSECOND,
+            coordinate: coordinate,
             component: Box::new(image),
         })
+    }
+
+    pub fn get_component(self) -> Component {
+        self.0
     }
 }
 
