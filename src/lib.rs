@@ -190,15 +190,11 @@ impl Timeline {
 
     fn get_current_pixbuf(&self) -> gdk_pixbuf::Pixbuf {
         let pixbuf = unsafe { gdk_pixbuf::Pixbuf::new(0, false, 8, self.width, self.height).unwrap() };
-        {
-            let pixbuf = &mut pixbuf.clone();
-            let pixels = unsafe { pixbuf.get_pixels() };
 
-            for p in pixels.chunks_mut(3) {
-                p[0] = 0;
-                p[1] = 0;
-                p[2] = 0;
-            }
+        for p in unsafe { pixbuf.get_pixels().chunks_mut(3) } {
+            p[0] = 0;
+            p[1] = 0;
+            p[2] = 0;
         }
 
         for elem in &self.elements {
