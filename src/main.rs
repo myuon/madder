@@ -23,6 +23,7 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
 
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
     window.set_default_size(640,600);
+    window.set_title("MADDER");
 
     let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
