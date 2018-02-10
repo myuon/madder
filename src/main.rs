@@ -42,7 +42,7 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
             timeline_menu.append(&video_item);
 
             let window = window.clone();
-//            let timeline = timeline.clone();
+            let timeline = timeline.clone();
             video_item.connect_activate(move |_| {
                 let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&window), gtk::FileChooserAction::Open);
                 dialog.add_button("追加", 0);
@@ -53,7 +53,16 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
                     dialog.add_filter(&filter);
                 }
                 dialog.run();
-//                timeline.add(dialog.get_filename().unwrap());
+
+                let timeline: &RefCell<Timeline> = timeline.borrow();
+                timeline.borrow_mut().register(&serializer::ComponentStructure {
+                    component_type: serializer::ComponentType::Video,
+                    start_time: 0 * gst::MSECOND,
+                    end_time: 100 * gst::MSECOND,
+                    entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                    coordinate: (0,0),
+                });
+
                 dialog.destroy();
             });
 
@@ -113,10 +122,7 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
     vbox.pack_start(&btn, true, true, 5);
 
     {
-        let timeline: Rc<RefCell<Timeline>> = timeline.clone();
         let timeline: &RefCell<Timeline> = timeline.borrow();
-        timeline.borrow_mut().build_ui();
-
         let timeline: &Timeline = &timeline.borrow();
         vbox.pack_start(&(timeline.builder.borrow() as &RefCell<TimelineBuilder>).borrow().fixed, true, true, 5);
     }

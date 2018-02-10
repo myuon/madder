@@ -76,34 +76,20 @@ pub struct TimelineBuilder {
 
 // workaround for sharing a variable within callbacks
 impl TimelineBuilder {
-    fn new() -> Rc<RefCell<TimelineBuilder>> {
+    fn new(width: i32) -> Rc<RefCell<TimelineBuilder>> {
+        let fixed = gtk::Fixed::new();
+        fixed.set_size_request(width, 100);
+
         Rc::new(RefCell::new(TimelineBuilder {
-            fixed: gtk::Fixed::new(),
+            fixed: fixed,
             offset: 0
         }))
     }
 
-    fn build(self_: Rc<RefCell<TimelineBuilder>>, elements: &Vec<Box<Component>>) -> Rc<RefCell<TimelineBuilder>> {
-        {
-            let self_ = self_.clone();
-            let builder: &RefCell<TimelineBuilder> = self_.borrow();
-            let builder: &TimelineBuilder = &builder.borrow();
-            builder.fixed.set_size_request(640,100);
-        }
-
-        for elem in elements {
-            let time_to_length = |p: gst::ClockTime| p.mseconds().unwrap() as i32;
-            let self_ = self_.clone();
-            TimelineBuilder::add_component_widget(self_, &elem.name, time_to_length(elem.start_time), time_to_length(elem.end_time - elem.start_time));
-        }
-
-        self_
-    }
-
     fn add_component_widget(self_: Rc<RefCell<TimelineBuilder>>, label_text: &str, offset_x: i32, width: i32) {
-        let builder: &RefCell<TimelineBuilder> = self_.borrow();
         let evbox = gtk::EventBox::new();
         {
+            let builder: &RefCell<TimelineBuilder> = self_.borrow();
             let builder: &TimelineBuilder = &builder.borrow();
             builder.fixed.put(&evbox, offset_x, 50);
         }
@@ -173,28 +159,26 @@ impl Timeline {
             position: 0 * gst::MSECOND,
             width: width,
             height: height,
-            builder: TimelineBuilder::new(),
+            builder: TimelineBuilder::new(width),
         }
     }
 
     pub fn new_from_structure(structure: &serializer::TimelineStructure) -> Timeline {
         let mut timeline = Timeline::new(structure.size.0, structure.size.1);
-
-        for component in structure.components.iter() {
-            timeline.register(Box::new(Component::new_from_structure(component)));
-        }
-
+        structure.components.iter().for_each(|item| timeline.register(item));
         timeline
     }
 
-    pub fn build_ui(&mut self) {
-        let builder: Rc<RefCell<TimelineBuilder>> = self.builder.clone();
-        let builder: Rc<RefCell<TimelineBuilder>> = TimelineBuilder::build(builder, &self.elements);
-        self.builder = builder;
-    }
+    pub fn register(&mut self, component: &serializer::ComponentStructure) {
+        let component = Component::new_from_structure(component);
 
-    pub fn register(&mut self, elem: Box<Component>) {
-        self.elements.push(elem);
+        {
+            let time_to_length = |p: gst::ClockTime| p.mseconds().unwrap() as i32;
+            let builder = self.builder.clone();
+            TimelineBuilder::add_component_widget(builder, &component.name, time_to_length(component.start_time), time_to_length(component.end_time - component.start_time));
+        }
+
+        self.elements.push(Box::new(component));
     }
 
     pub fn seek_to(&mut self, time: gst::ClockTime) {
