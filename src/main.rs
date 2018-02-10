@@ -65,9 +65,36 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
 
                 dialog.destroy();
             });
+        }
 
+        {
             let image_item = gtk::MenuItem::new_with_label("画像");
             timeline_menu.append(&image_item);
+
+            let window = window.clone();
+            let timeline = timeline.clone();
+            image_item.connect_activate(move |_| {
+                let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), Some(&window), gtk::FileChooserAction::Open);
+                dialog.add_button("追加", 0);
+
+                {
+                    let filter = gtk::FileFilter::new();
+                    filter.add_pattern("*.png");
+                    dialog.add_filter(&filter);
+                }
+                dialog.run();
+
+                let timeline: &RefCell<Timeline> = timeline.borrow();
+                timeline.borrow_mut().register(&serializer::ComponentStructure {
+                    component_type: serializer::ComponentType::Image,
+                    start_time: 0 * gst::MSECOND,
+                    end_time: 100 * gst::MSECOND,
+                    entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                    coordinate: (0,0),
+                });
+
+                dialog.destroy();
+            });
         }
     }
 

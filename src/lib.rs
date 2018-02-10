@@ -186,6 +186,8 @@ impl Timeline {
     }
 
     fn get_current_pixbuf(&self) -> gdk_pixbuf::Pixbuf {
+        println!("{}", self.elements.len());
+
         let pixbuf = unsafe { gdk_pixbuf::Pixbuf::new(0, false, 8, self.width, self.height).unwrap() };
         {
             let pixbuf = &mut pixbuf.clone();
