@@ -88,6 +88,8 @@ impl TimelineBuilder {
 
     fn add_component_widget(self_: Rc<RefCell<TimelineBuilder>>, label_text: &str, offset_x: i32, width: i32) {
         let evbox = gtk::EventBox::new();
+        evbox.show();
+
         {
             let builder: &RefCell<TimelineBuilder> = self_.borrow();
             let builder: &TimelineBuilder = &builder.borrow();
@@ -99,6 +101,7 @@ impl TimelineBuilder {
         label.override_background_color(gtk::StateFlags::NORMAL, &gdk::RGBA::red());
         label.set_ellipsize(pango::EllipsizeMode::End);
         label.set_size_request(width,30);
+        label.show();
 
         {
             let self_: Rc<RefCell<TimelineBuilder>> = self_.clone();
@@ -186,8 +189,6 @@ impl Timeline {
     }
 
     fn get_current_pixbuf(&self) -> gdk_pixbuf::Pixbuf {
-        println!("{}", self.elements.len());
-
         let pixbuf = unsafe { gdk_pixbuf::Pixbuf::new(0, false, 8, self.width, self.height).unwrap() };
         {
             let pixbuf = &mut pixbuf.clone();

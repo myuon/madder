@@ -1,4 +1,3 @@
-use std::env;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::borrow::Borrow;
@@ -165,32 +164,12 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        panic!("Give the video filepath as a first argument");
-    }
-
     gtk::init().expect("Gtk initialization error");
     gst::init().expect("Gstreamer initialization error");
 
     create_ui(&serializer::TimelineStructure {
         size: (640, 480),
-        components: Box::new([
-            serializer::ComponentStructure {
-                component_type: serializer::ComponentType::Video,
-                start_time: 120 * gst::MSECOND,
-                end_time: 320 * gst::MSECOND,
-                entity: args[1].to_string(),
-                coordinate: (0,0),
-            },
-            serializer::ComponentStructure {
-                component_type: serializer::ComponentType::Image,
-                start_time: 0 * gst::MSECOND,
-                end_time: 100 * gst::MSECOND,
-                entity: args[2].to_string(),
-                coordinate: (100,200),
-            }
-        ])
+        components: Box::new([])
     });
 
     gtk::main();
