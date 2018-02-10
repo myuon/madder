@@ -1,8 +1,7 @@
 use std::env;
 use std::rc::Rc;
+use std::cell::RefCell;
 use std::borrow::Borrow;
-use std::cell::{Cell, RefCell};
-use std::cmp;
 
 extern crate gstreamer as gst;
 extern crate gstreamer_video as gstv;
@@ -12,17 +11,13 @@ extern crate gtk;
 use gtk::prelude::*;
 
 extern crate glib;
-
 extern crate gdk;
-use gdk::prelude::*;
-
 extern crate gdk_pixbuf;
-
 extern crate cairo;
 extern crate pango;
 
 extern crate madder;
-use madder::{Timeline, serializer};
+use madder::*;
 
 fn create_ui(timeline: &serializer::TimelineStructure) {
     let timeline: Rc<RefCell<Timeline>> = Rc::new(RefCell::new(Timeline::new_from_structure(timeline)));
@@ -47,7 +42,7 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
             timeline_menu.append(&video_item);
 
             let window = window.clone();
-            let timeline = timeline.clone();
+//            let timeline = timeline.clone();
             video_item.connect_activate(move |_| {
                 let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&window), gtk::FileChooserAction::Open);
                 dialog.add_button("追加", 0);
@@ -117,73 +112,13 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
 
     vbox.pack_start(&btn, true, true, 5);
 
-    let fixed = gtk::Fixed::new();
-    fixed.set_size_request(640,100);
-    vbox.pack_start(&fixed, true, true, 0);
+    {
+        let timeline: Rc<RefCell<Timeline>> = timeline.clone();
+        let timeline: &RefCell<Timeline> = timeline.borrow();
+        timeline.borrow_mut().build_ui();
 
-    let new_component_widget = move |fixed: &gtk::Fixed, label_text: &str, offset_x: i32, width: i32| {
-        let evbox = gtk::EventBox::new();
-        fixed.put(&evbox, offset_x, 50);
-
-        let label = gtk::Label::new(label_text);
-        evbox.add(&label);
-        label.override_background_color(gtk::StateFlags::NORMAL, &gdk::RGBA::red());
-        label.set_ellipsize(pango::EllipsizeMode::End);
-        label.set_size_request(width,30);
-
-        let evbox = evbox.clone();
-        let fixed = fixed.clone();
-        let offset: Rc<Cell<i32>> = Rc::new(Cell::new(0));
-
-        {
-            let offset = offset.clone();
-            evbox.connect_button_press_event(move |evbox,button| {
-                let (rx,_) = evbox.get_parent().unwrap().get_window().unwrap().get_position();
-                let (x,_) = button.get_position();
-                let offset: &Cell<i32> = offset.borrow();
-                offset.set(rx + x as i32);
-                Inhibit(false)
-            });
-        }
-
-        {
-            let fixed = fixed.clone();
-
-            evbox.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
-            evbox.connect_motion_notify_event(move |evbox,motion| {
-                let (x,_) = motion.get_position();
-                let evbox_window = motion.get_window().unwrap();
-                let (rx,_) = evbox_window.get_position();
-
-                {
-                    let GRAB_EDGE = 5;
-                    if (evbox_window.get_width() - x as i32) <= GRAB_EDGE {
-                        evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "e-resize"));
-                    } else if (x as i32) <= GRAB_EDGE {
-                        evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "w-resize"));
-                    } else {
-                        evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "default"));
-                    }
-                }
-
-                if motion.get_state().contains(gdk::ModifierType::BUTTON1_MASK) {
-                    let offset: &Cell<i32> = offset.borrow();
-                    let x_max = evbox.get_parent().unwrap().get_allocation().width - evbox.get_allocation().width;
-
-                    fixed.move_(evbox, cmp::max(cmp::min(rx + x as i32 - offset.get(), x_max), 0), 50);
-                }
-
-                Inhibit(false)
-            });
-        }
-    };
-
-    let timeline: &RefCell<Timeline> = timeline.borrow();
-
-    for elem in &timeline.borrow().elements {
-        let fixed = fixed.clone();
-        let time_to_length = |p: gst::ClockTime| p.mseconds().unwrap() as i32;
-        new_component_widget(&fixed, &elem.name, time_to_length(elem.start_time), time_to_length(elem.end_time - elem.start_time));
+        let timeline: &Timeline = &timeline.borrow();
+        vbox.pack_start(&(timeline.builder.borrow() as &RefCell<TimelineBuilder>).borrow().fixed, true, true, 5);
     }
 
     window.add(&vbox);

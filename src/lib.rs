@@ -1,4 +1,7 @@
 use std::cmp;
+use std::rc::Rc;
+use std::cell::RefCell;
+use std::borrow::Borrow;
 
 extern crate gstreamer as gst;
 extern crate gstreamer_video as gstv;
@@ -16,6 +19,7 @@ use gdk::prelude::*;
 extern crate gdk_pixbuf;
 
 extern crate cairo;
+extern crate pango;
 
 mod avi_renderer;
 use avi_renderer::AviRenderer;
@@ -65,11 +69,101 @@ impl Component {
     }
 }
 
+pub struct TimelineBuilder {
+    pub fixed: gtk::Fixed,
+    offset: i32,
+}
+
+// workaround for sharing a variable within callbacks
+impl TimelineBuilder {
+    fn new() -> Rc<RefCell<TimelineBuilder>> {
+        Rc::new(RefCell::new(TimelineBuilder {
+            fixed: gtk::Fixed::new(),
+            offset: 0
+        }))
+    }
+
+    fn build(self_: Rc<RefCell<TimelineBuilder>>, elements: &Vec<Box<Component>>) -> Rc<RefCell<TimelineBuilder>> {
+        {
+            let self_ = self_.clone();
+            let builder: &RefCell<TimelineBuilder> = self_.borrow();
+            let builder: &TimelineBuilder = &builder.borrow();
+            builder.fixed.set_size_request(640,100);
+        }
+
+        for elem in elements {
+            let time_to_length = |p: gst::ClockTime| p.mseconds().unwrap() as i32;
+            let self_ = self_.clone();
+            TimelineBuilder::add_component_widget(self_, &elem.name, time_to_length(elem.start_time), time_to_length(elem.end_time - elem.start_time));
+        }
+
+        self_
+    }
+
+    fn add_component_widget(self_: Rc<RefCell<TimelineBuilder>>, label_text: &str, offset_x: i32, width: i32) {
+        let builder: &RefCell<TimelineBuilder> = self_.borrow();
+        let evbox = gtk::EventBox::new();
+        {
+            let builder: &TimelineBuilder = &builder.borrow();
+            builder.fixed.put(&evbox, offset_x, 50);
+        }
+
+        let label = gtk::Label::new(label_text);
+        evbox.add(&label);
+        label.override_background_color(gtk::StateFlags::NORMAL, &gdk::RGBA::red());
+        label.set_ellipsize(pango::EllipsizeMode::End);
+        label.set_size_request(width,30);
+
+        {
+            let self_: Rc<RefCell<TimelineBuilder>> = self_.clone();
+            evbox.connect_button_press_event(move |evbox,button| {
+                let (rx,_) = evbox.get_parent().unwrap().get_window().unwrap().get_position();
+                let (x,_) = button.get_position();
+
+                let builder: &RefCell<TimelineBuilder> = self_.borrow();
+                builder.borrow_mut().offset = rx + x as i32;
+                Inhibit(false)
+            });
+        }
+
+        {
+            let self_: Rc<RefCell<TimelineBuilder>> = self_.clone();
+            evbox.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
+            evbox.connect_motion_notify_event(move |evbox,motion| {
+                let (x,_) = motion.get_position();
+                let evbox_window = motion.get_window().unwrap();
+                let (rx,_) = evbox_window.get_position();
+
+                {
+                    let GRAB_EDGE = 5;
+                    if (evbox_window.get_width() - x as i32) <= GRAB_EDGE {
+                        evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "e-resize"));
+                    } else if (x as i32) <= GRAB_EDGE {
+                        evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "w-resize"));
+                    } else {
+                        evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "default"));
+                    }
+                }
+
+                if motion.get_state().contains(gdk::ModifierType::BUTTON1_MASK) {
+                    let x_max = evbox.get_parent().unwrap().get_allocation().width - evbox.get_allocation().width;
+
+                    let builder: &RefCell<TimelineBuilder> = self_.borrow();
+                    builder.borrow().fixed.move_(evbox, cmp::max(cmp::min(rx + x as i32 - builder.borrow().offset, x_max), 0), 50);
+                }
+
+                Inhibit(false)
+            });
+        }
+    }
+}
+
 pub struct Timeline {
     pub elements: Vec<Box<Component>>,
     pub position: gst::ClockTime,
     pub width: i32,
     pub height: i32,
+    pub builder: Rc<RefCell<TimelineBuilder>>,
 }
 
 impl Timeline {
@@ -79,6 +173,7 @@ impl Timeline {
             position: 0 * gst::MSECOND,
             width: width,
             height: height,
+            builder: TimelineBuilder::new(),
         }
     }
 
@@ -90,6 +185,12 @@ impl Timeline {
         }
 
         timeline
+    }
+
+    pub fn build_ui(&mut self) {
+        let builder: Rc<RefCell<TimelineBuilder>> = self.builder.clone();
+        let builder: Rc<RefCell<TimelineBuilder>> = TimelineBuilder::build(builder, &self.elements);
+        self.builder = builder;
     }
 
     pub fn register(&mut self, elem: Box<Component>) {
