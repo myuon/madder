@@ -348,13 +348,12 @@ pub struct TextComponent(pub Component);
 impl TextComponent {
     pub fn new(label: &str, size: (i32,i32), start_time: gst::ClockTime, coordinate: (i32,i32)) -> TextComponent {
         use pango::prelude::*;
-        use cairo::prelude::*;
 
         let surface = cairo::ImageSurface::create(cairo::Format::ARgb32, size.0, size.1).unwrap();
         let context = cairo::Context::new(&surface);
         let layout = pangocairo::functions::create_layout(&context).unwrap();
         layout.set_font_description(&pango::FontDescription::from_string("Serif 24"));
-        layout.set_markup("<span foreground=\"blue\">hello, ぽよ</span>");
+        layout.set_markup(format!("<span foreground=\"blue\">{}</span>", label).as_str());
         pangocairo::functions::show_layout(&context, &layout);
 
         TextComponent(Component {
