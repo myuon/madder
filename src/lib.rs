@@ -20,11 +20,13 @@ extern crate gdk_pixbuf;
 
 extern crate cairo;
 extern crate pango;
+extern crate pangocairo;
 
 mod avi_renderer;
 use avi_renderer::AviRenderer;
 
 pub mod serializer;
+use serializer::*;
 
 trait Peekable {
     fn get_duration(&self) -> gst::ClockTime;
@@ -52,18 +54,23 @@ pub struct Component {
 }
 
 impl Component {
-    pub fn new_from_structure(structure: &serializer::ComponentStructure) -> Component {
+    pub fn new_from_structure(structure: &ComponentStructure) -> Component {
         match structure.component_type {
-            serializer::ComponentType::Video => {
+            ComponentType::Video => {
                 let mut c = VideoFileComponent::new(structure.entity.as_str(), structure.start_time, structure.coordinate).get_component();
                 c.end_time = structure.end_time;
                 c
             },
-            serializer::ComponentType::Image => {
+            ComponentType::Image => {
                 let mut c = ImageComponent::new(structure.entity.as_str(), structure.start_time, structure.coordinate).get_component();
                 c.end_time = structure.end_time;
                 c
             },
+            ComponentType::Text => {
+                let mut c = TextComponent::new(structure.entity.as_str(), (640,480), structure.start_time, structure.coordinate).get_component();
+                c.end_time = structure.end_time;
+                c
+            }
             _ => unimplemented!(),
         }
     }
@@ -166,13 +173,13 @@ impl Timeline {
         }
     }
 
-    pub fn new_from_structure(structure: &serializer::TimelineStructure) -> Timeline {
+    pub fn new_from_structure(structure: &TimelineStructure) -> Timeline {
         let mut timeline = Timeline::new(structure.size.0, structure.size.1);
         structure.components.iter().for_each(|item| timeline.register(item));
         timeline
     }
 
-    pub fn register(&mut self, component: &serializer::ComponentStructure) {
+    pub fn register(&mut self, component: &ComponentStructure) {
         let component = Component::new_from_structure(component);
 
         {
@@ -318,6 +325,44 @@ impl ImageComponent {
             end_time: start_time + 100 * gst::MSECOND,
             coordinate: coordinate,
             component: Box::new(image),
+        })
+    }
+
+    pub fn get_component(self) -> Component {
+        self.0
+    }
+}
+
+impl Peekable for gdk_pixbuf::Pixbuf {
+    fn get_duration(&self) -> gst::ClockTime {
+        100 * gst::MSECOND
+    }
+
+    fn peek(&self, _: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
+        Some(self.clone())
+    }
+}
+
+pub struct TextComponent(pub Component);
+
+impl TextComponent {
+    pub fn new(label: &str, size: (i32,i32), start_time: gst::ClockTime, coordinate: (i32,i32)) -> TextComponent {
+        use pango::prelude::*;
+        use cairo::prelude::*;
+
+        let surface = cairo::ImageSurface::create(cairo::Format::ARgb32, size.0, size.1).unwrap();
+        let context = cairo::Context::new(&surface);
+        let layout = pangocairo::functions::create_layout(&context).unwrap();
+        layout.set_font_description(&pango::FontDescription::from_string("Serif 24"));
+        layout.set_markup("<span foreground=\"blue\">hello, ぽよ</span>");
+        pangocairo::functions::show_layout(&context, &layout);
+
+        TextComponent(Component {
+            name: "text".to_string(),
+            start_time: start_time,
+            end_time: start_time + 100 * gst::MSECOND,
+            coordinate: coordinate,
+            component: Box::new(gdk::pixbuf_get_from_surface(&surface, 0, 0, surface.get_width(), surface.get_height()).unwrap()),
         })
     }
 

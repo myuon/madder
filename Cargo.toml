@@ -4,12 +4,13 @@ version = "0.1.0"
 authors = ["myuon <ioi.joi.koi.loi@gmail.com>"]
 
 [dependencies]
-gtk = "0.3.0"
+gtk = { version = "0.3.0", features = ["v3_10"] }
 gdk = "0.7.0"
 gdk-pixbuf = "0.3.0"
 glib = "0.4.1"
-cairo-rs = "0.3.0"
+cairo-rs = { version = "0.3.0", features = ["png"] }
 pango = "0.3.0"
+pangocairo = "0.4.1"
 gstreamer = "0.10.1"
 gstreamer-video = "0.10.1"
 gstreamer-app = "0.10.1"

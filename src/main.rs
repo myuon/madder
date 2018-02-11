@@ -96,6 +96,24 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
                 dialog.destroy();
             });
         }
+
+        {
+            let text_item = gtk::MenuItem::new_with_label("テキスト");
+            timeline_menu.append(&text_item);
+
+            let window = window.clone();
+            let timeline = timeline.clone();
+            text_item.connect_activate(move |_| {
+                let timeline: &RefCell<Timeline> = timeline.borrow();
+                timeline.borrow_mut().register(&serializer::ComponentStructure {
+                    component_type: serializer::ComponentType::Text,
+                    start_time: 0 * gst::MSECOND,
+                    end_time: 100 * gst::MSECOND,
+                    entity: "dummy entity".to_string(),
+                    coordinate: (50,50),
+                });
+            });
+        }
     }
 
     let canvas = gtk::DrawingArea::new();
