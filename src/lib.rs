@@ -25,6 +25,8 @@ extern crate pangocairo;
 mod avi_renderer;
 use avi_renderer::AviRenderer;
 
+#[macro_use] extern crate serde_derive;
+
 pub mod serializer;
 use serializer::*;
 
@@ -57,18 +59,18 @@ impl Component {
     pub fn new_from_structure(structure: &ComponentStructure) -> Component {
         match structure.component_type {
             ComponentType::Video => {
-                let mut c = VideoFileComponent::new(structure.entity.as_str(), structure.start_time, structure.coordinate).get_component();
-                c.end_time = structure.end_time;
+                let mut c = VideoFileComponent::new(structure.entity.as_str(), structure.start_time * gst::MSECOND, structure.coordinate).get_component();
+                c.end_time = structure.end_time * gst::MSECOND;
                 c
             },
             ComponentType::Image => {
-                let mut c = ImageComponent::new(structure.entity.as_str(), structure.start_time, structure.coordinate).get_component();
-                c.end_time = structure.end_time;
+                let mut c = ImageComponent::new(structure.entity.as_str(), structure.start_time * gst::MSECOND, structure.coordinate).get_component();
+                c.end_time = structure.end_time * gst::MSECOND;
                 c
             },
             ComponentType::Text => {
-                let mut c = TextComponent::new(structure.entity.as_str(), (640,480), structure.start_time, structure.coordinate).get_component();
-                c.end_time = structure.end_time;
+                let mut c = TextComponent::new(structure.entity.as_str(), (640,480), structure.start_time * gst::MSECOND, structure.coordinate).get_component();
+                c.end_time = structure.end_time * gst::MSECOND;
                 c
             }
             _ => unimplemented!(),

@@ -57,8 +57,8 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
                 let timeline: &RefCell<Timeline> = timeline.borrow();
                 timeline.borrow_mut().register(&serializer::ComponentStructure {
                     component_type: serializer::ComponentType::Video,
-                    start_time: 0 * gst::MSECOND,
-                    end_time: 100 * gst::MSECOND,
+                    start_time: 0,
+                    end_time: 100,
                     entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
                     coordinate: (0,0),
                 });
@@ -87,8 +87,8 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
                 let timeline: &RefCell<Timeline> = timeline.borrow();
                 timeline.borrow_mut().register(&serializer::ComponentStructure {
                     component_type: serializer::ComponentType::Image,
-                    start_time: 0 * gst::MSECOND,
-                    end_time: 100 * gst::MSECOND,
+                    start_time: 0,
+                    end_time: 100,
                     entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
                     coordinate: (0,0),
                 });
@@ -107,8 +107,8 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
                 let timeline: &RefCell<Timeline> = timeline.borrow();
                 timeline.borrow_mut().register(&serializer::ComponentStructure {
                     component_type: serializer::ComponentType::Text,
-                    start_time: 0 * gst::MSECOND,
-                    end_time: 100 * gst::MSECOND,
+                    start_time: 0,
+                    end_time: 100,
                     entity: "dummy entity".to_string(),
                     coordinate: (50,50),
                 });
@@ -186,10 +186,20 @@ fn main() {
     gtk::init().expect("Gtk initialization error");
     gst::init().expect("Gstreamer initialization error");
 
-    create_ui(&serializer::TimelineStructure {
-        size: (640, 480),
-        components: Box::new([])
-    });
+    use std::env;
+    let args = env::args().collect::<Vec<String>>();
+
+    let timeline =
+        if args.len() >= 2 {
+            serializer::TimelineStructure::new_from_file(&args[1])
+        } else {
+            serializer::TimelineStructure {
+                size: (640,480),
+                components: Box::new([]),
+            }
+        };
+
+    create_ui(&timeline);
 
     gtk::main();
 }
