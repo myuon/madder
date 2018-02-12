@@ -78,8 +78,50 @@ impl Component {
     }
 }
 
+struct RulerWidget(gtk::DrawingArea);
+
+impl RulerWidget {
+    fn new(width: i32) -> RulerWidget {
+        let ruler = gtk::DrawingArea::new();
+        ruler.set_size_request(width,100);
+
+        ruler.connect_draw(move |_, cr| {
+            cr.set_line_width(1.0);
+            cr.set_source_rgb(0f64, 0f64, 0f64);
+
+            let starting_height = 50f64;
+
+            cr.move_to(0f64, starting_height);
+            cr.line_to(width as f64, 50f64);
+
+            let interval_large = 100;
+            let interval_large_height = 50;
+
+            let interval = 10;
+            let interval_height = 30;
+
+            for x in (0..(width / interval)).map(|x| x * interval) {
+                cr.move_to(x as f64, starting_height);
+
+                let h = if x % interval_large == 0 { interval_large_height } else { interval_height };
+                cr.rel_line_to(0f64, -h as f64);
+            }
+
+            cr.stroke();
+            Inhibit(false)
+        });
+
+        RulerWidget(ruler)
+    }
+
+    fn get_widget(&self) -> &gtk::DrawingArea {
+        &self.0
+    }
+}
+
 pub struct TimelineBuilder {
-    pub fixed: gtk::Fixed,
+    fixed: gtk::Fixed,
+    ruler: RulerWidget,
     offset: i32,
 }
 
@@ -91,8 +133,16 @@ impl TimelineBuilder {
 
         Rc::new(RefCell::new(TimelineBuilder {
             fixed: fixed,
+            ruler: RulerWidget::new(width),
             offset: 0
         }))
+    }
+
+    fn get_widget(&self) -> gtk::Box {
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        vbox.pack_start(self.ruler.get_widget(), true, true, 0);
+        vbox.pack_start(&self.fixed, true, true, 0);
+        vbox
     }
 
     fn add_component_widget(self_: Rc<RefCell<TimelineBuilder>>, label_text: &str, offset_x: i32, width: i32) {
@@ -132,15 +182,13 @@ impl TimelineBuilder {
                 let evbox_window = motion.get_window().unwrap();
                 let (rx,_) = evbox_window.get_position();
 
-                {
-                    let GRAB_EDGE = 5;
-                    if (evbox_window.get_width() - x as i32) <= GRAB_EDGE {
-                        evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "e-resize"));
-                    } else if (x as i32) <= GRAB_EDGE {
-                        evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "w-resize"));
-                    } else {
-                        evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "default"));
-                    }
+                let grab_edge = 5;
+                if (evbox_window.get_width() - x as i32) <= grab_edge {
+                    evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "e-resize"));
+                } else if (x as i32) <= grab_edge {
+                    evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "w-resize"));
+                } else {
+                    evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "default"));
                 }
 
                 if motion.get_state().contains(gdk::ModifierType::BUTTON1_MASK) {
@@ -179,6 +227,10 @@ impl Timeline {
         let mut timeline = Timeline::new(structure.size.0, structure.size.1);
         structure.components.iter().for_each(|item| timeline.register(item));
         timeline
+    }
+
+    pub fn get_widget(&self) -> gtk::Box {
+        (self.builder.borrow() as &RefCell<TimelineBuilder>).borrow().get_widget()
     }
 
     pub fn register(&mut self, component: &ComponentStructure) {

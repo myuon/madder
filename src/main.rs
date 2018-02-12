@@ -101,7 +101,6 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
             let text_item = gtk::MenuItem::new_with_label("テキスト");
             timeline_menu.append(&text_item);
 
-            let window = window.clone();
             let timeline = timeline.clone();
             text_item.connect_activate(move |_| {
                 let timeline: &RefCell<Timeline> = timeline.borrow();
@@ -169,7 +168,7 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
     {
         let timeline: &RefCell<Timeline> = timeline.borrow();
         let timeline: &Timeline = &timeline.borrow();
-        vbox.pack_start(&(timeline.builder.borrow() as &RefCell<TimelineBuilder>).borrow().fixed, true, true, 5);
+        vbox.pack_start(&timeline.get_widget(), true, true, 5);
     }
 
     window.add(&vbox);
