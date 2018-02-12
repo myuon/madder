@@ -140,7 +140,7 @@ impl TimelineBuilder {
 
     fn get_widget(&self) -> gtk::Box {
         let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        vbox.pack_start(self.ruler.get_widget(), true, true, 0);
+        vbox.pack_start(self.ruler.get_widget(), true, true, 10);
         vbox.pack_start(&self.fixed, true, true, 0);
         vbox
     }
