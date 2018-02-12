@@ -83,25 +83,25 @@ struct RulerWidget(gtk::DrawingArea);
 impl RulerWidget {
     fn new(width: i32) -> RulerWidget {
         let ruler = gtk::DrawingArea::new();
-        ruler.set_size_request(width,100);
+        let ruler_height = 20f64;
+
+        ruler.set_size_request(width, ruler_height as i32);
 
         ruler.connect_draw(move |_, cr| {
             cr.set_line_width(1.0);
             cr.set_source_rgb(0f64, 0f64, 0f64);
 
-            let starting_height = 50f64;
-
-            cr.move_to(0f64, starting_height);
-            cr.line_to(width as f64, 50f64);
+            cr.move_to(0f64, ruler_height as f64);
+            cr.line_to(width as f64, ruler_height);
 
             let interval_large = 100;
-            let interval_large_height = 50;
+            let interval_large_height = ruler_height;
 
             let interval = 10;
-            let interval_height = 30;
+            let interval_height = ruler_height * 0.6;
 
             for x in (0..(width / interval)).map(|x| x * interval) {
-                cr.move_to(x as f64, starting_height);
+                cr.move_to(x as f64, ruler_height);
 
                 let h = if x % interval_large == 0 { interval_large_height } else { interval_height };
                 cr.rel_line_to(0f64, -h as f64);
@@ -129,7 +129,7 @@ pub struct TimelineBuilder {
 impl TimelineBuilder {
     fn new(width: i32) -> Rc<RefCell<TimelineBuilder>> {
         let fixed = gtk::Fixed::new();
-        fixed.set_size_request(width, 100);
+        fixed.set_size_request(width, 50);
 
         Rc::new(RefCell::new(TimelineBuilder {
             fixed: fixed,
@@ -152,7 +152,7 @@ impl TimelineBuilder {
         {
             let builder: &RefCell<TimelineBuilder> = self_.borrow();
             let builder: &TimelineBuilder = &builder.borrow();
-            builder.fixed.put(&evbox, offset_x, 50);
+            builder.fixed.put(&evbox, offset_x, 0);
         }
 
         let label = gtk::Label::new(label_text);
@@ -195,7 +195,7 @@ impl TimelineBuilder {
                     let x_max = evbox.get_parent().unwrap().get_allocation().width - evbox.get_allocation().width;
 
                     let builder: &RefCell<TimelineBuilder> = self_.borrow();
-                    builder.borrow().fixed.move_(evbox, cmp::max(cmp::min(rx + x as i32 - builder.borrow().offset, x_max), 0), 50);
+                    builder.borrow().fixed.move_(evbox, cmp::max(cmp::min(rx + x as i32 - builder.borrow().offset, x_max), 0), 0);
                 }
 
                 Inhibit(false)
