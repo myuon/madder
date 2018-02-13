@@ -116,10 +116,15 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
         }
     }
 
-    let canvas = gtk::DrawingArea::new();
-    canvas.set_size_request(640, 480);
-
-    vbox.pack_start(&canvas, true, true, 0);
+    {
+        let timeline_clone: Rc<RefCell<Timeline>> = timeline.clone();
+        let canvas = &timeline.as_ref().borrow().canvas;
+        vbox.pack_start(canvas, true, true, 0);
+        canvas.connect_draw(move |_,cr| {
+            let timeline: &RefCell<Timeline> = timeline_clone.borrow();
+            timeline.borrow_mut().renderer(cr)
+        });
+    }
 
     let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 
@@ -138,14 +143,6 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
         btn.connect_clicked(move |_| {
             let timeline: &RefCell<Timeline> = &timeline.borrow();
             timeline.borrow_mut().write("output/output.avi", 100, 5);
-        });
-    }
-
-    {
-        let timeline: Rc<RefCell<Timeline>> = timeline.clone();
-        canvas.connect_draw(move |_,cr| {
-            let timeline: &RefCell<Timeline> = timeline.borrow();
-            timeline.borrow_mut().renderer(cr)
         });
     }
 

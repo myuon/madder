@@ -130,7 +130,7 @@ impl WidgetWrapper for RulerWidget {
 
 pub struct TimelineBuilder {
     fixed: gtk::Fixed,
-    ruler: RulerWidget,
+    tracker: gtk::DrawingArea,
     container: gtk::EventBox,
     offset: i32,
 }
@@ -140,20 +140,29 @@ impl TimelineBuilder {
     fn new(width: i32) -> Rc<RefCell<TimelineBuilder>> {
         let evbox = gtk::EventBox::new();
 
-        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        evbox.add(&vbox);
-
-        let ruler = RulerWidget::new(width);
-        vbox.pack_start(ruler.to_widget(), true, true, 10);
-
         let fixed = gtk::Fixed::new();
         fixed.set_size_request(width, 50);
-        vbox.pack_start(&fixed, true, true, 0);
+
+        let overlay = gtk::Overlay::new();
+        evbox.add(&overlay);
+
+        {
+            let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+            overlay.add(&vbox);
+
+            let ruler = RulerWidget::new(width);
+            vbox.pack_start(ruler.to_widget(), true, true, 10);
+            vbox.pack_start(&fixed, true, true, 0);
+        }
+
+        let tracker = gtk::DrawingArea::new();
+        overlay.add_overlay(&tracker);
+        tracker.set_size_request(width, 50);
 
         Rc::new(RefCell::new(TimelineBuilder {
             fixed: fixed,
-            ruler: ruler,
             container: evbox,
+            tracker: tracker,
             offset: 0
         }))
     }
@@ -162,6 +171,16 @@ impl TimelineBuilder {
         self.container.connect_button_press_event(move |_, event| {
             cont(event)
         });
+    }
+
+    fn tracker_connect_draw<F: Fn(&cairo::Context) -> gtk::Inhibit + 'static>(&self, cont: F) {
+        self.tracker.connect_draw(move |_, cr| {
+            cont(cr)
+        });
+    }
+
+    fn queue_draw(&self) {
+        self.container.queue_draw();
     }
 
     fn add_component_widget(self_: Rc<RefCell<TimelineBuilder>>, label_text: &str, offset_x: i32, width: i32) {
@@ -226,7 +245,7 @@ impl TimelineBuilder {
 impl WidgetWrapper for TimelineBuilder {
     type T = gtk::EventBox;
 
-    fn to_widget(&self) -> &gtk::EventBox {
+    fn to_widget(&self) -> &Self::T {
         &self.container
     }
 }
@@ -237,28 +256,61 @@ pub struct Timeline {
     pub width: i32,
     pub height: i32,
     pub builder: Rc<RefCell<TimelineBuilder>>,
+    pub canvas: gtk::DrawingArea,
 }
 
 impl Timeline {
     pub fn new(width: i32, height: i32) -> Timeline {
+        let canvas = gtk::DrawingArea::new();
+        canvas.set_size_request(640, 480);
+
         Timeline {
             elements: vec![],
             position: 0 * gst::MSECOND,
             width: width,
             height: height,
             builder: TimelineBuilder::new(width),
+            canvas: canvas,
         }
     }
 
     pub fn setup(self_: Rc<RefCell<Timeline>>) {
-        let self_clone = self_.clone();
         let timeline: &Timeline = &self_.as_ref().borrow();
-        timeline.builder.as_ref().borrow().connect_button_press_event(move |event| {
-            let (x,_) = event.get_position();
-            self_clone.borrow_mut().seek_to(x as u64 * gst::MSECOND);
 
-            Inhibit(false)
-        });
+        {
+            let self_ = self_.clone();
+            timeline.builder.as_ref().borrow().connect_button_press_event(move |event| {
+                let (x,_) = event.get_position();
+                self_.borrow_mut().seek_to(x as u64 * gst::MSECOND);
+
+                let timeline = &self_.as_ref().borrow();
+                timeline.queue_draw();
+
+                Inhibit(false)
+            });
+        }
+
+        {
+            let self_ = self_.clone();
+            timeline.builder.as_ref().borrow().tracker_connect_draw(move |cr| {
+                cr.set_source_rgb(200f64, 0f64, 0f64);
+
+                let timeline: &RefCell<Timeline> = self_.borrow();
+                let timeline: &Timeline = &timeline.borrow();
+                cr.move_to(timeline.position.mseconds().unwrap() as f64, 0f64);
+                cr.rel_line_to(0f64, 100f64);
+                cr.stroke();
+
+                Inhibit(false)
+            });
+        }
+    }
+
+    fn queue_draw(&self) {
+        self.canvas.queue_draw();
+
+        let builder: &TimelineBuilder = &self.builder.as_ref().borrow();
+        builder.queue_draw();
     }
 
     pub fn new_from_structure(structure: &TimelineStructure) -> Timeline {
