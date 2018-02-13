@@ -169,7 +169,7 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
     {
         let timeline: &RefCell<Timeline> = timeline.borrow();
         let timeline: &Timeline = &timeline.borrow();
-        vbox.pack_start(&timeline.get_widget(), true, true, 5);
+        timeline.set_pack_start(&vbox);
     }
 
     window.add(&vbox);

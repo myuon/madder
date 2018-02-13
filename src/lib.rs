@@ -78,6 +78,11 @@ impl Component {
     }
 }
 
+trait WidgetWrapper {
+    type T: IsA<gtk::Widget>;
+    fn to_widget(&self) -> &Self::T;
+}
+
 struct RulerWidget(gtk::DrawingArea);
 
 impl RulerWidget {
@@ -113,8 +118,12 @@ impl RulerWidget {
 
         RulerWidget(ruler)
     }
+}
 
-    fn get_widget(&self) -> &gtk::DrawingArea {
+impl WidgetWrapper for RulerWidget {
+    type T = gtk::DrawingArea;
+
+    fn to_widget(&self) -> &gtk::DrawingArea {
         &self.0
     }
 }
@@ -135,7 +144,7 @@ impl TimelineBuilder {
         evbox.add(&vbox);
 
         let ruler = RulerWidget::new(width);
-        vbox.pack_start(ruler.get_widget(), true, true, 10);
+        vbox.pack_start(ruler.to_widget(), true, true, 10);
 
         let fixed = gtk::Fixed::new();
         fixed.set_size_request(width, 50);
@@ -147,10 +156,6 @@ impl TimelineBuilder {
             container: evbox,
             offset: 0
         }))
-    }
-
-    fn get_widget(&self) -> &gtk::EventBox {
-        &self.container
     }
 
     fn connect_button_press_event<F: Fn(&gdk::EventButton) -> gtk::Inhibit + 'static>(&self, cont: F) {
@@ -218,6 +223,14 @@ impl TimelineBuilder {
     }
 }
 
+impl WidgetWrapper for TimelineBuilder {
+    type T = gtk::EventBox;
+
+    fn to_widget(&self) -> &gtk::EventBox {
+        &self.container
+    }
+}
+
 pub struct Timeline {
     pub elements: Vec<Box<Component>>,
     pub position: gst::ClockTime,
@@ -254,8 +267,9 @@ impl Timeline {
         timeline
     }
 
-    pub fn get_widget(&self) -> gtk::EventBox {
-        (self.builder.borrow() as &RefCell<TimelineBuilder>).borrow().get_widget().clone()
+    pub fn set_pack_start(&self, vbox: &gtk::Box) {
+        let builder: &RefCell<TimelineBuilder> = self.builder.borrow();
+        vbox.pack_start(builder.borrow().to_widget(), true, true, 0);
     }
 
     pub fn register(&mut self, component: &ComponentStructure) {
