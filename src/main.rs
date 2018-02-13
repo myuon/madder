@@ -20,6 +20,7 @@ use madder::*;
 
 fn create_ui(timeline: &serializer::TimelineStructure) {
     let timeline: Rc<RefCell<Timeline>> = Rc::new(RefCell::new(Timeline::new_from_structure(timeline)));
+    Timeline::setup(timeline.clone());
 
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
     window.set_default_size(640,600);

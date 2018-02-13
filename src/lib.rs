@@ -122,27 +122,41 @@ impl RulerWidget {
 pub struct TimelineBuilder {
     fixed: gtk::Fixed,
     ruler: RulerWidget,
+    container: gtk::EventBox,
     offset: i32,
 }
 
 // workaround for sharing a variable within callbacks
 impl TimelineBuilder {
     fn new(width: i32) -> Rc<RefCell<TimelineBuilder>> {
+        let evbox = gtk::EventBox::new();
+
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        evbox.add(&vbox);
+
+        let ruler = RulerWidget::new(width);
+        vbox.pack_start(ruler.get_widget(), true, true, 10);
+
         let fixed = gtk::Fixed::new();
         fixed.set_size_request(width, 50);
+        vbox.pack_start(&fixed, true, true, 0);
 
         Rc::new(RefCell::new(TimelineBuilder {
             fixed: fixed,
-            ruler: RulerWidget::new(width),
+            ruler: ruler,
+            container: evbox,
             offset: 0
         }))
     }
 
-    fn get_widget(&self) -> gtk::Box {
-        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        vbox.pack_start(self.ruler.get_widget(), true, true, 10);
-        vbox.pack_start(&self.fixed, true, true, 0);
-        vbox
+    fn get_widget(&self) -> &gtk::EventBox {
+        &self.container
+    }
+
+    fn connect_button_press_event<F: Fn(&gdk::EventButton) -> gtk::Inhibit + 'static>(&self, cont: F) {
+        self.container.connect_button_press_event(move |_, event| {
+            cont(event)
+        });
     }
 
     fn add_component_widget(self_: Rc<RefCell<TimelineBuilder>>, label_text: &str, offset_x: i32, width: i32) {
@@ -223,14 +237,25 @@ impl Timeline {
         }
     }
 
+    pub fn setup(self_: Rc<RefCell<Timeline>>) {
+        let self_clone = self_.clone();
+        let timeline: &Timeline = &self_.as_ref().borrow();
+        timeline.builder.as_ref().borrow().connect_button_press_event(move |event| {
+            let (x,_) = event.get_position();
+            self_clone.borrow_mut().seek_to(x as u64 * gst::MSECOND);
+
+            Inhibit(false)
+        });
+    }
+
     pub fn new_from_structure(structure: &TimelineStructure) -> Timeline {
         let mut timeline = Timeline::new(structure.size.0, structure.size.1);
         structure.components.iter().for_each(|item| timeline.register(item));
         timeline
     }
 
-    pub fn get_widget(&self) -> gtk::Box {
-        (self.builder.borrow() as &RefCell<TimelineBuilder>).borrow().get_widget()
+    pub fn get_widget(&self) -> gtk::EventBox {
+        (self.builder.borrow() as &RefCell<TimelineBuilder>).borrow().get_widget().clone()
     }
 
     pub fn register(&mut self, component: &ComponentStructure) {
