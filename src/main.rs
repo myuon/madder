@@ -18,9 +18,9 @@ extern crate pango;
 extern crate madder;
 use madder::*;
 
-fn create_ui(timeline: &serializer::TimelineStructure) {
-    let timeline: Rc<RefCell<Timeline>> = Rc::new(RefCell::new(Timeline::new_from_structure(timeline)));
-    Timeline::setup(timeline.clone());
+fn create_ui(editor: &serializer::EditorStructure) {
+    let editor: Rc<RefCell<Editor>> = Rc::new(RefCell::new(Editor::new_from_structure(editor)));
+    Editor::setup(editor.clone());
 
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
     window.set_default_size(640,600);
@@ -32,18 +32,18 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
     vbox.pack_start(&menubar, true, true, 0);
 
     {
-        let timeline_item = gtk::MenuItem::new_with_label("タイムライン");
-        menubar.append(&timeline_item);
+        let editor_item = gtk::MenuItem::new_with_label("タイムライン");
+        menubar.append(&editor_item);
 
-        let timeline_menu = gtk::Menu::new();
-        timeline_item.set_submenu(&timeline_menu);
+        let editor_menu = gtk::Menu::new();
+        editor_item.set_submenu(&editor_menu);
 
         {
             let video_item = gtk::MenuItem::new_with_label("動画");
-            timeline_menu.append(&video_item);
+            editor_menu.append(&video_item);
 
             let window = window.clone();
-            let timeline = timeline.clone();
+            let editor = editor.clone();
             video_item.connect_activate(move |_| {
                 let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&window), gtk::FileChooserAction::Open);
                 dialog.add_button("追加", 0);
@@ -55,8 +55,8 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
                 }
                 dialog.run();
 
-                let timeline: &RefCell<Timeline> = timeline.borrow();
-                timeline.borrow_mut().register(&serializer::ComponentStructure {
+                let editor: &RefCell<Editor> = editor.borrow();
+                editor.borrow_mut().register(&serializer::ComponentStructure {
                     component_type: serializer::ComponentType::Video,
                     start_time: 0,
                     end_time: 100,
@@ -70,10 +70,10 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
 
         {
             let image_item = gtk::MenuItem::new_with_label("画像");
-            timeline_menu.append(&image_item);
+            editor_menu.append(&image_item);
 
             let window = window.clone();
-            let timeline = timeline.clone();
+            let editor = editor.clone();
             image_item.connect_activate(move |_| {
                 let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), Some(&window), gtk::FileChooserAction::Open);
                 dialog.add_button("追加", 0);
@@ -85,8 +85,8 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
                 }
                 dialog.run();
 
-                let timeline: &RefCell<Timeline> = timeline.borrow();
-                timeline.borrow_mut().register(&serializer::ComponentStructure {
+                let editor: &RefCell<Editor> = editor.borrow();
+                editor.borrow_mut().register(&serializer::ComponentStructure {
                     component_type: serializer::ComponentType::Image,
                     start_time: 0,
                     end_time: 100,
@@ -100,12 +100,12 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
 
         {
             let text_item = gtk::MenuItem::new_with_label("テキスト");
-            timeline_menu.append(&text_item);
+            editor_menu.append(&text_item);
 
-            let timeline = timeline.clone();
+            let editor = editor.clone();
             text_item.connect_activate(move |_| {
-                let timeline: &RefCell<Timeline> = timeline.borrow();
-                timeline.borrow_mut().register(&serializer::ComponentStructure {
+                let editor: &RefCell<Editor> = editor.borrow();
+                editor.borrow_mut().register(&serializer::ComponentStructure {
                     component_type: serializer::ComponentType::Text,
                     start_time: 0,
                     end_time: 100,
@@ -117,7 +117,7 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
     }
 
     {
-        let canvas = &timeline.as_ref().borrow().canvas;
+        let canvas = &editor.as_ref().borrow().canvas;
         vbox.pack_start(canvas, true, true, 0);
     }
 
@@ -134,10 +134,10 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
     btn.set_label("render");
 
     {
-        let timeline = timeline.clone();
+        let editor = editor.clone();
         btn.connect_clicked(move |_| {
-            let timeline: &RefCell<Timeline> = &timeline.borrow();
-            timeline.borrow_mut().write("output/output.avi", 100, 5);
+            let editor: &RefCell<Editor> = &editor.borrow();
+            editor.borrow_mut().write("output/output.avi", 100, 5);
         });
     }
 
@@ -145,13 +145,13 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
         let entry = entry.clone();
         let entry = Rc::new(entry);
 
-        let timeline: Rc<RefCell<Timeline>> = timeline.clone();
+        let editor: Rc<RefCell<Editor>> = editor.clone();
 
         go_btn.set_label("Go");
         go_btn.connect_clicked(move |_| {
             if let Ok(time) = entry.get_text().unwrap().parse::<u64>() {
-                let timeline: &RefCell<Timeline> = timeline.borrow();
-                timeline.borrow_mut().seek_to(time * gst::MSECOND);
+                let editor: &RefCell<Editor> = editor.borrow();
+                editor.borrow_mut().seek_to(time * gst::MSECOND);
             }
         });
     }
@@ -159,9 +159,9 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
     vbox.pack_start(&btn, true, true, 5);
 
     {
-        let timeline: &RefCell<Timeline> = timeline.borrow();
-        let timeline: &Timeline = &timeline.borrow();
-        timeline.set_pack_start(&vbox);
+        let editor: &RefCell<Editor> = editor.borrow();
+        let editor: &Editor = &editor.borrow();
+        editor.set_pack_start(&vbox);
     }
 
     window.add(&vbox);
@@ -181,17 +181,17 @@ fn main() {
     use std::env;
     let args = env::args().collect::<Vec<String>>();
 
-    let timeline =
+    let editor =
         if args.len() >= 2 {
-            serializer::TimelineStructure::new_from_file(&args[1])
+            serializer::EditorStructure::new_from_file(&args[1])
         } else {
-            serializer::TimelineStructure {
+            serializer::EditorStructure {
                 size: (640,480),
                 components: Box::new([]),
             }
         };
 
-    create_ui(&timeline);
+    create_ui(&editor);
 
     gtk::main();
 }

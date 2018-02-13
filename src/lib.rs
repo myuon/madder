@@ -34,7 +34,7 @@ use widget::*;
 pub mod component;
 use component::*;
 
-pub struct Timeline {
+pub struct Editor {
     pub elements: Vec<Box<Component>>,
     pub position: gst::ClockTime,
     pub width: i32,
@@ -43,12 +43,12 @@ pub struct Timeline {
     pub canvas: gtk::DrawingArea,
 }
 
-impl Timeline {
-    pub fn new(width: i32, height: i32) -> Timeline {
+impl Editor {
+    pub fn new(width: i32, height: i32) -> Editor {
         let canvas = gtk::DrawingArea::new();
         canvas.set_size_request(640, 480);
 
-        Timeline {
+        Editor {
             elements: vec![],
             position: 0 * gst::MSECOND,
             width: width,
@@ -58,17 +58,17 @@ impl Timeline {
         }
     }
 
-    pub fn setup(self_: Rc<RefCell<Timeline>>) {
-        let timeline: &Timeline = &self_.as_ref().borrow();
+    pub fn setup(self_: Rc<RefCell<Editor>>) {
+        let editor: &Editor = &self_.as_ref().borrow();
 
         {
             let self_ = self_.clone();
-            timeline.builder.as_ref().borrow().connect_button_press_event(move |event| {
+            editor.builder.as_ref().borrow().connect_button_press_event(move |event| {
                 let (x,_) = event.get_position();
                 self_.borrow_mut().seek_to(x as u64 * gst::MSECOND);
 
-                let timeline = &self_.as_ref().borrow();
-                timeline.queue_draw();
+                let editor = &self_.as_ref().borrow();
+                editor.queue_draw();
 
                 Inhibit(false)
             });
@@ -76,12 +76,12 @@ impl Timeline {
 
         {
             let self_ = self_.clone();
-            timeline.builder.as_ref().borrow().tracker_connect_draw(move |cr| {
+            editor.builder.as_ref().borrow().tracker_connect_draw(move |cr| {
                 cr.set_source_rgb(200f64, 0f64, 0f64);
 
-                let timeline: &RefCell<Timeline> = self_.borrow();
-                let timeline: &Timeline = &timeline.borrow();
-                cr.move_to(timeline.position.mseconds().unwrap() as f64, 0f64);
+                let editor: &RefCell<Editor> = self_.borrow();
+                let editor: &Editor = &editor.borrow();
+                cr.move_to(editor.position.mseconds().unwrap() as f64, 0f64);
                 cr.rel_line_to(0f64, 100f64);
                 cr.stroke();
 
@@ -91,9 +91,9 @@ impl Timeline {
 
         {
             let self_ = self_.clone();
-            timeline.canvas.connect_draw(move |_,cr| {
-                let timeline: &RefCell<Timeline> = self_.borrow();
-                timeline.borrow_mut().renderer(cr)
+            editor.canvas.connect_draw(move |_,cr| {
+                let editor: &RefCell<Editor> = self_.borrow();
+                editor.borrow_mut().renderer(cr)
             });
         }
     }
@@ -105,10 +105,10 @@ impl Timeline {
         builder.queue_draw();
     }
 
-    pub fn new_from_structure(structure: &TimelineStructure) -> Timeline {
-        let mut timeline = Timeline::new(structure.size.0, structure.size.1);
-        structure.components.iter().for_each(|item| timeline.register(item));
-        timeline
+    pub fn new_from_structure(structure: &EditorStructure) -> Editor {
+        let mut editor = Editor::new(structure.size.0, structure.size.1);
+        structure.components.iter().for_each(|item| editor.register(item));
+        editor
     }
 
     pub fn set_pack_start(&self, vbox: &gtk::Box) {

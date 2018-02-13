@@ -7,13 +7,13 @@ use std::io::BufReader;
 use std::io::prelude::*;
 
 #[derive(Serialize, Deserialize)]
-pub struct TimelineStructure {
+pub struct EditorStructure {
     pub size: (i32, i32),
     pub components: Box<[ComponentStructure]>,
 }
 
-impl TimelineStructure {
-    pub fn new_from_file(file: &str) -> TimelineStructure {
+impl EditorStructure {
+    pub fn new_from_file(file: &str) -> EditorStructure {
         let file = File::open(file).unwrap();
         let mut buf_reader = BufReader::new(file);
         let mut contents = String::new();
