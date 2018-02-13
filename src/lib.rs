@@ -304,6 +304,14 @@ impl Timeline {
                 Inhibit(false)
             });
         }
+
+        {
+            let self_ = self_.clone();
+            timeline.canvas.connect_draw(move |_,cr| {
+                let timeline: &RefCell<Timeline> = self_.borrow();
+                timeline.borrow_mut().renderer(cr)
+            });
+        }
     }
 
     fn queue_draw(&self) {
@@ -349,7 +357,7 @@ impl Timeline {
             p[2] = 0;
         }
 
-        for elem in &self.elements {
+        for elem in self.elements.iter().filter(|elem| { elem.start_time <= self.position && self.position <= elem.end_time }) {
             if let Some(dest) = elem.component.peek(self.position) {
                 &dest.composite(
                     &pixbuf, elem.coordinate.0, elem.coordinate.1,
@@ -362,7 +370,7 @@ impl Timeline {
         pixbuf
     }
 
-    pub fn renderer(&self, cr: &cairo::Context) -> gtk::Inhibit {
+    fn renderer(&self, cr: &cairo::Context) -> gtk::Inhibit {
         cr.set_source_pixbuf(&self.get_current_pixbuf(), 0f64, 0f64);
         cr.paint();
         Inhibit(false)

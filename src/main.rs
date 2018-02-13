@@ -117,13 +117,8 @@ fn create_ui(timeline: &serializer::TimelineStructure) {
     }
 
     {
-        let timeline_clone: Rc<RefCell<Timeline>> = timeline.clone();
         let canvas = &timeline.as_ref().borrow().canvas;
         vbox.pack_start(canvas, true, true, 0);
-        canvas.connect_draw(move |_,cr| {
-            let timeline: &RefCell<Timeline> = timeline_clone.borrow();
-            timeline.borrow_mut().renderer(cr)
-        });
     }
 
     let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
