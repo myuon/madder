@@ -39,7 +39,7 @@ pub struct Timeline {
     pub position: gst::ClockTime,
     pub width: i32,
     pub height: i32,
-    pub builder: Rc<RefCell<TimelineBuilder>>,
+    pub builder: Rc<RefCell<TimelineWidget>>,
     pub canvas: gtk::DrawingArea,
 }
 
@@ -53,7 +53,7 @@ impl Timeline {
             position: 0 * gst::MSECOND,
             width: width,
             height: height,
-            builder: TimelineBuilder::new(width),
+            builder: TimelineWidget::new(width),
             canvas: canvas,
         }
     }
@@ -101,7 +101,7 @@ impl Timeline {
     fn queue_draw(&self) {
         self.canvas.queue_draw();
 
-        let builder: &TimelineBuilder = &self.builder.as_ref().borrow();
+        let builder: &TimelineWidget = &self.builder.as_ref().borrow();
         builder.queue_draw();
     }
 
@@ -112,7 +112,7 @@ impl Timeline {
     }
 
     pub fn set_pack_start(&self, vbox: &gtk::Box) {
-        let builder: &RefCell<TimelineBuilder> = self.builder.borrow();
+        let builder: &RefCell<TimelineWidget> = self.builder.borrow();
         vbox.pack_start(builder.borrow().to_widget(), true, true, 0);
     }
 
@@ -122,7 +122,7 @@ impl Timeline {
         {
             let time_to_length = |p: gst::ClockTime| p.mseconds().unwrap() as i32;
             let builder = self.builder.clone();
-            TimelineBuilder::add_component_widget(builder, &component.name, time_to_length(component.start_time), time_to_length(component.end_time - component.start_time));
+            TimelineWidget::add_component_widget(builder, &component.name, time_to_length(component.start_time), time_to_length(component.end_time - component.start_time));
         }
 
         self.elements.push(Box::new(component));

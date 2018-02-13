@@ -5,5 +5,5 @@ mod ruler;
 pub use self::ruler::RulerWidget;
 
 mod timeline;
-pub use self::timeline::TimelineBuilder;
+pub use self::timeline::TimelineWidget;
 

@@ -15,7 +15,7 @@ extern crate pango;
 use widget::WidgetWrapper;
 use widget::RulerWidget;
 
-pub struct TimelineBuilder {
+pub struct TimelineWidget {
     fixed: gtk::Fixed,
     tracker: gtk::DrawingArea,
     container: gtk::EventBox,
@@ -23,8 +23,8 @@ pub struct TimelineBuilder {
 }
 
 // workaround for sharing a variable within callbacks
-impl TimelineBuilder {
-    pub fn new(width: i32) -> Rc<RefCell<TimelineBuilder>> {
+impl TimelineWidget {
+    pub fn new(width: i32) -> Rc<RefCell<TimelineWidget>> {
         let evbox = gtk::EventBox::new();
 
         let fixed = gtk::Fixed::new();
@@ -46,7 +46,7 @@ impl TimelineBuilder {
         overlay.add_overlay(&tracker);
         tracker.set_size_request(width, 50);
 
-        Rc::new(RefCell::new(TimelineBuilder {
+        Rc::new(RefCell::new(TimelineWidget {
             fixed: fixed,
             container: evbox,
             tracker: tracker,
@@ -70,13 +70,13 @@ impl TimelineBuilder {
         self.container.queue_draw();
     }
 
-    pub fn add_component_widget(self_: Rc<RefCell<TimelineBuilder>>, label_text: &str, offset_x: i32, width: i32) {
+    pub fn add_component_widget(self_: Rc<RefCell<TimelineWidget>>, label_text: &str, offset_x: i32, width: i32) {
         let evbox = gtk::EventBox::new();
         evbox.show();
 
         {
-            let builder: &RefCell<TimelineBuilder> = self_.borrow();
-            let builder: &TimelineBuilder = &builder.borrow();
+            let builder: &RefCell<TimelineWidget> = self_.borrow();
+            let builder: &TimelineWidget = &builder.borrow();
             builder.fixed.put(&evbox, offset_x, 0);
         }
 
@@ -88,19 +88,19 @@ impl TimelineBuilder {
         label.show();
 
         {
-            let self_: Rc<RefCell<TimelineBuilder>> = self_.clone();
+            let self_: Rc<RefCell<TimelineWidget>> = self_.clone();
             evbox.connect_button_press_event(move |evbox,button| {
                 let (rx,_) = evbox.get_parent().unwrap().get_window().unwrap().get_position();
                 let (x,_) = button.get_position();
 
-                let builder: &RefCell<TimelineBuilder> = self_.borrow();
+                let builder: &RefCell<TimelineWidget> = self_.borrow();
                 builder.borrow_mut().offset = rx + x as i32;
                 Inhibit(false)
             });
         }
 
         {
-            let self_: Rc<RefCell<TimelineBuilder>> = self_.clone();
+            let self_: Rc<RefCell<TimelineWidget>> = self_.clone();
             evbox.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
             evbox.connect_motion_notify_event(move |evbox,motion| {
                 let (x,_) = motion.get_position();
@@ -119,7 +119,7 @@ impl TimelineBuilder {
                 if motion.get_state().contains(gdk::ModifierType::BUTTON1_MASK) {
                     let x_max = evbox.get_parent().unwrap().get_allocation().width - evbox.get_allocation().width;
 
-                    let builder: &RefCell<TimelineBuilder> = self_.borrow();
+                    let builder: &RefCell<TimelineWidget> = self_.borrow();
                     builder.borrow().fixed.move_(evbox, cmp::max(cmp::min(rx + x as i32 - builder.borrow().offset, x_max), 0), 0);
                 }
 
@@ -129,7 +129,7 @@ impl TimelineBuilder {
     }
 }
 
-impl WidgetWrapper for TimelineBuilder {
+impl WidgetWrapper for TimelineWidget {
     type T = gtk::EventBox;
 
     fn to_widget(&self) -> &Self::T {
