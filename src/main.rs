@@ -15,8 +15,8 @@ extern crate gdk_pixbuf;
 extern crate cairo;
 extern crate pango;
 
-extern crate madder;
-use madder::*;
+extern crate madder_core;
+use madder_core::*;
 
 fn create_ui(editor: &serializer::EditorStructure) {
     let editor: Rc<RefCell<Editor>> = Rc::new(RefCell::new(Editor::new_from_structure(editor)));
