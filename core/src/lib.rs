@@ -1,24 +1,11 @@
 use std::cmp;
-use std::rc::Rc;
-use std::cell::RefCell;
-use std::borrow::Borrow;
 
 extern crate gstreamer as gst;
 extern crate gstreamer_video as gstv;
 
 extern crate gtk;
-use gtk::prelude::*;
-
-extern crate glib;
-
-extern crate gdk;
-use gdk::prelude::*;
-
 extern crate gdk_pixbuf;
-
-extern crate cairo;
 extern crate pango;
-extern crate pangocairo;
 
 mod avi_renderer;
 use avi_renderer::AviRenderer;
@@ -28,103 +15,33 @@ use avi_renderer::AviRenderer;
 pub mod serializer;
 use serializer::*;
 
-pub mod widget;
-use widget::*;
-
 pub mod component;
-use component::*;
+pub use self::component::*;
 
 pub struct Editor {
     pub elements: Vec<Box<Component>>,
     pub position: gst::ClockTime,
     pub width: i32,
     pub height: i32,
-    pub builder: Rc<RefCell<TimelineWidget>>,
-    pub canvas: gtk::DrawingArea,
 }
 
 impl Editor {
     pub fn new(width: i32, height: i32) -> Editor {
-        let canvas = gtk::DrawingArea::new();
-        canvas.set_size_request(640, 480);
-
         Editor {
             elements: vec![],
             position: 0 * gst::MSECOND,
             width: width,
             height: height,
-            builder: TimelineWidget::new(width),
-            canvas: canvas,
         }
-    }
-
-    pub fn setup(self_: Rc<RefCell<Editor>>) {
-        let editor: &Editor = &self_.as_ref().borrow();
-
-        {
-            let self_ = self_.clone();
-            editor.builder.as_ref().borrow().connect_button_press_event(move |event| {
-                let (x,_) = event.get_position();
-                self_.borrow_mut().seek_to(x as u64 * gst::MSECOND);
-
-                let editor = &self_.as_ref().borrow();
-                editor.queue_draw();
-
-                Inhibit(false)
-            });
-        }
-
-        {
-            let self_ = self_.clone();
-            editor.builder.as_ref().borrow().tracker_connect_draw(move |cr| {
-                cr.set_source_rgb(200f64, 0f64, 0f64);
-
-                let editor: &RefCell<Editor> = self_.borrow();
-                let editor: &Editor = &editor.borrow();
-                cr.move_to(editor.position.mseconds().unwrap() as f64, 0f64);
-                cr.rel_line_to(0f64, 100f64);
-                cr.stroke();
-
-                Inhibit(false)
-            });
-        }
-
-        {
-            let self_ = self_.clone();
-            editor.canvas.connect_draw(move |_,cr| {
-                let editor: &RefCell<Editor> = self_.borrow();
-                editor.borrow_mut().renderer(cr)
-            });
-        }
-    }
-
-    fn queue_draw(&self) {
-        self.canvas.queue_draw();
-
-        let builder: &TimelineWidget = &self.builder.as_ref().borrow();
-        builder.queue_draw();
     }
 
     pub fn new_from_structure(structure: &EditorStructure) -> Editor {
         let mut editor = Editor::new(structure.size.0, structure.size.1);
-        structure.components.iter().for_each(|item| editor.register(item));
+        structure.components.iter().for_each(|item| editor.register(Component::new_from_structure(item)));
         editor
     }
 
-    pub fn set_pack_start(&self, vbox: &gtk::Box) {
-        let builder: &RefCell<TimelineWidget> = self.builder.borrow();
-        vbox.pack_start(builder.borrow().to_widget(), true, true, 0);
-    }
-
-    pub fn register(&mut self, component: &ComponentStructure) {
-        let component = Component::new_from_structure(component);
-
-        {
-            let time_to_length = |p: gst::ClockTime| p.mseconds().unwrap() as i32;
-            let builder = self.builder.clone();
-            TimelineWidget::add_component_widget(builder, &component.name, time_to_length(component.start_time), time_to_length(component.end_time - component.start_time));
-        }
-
+    pub fn register(&mut self, component: Component) {
         self.elements.push(Box::new(component));
     }
 
@@ -132,7 +49,7 @@ impl Editor {
         self.position = time;
     }
 
-    fn get_current_pixbuf(&self) -> gdk_pixbuf::Pixbuf {
+    pub fn get_current_pixbuf(&self) -> gdk_pixbuf::Pixbuf {
         let pixbuf = unsafe { gdk_pixbuf::Pixbuf::new(0, false, 8, self.width, self.height).unwrap() };
 
         for p in unsafe { pixbuf.get_pixels().chunks_mut(3) } {
@@ -152,12 +69,6 @@ impl Editor {
         }
 
         pixbuf
-    }
-
-    fn renderer(&self, cr: &cairo::Context) -> gtk::Inhibit {
-        cr.set_source_pixbuf(&self.get_current_pixbuf(), 0f64, 0f64);
-        cr.paint();
-        Inhibit(false)
     }
 
     pub fn write(&mut self, uri: &str, frames: u64, delta: u64) {

@@ -3,9 +3,7 @@ extern crate gstreamer_video as gstv;
 extern crate gstreamer_app as gsta;
 use gstv::prelude::*;
 
-extern crate gtk;
 extern crate glib;
-extern crate gdk;
 extern crate gdk_pixbuf;
 extern crate cairo;
 
@@ -45,7 +43,7 @@ impl AviRenderer {
                 match msg.view() {
                     MessageView::Eos(..) => {
                         pipeline.set_state(gst::State::Null).into_result().unwrap();
-                        gtk::main_quit();
+                        glib::Continue(false)
                     },
                     MessageView::Error(err) => {
                         println!(
@@ -54,12 +52,10 @@ impl AviRenderer {
                             err.get_debug(),
                         );
                         pipeline.set_state(gst::State::Null).into_result().unwrap();
-                        gtk::main_quit();
+                        glib::Continue(false)
                     }
-                    _ => (),
-                };
-
-                glib::Continue(true)
+                    _ => glib::Continue(true),
+                }
             });
         }
 
