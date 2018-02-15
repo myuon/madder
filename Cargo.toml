@@ -4,8 +4,8 @@ version = "0.1.0"
 authors = ["myuon <ioi.joi.koi.loi@gmail.com>"]
 
 [dependencies]
-gtk = { version = "0.3.0", features = ["v3_10"] }
-gdk = "0.7.0"
+gtk = { version = "0.3.0", features = ["v3_18"] }
+gdk = { version = "0.7.0", features = ["v3_18"] }
 gdk-pixbuf = "0.3.0"
 glib = "0.4.1"
 cairo-rs = { version = "0.3.0", features = ["png"] }
