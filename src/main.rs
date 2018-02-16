@@ -34,7 +34,7 @@ impl App {
     pub fn new(width: i32, height: i32) -> App {
         App {
             editor: Editor::new(width, height),
-            timeline: TimelineWidget::new(width),
+            timeline: TimelineWidget::new(width + 250),
             canvas: gtk::DrawingArea::new(),
             property: gtk::TreeView::new(),
             property_store: gtk::ListStore::new(&[gtk::Type::String, gtk::Type::String]),
@@ -88,10 +88,9 @@ impl App {
 
     fn select_component(&mut self, selected_box: gtk::EventBox) {
         let name = gtk::WidgetExt::get_name(&selected_box).unwrap();
-        let hmap = self.editor.request_component_info(name.parse::<usize>().unwrap());
-
         self.property_store.clear();
-        for (i,j) in hmap {
+
+        for (i,j) in self.editor.request_component_info(name.parse::<usize>().unwrap()) {
             self.property_store.insert_with_values(None, &[0,1], &[&i,&j]);
         }
     }

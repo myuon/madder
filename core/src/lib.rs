@@ -1,5 +1,4 @@
 use std::cmp;
-use std::collections::HashMap;
 
 extern crate gstreamer as gst;
 extern crate gstreamer_video as gstv;
@@ -52,14 +51,14 @@ impl Editor {
         self.position = time;
     }
 
-    pub fn request_component_info(&self, index: usize) -> HashMap<&str, String> {
+    pub fn request_component_info(&self, index: usize) -> Vec<(&str, String)> {
         let component = &self.elements[index];
-        let mut hmap = HashMap::new();
-        hmap.insert("start_time", component.start_time.mseconds().unwrap().to_string());
-        hmap.insert("end_time", component.end_time.mseconds().unwrap().to_string());
-        hmap.insert("coordinate", format!("{:?}", component.coordinate));
 
-        hmap
+        vec![
+            ("start_time", component.start_time.mseconds().unwrap().to_string()),
+            ("end_time", component.end_time.mseconds().unwrap().to_string()),
+            ("coordinate", format!("{:?}", component.coordinate)),
+        ]
     }
 
     pub fn get_current_pixbuf(&self) -> gdk_pixbuf::Pixbuf {
