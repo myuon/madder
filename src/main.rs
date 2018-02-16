@@ -25,6 +25,7 @@ struct App {
     editor: Editor,
     timeline: Rc<RefCell<TimelineWidget>>,
     canvas: gtk::DrawingArea,
+    property: gtk::TreeView,
     window: gtk::Window,
 }
 
@@ -34,6 +35,7 @@ impl App {
             editor: Editor::new(width, height),
             timeline: TimelineWidget::new(width),
             canvas: gtk::DrawingArea::new(),
+            property: gtk::TreeView::new(),
             window: gtk::Window::new(gtk::WindowType::Toplevel),
         }
     }
@@ -193,7 +195,50 @@ impl App {
             }
         }
 
-        vbox.pack_start(&self_.as_ref().borrow().canvas, true, true, 0);
+        let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        hbox.pack_start(&self_.as_ref().borrow().canvas, true, true, 0);
+        hbox.pack_start(&self_.as_ref().borrow().property, true, true, 0);
+
+        {
+            let property = &self_.as_ref().borrow().property;
+            let editor = &self_.as_ref().borrow().editor;
+            let self_ = self_.clone();
+            property.connect_draw(move |_,_| {
+                let w = &self_.as_ref().borrow().window.get_focus();
+                println!("{:?}", w);
+                Inhibit(false)
+            });
+
+            let liststore = gtk::ListStore::new(&[gtk::Type::String, gtk::Type::String]);
+            liststore.insert_with_values(None, &[0,1], &[&"piyo", &"hoge"]);
+
+            property.set_size_request(250, editor.height);
+            property.set_model(&liststore);
+
+            {
+                let column = gtk::TreeViewColumn::new();
+                column.set_title("Key");
+
+                let cell = gtk::CellRendererText::new();
+                column.pack_start(&cell, true);
+                column.add_attribute(&cell, "text", 0);
+
+                property.append_column(&column);
+            }
+
+            {
+                let column = gtk::TreeViewColumn::new();
+                column.set_title("Value");
+
+                let cell = gtk::CellRendererText::new();
+                column.pack_start(&cell, true);
+                column.add_attribute(&cell, "text", 0);
+
+                property.append_column(&column);
+            }
+        }
+
+        vbox.pack_start(&hbox, true, true, 0);
 
         let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 
