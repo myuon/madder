@@ -43,7 +43,7 @@ impl App {
     }
 
     pub fn new_from_json(json: &EditorStructure) -> Rc<RefCell<App>> {
-        let app = Rc::new(RefCell::new(App::new(json.size.0, json.size.1)));
+        let app = Rc::new(RefCell::new(App::new(json.width, json.height)));
 
         {
             let app = app.clone();
@@ -326,7 +326,8 @@ fn main() {
             EditorStructure::new_from_file(&args[1])
         } else {
             EditorStructure {
-                size: (640,480),
+                width: 640,
+                height: 480,
                 components: Box::new([
                     ComponentStructure {
                         component_type: ComponentType::Text,

@@ -21,7 +21,8 @@ pub use self::component::*;
 #[derive(Serialize, Deserialize)]
 pub struct EditorStructure {
     pub components: Box<[ComponentStructure]>,
-    pub size: (i32, i32),
+    pub width: i32,
+    pub height: i32,
 }
 
 impl EditorStructure {
@@ -53,7 +54,7 @@ impl Editor {
     }
 
     pub fn new_from_structure(structure: &EditorStructure) -> Editor {
-        let mut editor = Editor::new(structure.size.0, structure.size.1);
+        let mut editor = Editor::new(structure.width, structure.height);
         structure.components.iter().for_each(|item| {
             editor.register(Component::new_from_structure(item));
         });
