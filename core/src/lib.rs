@@ -3,7 +3,6 @@ use std::cmp;
 extern crate gstreamer as gst;
 extern crate gstreamer_video as gstv;
 
-extern crate gtk;
 extern crate gdk_pixbuf;
 extern crate pango;
 

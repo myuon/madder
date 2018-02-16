@@ -1,11 +1,9 @@
 extern crate gstreamer as gst;
-extern crate gtk;
 extern crate gdk;
 extern crate gdk_pixbuf;
 extern crate cairo;
 extern crate pango;
 extern crate pangocairo;
-use gtk::ImageExt;
 
 use component::component::*;
 
@@ -33,16 +31,6 @@ impl TextComponent {
 
     pub fn get_component(self) -> Component {
         self.0
-    }
-}
-
-impl Peekable for gtk::Image {
-    fn get_duration(&self) -> gst::ClockTime {
-        100 * gst::MSECOND
-    }
-
-    fn peek(&self, _: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
-        self.get_pixbuf()
     }
 }
 

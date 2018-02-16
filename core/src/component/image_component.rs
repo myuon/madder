@@ -1,5 +1,4 @@
 extern crate gstreamer as gst;
-extern crate gtk;
 extern crate gdk_pixbuf;
 
 use component::component::*;
@@ -8,7 +7,7 @@ pub struct ImageComponent(pub Component);
 
 impl ImageComponent {
     pub fn new(uri: &str, start_time: gst::ClockTime, coordinate: (i32,i32)) -> ImageComponent {
-        let image = gtk::Image::new_from_file(uri);
+        let image = gdk_pixbuf::Pixbuf::new_from_file(uri).unwrap();
 
         ImageComponent(Component {
             name: uri.to_string(),
