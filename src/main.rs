@@ -26,6 +26,7 @@ struct App {
     timeline: Rc<RefCell<TimelineWidget>>,
     canvas: gtk::DrawingArea,
     property: gtk::TreeView,
+    property_store: gtk::ListStore,
     window: gtk::Window,
 }
 
@@ -36,13 +37,18 @@ impl App {
             timeline: TimelineWidget::new(width),
             canvas: gtk::DrawingArea::new(),
             property: gtk::TreeView::new(),
+            property_store: gtk::ListStore::new(&[gtk::Type::String, gtk::Type::String]),
             window: gtk::Window::new(gtk::WindowType::Toplevel),
         }
     }
 
-    pub fn new_from_json(json: &serializer::EditorStructure) -> App {
-        let mut app = App::new(json.size.0, json.size.1);
-        json.components.iter().for_each(|item| app.register(Component::new_from_structure(item)));
+    pub fn new_from_json(json: &serializer::EditorStructure) -> Rc<RefCell<App>> {
+        let app = Rc::new(RefCell::new(App::new(json.size.0, json.size.1)));
+
+        {
+            let app = app.clone();
+            json.components.iter().for_each(move |item| App::register(app.clone(), Component::new_from_structure(item)));
+        }
         app
     }
 
@@ -53,15 +59,41 @@ impl App {
         timeline.queue_draw();
     }
 
-    fn register(&mut self, component: Component) {
-        let time_to_length = |p: gst::ClockTime| p.mseconds().unwrap() as i32;
-        TimelineWidget::add_component_widget(self.timeline.clone(), &component.name, time_to_length(component.start_time), time_to_length(component.end_time - component.start_time));
+    fn register(self_: Rc<RefCell<App>>, component: Component) {
+        let name = &component.name.clone();
+        let start_time = component.start_time;
+        let end_time = component.end_time;
+        let index = self_.as_ref().borrow_mut().editor.register(component);
 
-        self.editor.register(component);
+        {
+            let self_ = self_.clone();
+            let self__ = self_.clone();
+            let time_to_length = |p: gst::ClockTime| p.mseconds().unwrap() as i32;
+            TimelineWidget::add_component_widget(
+                self_.as_ref().borrow().timeline.clone(),
+                &index.to_string(),
+                &name,
+                time_to_length(start_time), time_to_length(end_time - start_time),
+                Box::new(move |evbox| {
+                    self__.as_ref().borrow_mut().select_component(evbox.clone());
+                    gtk::Inhibit(false)
+                })
+            );
+        }
     }
 
-    fn register_from_json(&mut self, json: &serializer::ComponentStructure) {
-        self.register(Component::new_from_structure(json))
+    fn register_from_json(self_: Rc<RefCell<App>>, json: &serializer::ComponentStructure) {
+        App::register(self_, Component::new_from_structure(json))
+    }
+
+    fn select_component(&mut self, selected_box: gtk::EventBox) {
+        let name = gtk::WidgetExt::get_name(&selected_box).unwrap();
+        let hmap = self.editor.request_component_info(name.parse::<usize>().unwrap());
+
+        self.property_store.clear();
+        for (i,j) in hmap {
+            self.property_store.insert_with_values(None, &[0,1], &[&i,&j]);
+        }
     }
 
     pub fn create_ui(self_: Rc<RefCell<App>>) {
@@ -138,7 +170,7 @@ impl App {
                     }
                     dialog.run();
 
-                    self_.borrow_mut().register_from_json(&serializer::ComponentStructure {
+                    App::register_from_json(self_.clone(), &serializer::ComponentStructure {
                         component_type: serializer::ComponentType::Video,
                         start_time: 0,
                         end_time: 100,
@@ -166,7 +198,7 @@ impl App {
                     }
                     dialog.run();
 
-                    self_.borrow_mut().register_from_json(&serializer::ComponentStructure {
+                    App::register_from_json(self_.clone(), &serializer::ComponentStructure {
                         component_type: serializer::ComponentType::Image,
                         start_time: 0,
                         end_time: 100,
@@ -184,7 +216,7 @@ impl App {
 
                 let self_ = self_.clone();
                 text_item.connect_activate(move |_| {
-                    self_.borrow_mut().register_from_json(&serializer::ComponentStructure {
+                    App::register_from_json(self_.clone(), &serializer::ComponentStructure {
                         component_type: serializer::ComponentType::Text,
                         start_time: 0,
                         end_time: 100,
@@ -202,18 +234,9 @@ impl App {
         {
             let property = &self_.as_ref().borrow().property;
             let editor = &self_.as_ref().borrow().editor;
-            let self_ = self_.clone();
-            property.connect_draw(move |_,_| {
-                let w = &self_.as_ref().borrow().window.get_focus();
-                println!("{:?}", w);
-                Inhibit(false)
-            });
-
-            let liststore = gtk::ListStore::new(&[gtk::Type::String, gtk::Type::String]);
-            liststore.insert_with_values(None, &[0,1], &[&"piyo", &"hoge"]);
 
             property.set_size_request(250, editor.height);
-            property.set_model(&liststore);
+            property.set_model(&self_.as_ref().borrow().property_store);
 
             {
                 let column = gtk::TreeViewColumn::new();
@@ -232,7 +255,7 @@ impl App {
 
                 let cell = gtk::CellRendererText::new();
                 column.pack_start(&cell, true);
-                column.add_attribute(&cell, "text", 0);
+                column.add_attribute(&cell, "text", 1);
 
                 property.append_column(&column);
             }
@@ -318,7 +341,7 @@ fn main() {
         };
 
     let app = App::new_from_json(&editor);
-    App::create_ui(Rc::new(RefCell::new(app)));
+    App::create_ui(app);
 
     gtk::main();
 }

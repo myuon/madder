@@ -78,9 +78,10 @@ impl TimelineWidget {
         self.container.queue_draw();
     }
 
-    pub fn add_component_widget(self_: Rc<RefCell<TimelineWidget>>, label_text: &str, offset_x: i32, width: i32) {
+    pub fn add_component_widget(self_: Rc<RefCell<TimelineWidget>>, widget_id: &str, label_text: &str, offset_x: i32, width: i32, connect_button_press_event_cont: Box<Fn(&gtk::EventBox) -> gtk::Inhibit + 'static>) {
         let evbox = gtk::EventBox::new();
         evbox.show();
+        gtk::WidgetExt::set_name(&evbox, widget_id);
         evbox.connect_realize(move |evbox| {
             let window = evbox.get_window().unwrap();
             window.set_pass_through(false);
@@ -105,9 +106,13 @@ impl TimelineWidget {
                 let (rx,_) = evbox.get_parent().unwrap().get_window().unwrap().get_position();
                 let (x,_) = button.get_position();
 
-                let builder: &RefCell<TimelineWidget> = self_.borrow();
-                builder.borrow_mut().offset = rx + x as i32;
-                Inhibit(false)
+                {
+                    let self_ = self_.clone();
+                    let widget: &RefCell<TimelineWidget> = self_.borrow();
+                    widget.borrow_mut().offset = rx + x as i32;
+                }
+
+                connect_button_press_event_cont(evbox)
             });
         }
 

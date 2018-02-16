@@ -1,4 +1,5 @@
 use std::cmp;
+use std::collections::HashMap;
 
 extern crate gstreamer as gst;
 extern crate gstreamer_video as gstv;
@@ -36,16 +37,29 @@ impl Editor {
 
     pub fn new_from_structure(structure: &EditorStructure) -> Editor {
         let mut editor = Editor::new(structure.size.0, structure.size.1);
-        structure.components.iter().for_each(|item| editor.register(Component::new_from_structure(item)));
+        structure.components.iter().for_each(|item| {
+            editor.register(Component::new_from_structure(item));
+        });
         editor
     }
 
-    pub fn register(&mut self, component: Component) {
+    pub fn register(&mut self, component: Component) -> usize {
         self.elements.push(Box::new(component));
+        self.elements.len() - 1
     }
 
     pub fn seek_to(&mut self, time: gst::ClockTime) {
         self.position = time;
+    }
+
+    pub fn request_component_info(&self, index: usize) -> HashMap<&str, String> {
+        let component = &self.elements[index];
+        let mut hmap = HashMap::new();
+        hmap.insert("start_time", component.start_time.mseconds().unwrap().to_string());
+        hmap.insert("end_time", component.end_time.mseconds().unwrap().to_string());
+        hmap.insert("coordinate", format!("{:?}", component.coordinate));
+
+        hmap
     }
 
     pub fn get_current_pixbuf(&self) -> gdk_pixbuf::Pixbuf {
