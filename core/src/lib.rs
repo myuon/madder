@@ -1,4 +1,7 @@
 use std::cmp;
+use std::fs::File;
+use std::io::BufReader;
+use std::io::prelude::*;
 
 extern crate gstreamer as gst;
 extern crate gstreamer_video as gstv;
@@ -10,12 +13,27 @@ mod avi_renderer;
 use avi_renderer::AviRenderer;
 
 #[macro_use] extern crate serde_derive;
-
-pub mod serializer;
-use serializer::*;
+extern crate serde_json;
 
 pub mod component;
 pub use self::component::*;
+
+#[derive(Serialize, Deserialize)]
+pub struct EditorStructure {
+    pub components: Box<[ComponentStructure]>,
+    pub size: (i32, i32),
+}
+
+impl EditorStructure {
+    pub fn new_from_file(file: &str) -> EditorStructure {
+        let file = File::open(file).unwrap();
+        let mut buf_reader = BufReader::new(file);
+        let mut contents = String::new();
+        buf_reader.read_to_string(&mut contents).unwrap();
+
+        serde_json::from_str(&contents).unwrap()
+    }
+}
 
 pub struct Editor {
     pub elements: Vec<Box<Component>>,
@@ -55,9 +73,9 @@ impl Editor {
         let component = &self.elements[index];
 
         vec![
-            ("start_time", component.start_time.mseconds().unwrap().to_string()),
-            ("end_time", component.end_time.mseconds().unwrap().to_string()),
-            ("coordinate", format!("{:?}", component.coordinate)),
+            ("start_time", component.structure.start_time.mseconds().unwrap().to_string()),
+            ("end_time", component.structure.end_time.mseconds().unwrap().to_string()),
+            ("coordinate", format!("{:?}", component.structure.coordinate)),
         ]
     }
 
@@ -70,13 +88,13 @@ impl Editor {
             p[2] = 0;
         }
 
-        for elem in self.elements.iter().filter(|elem| { elem.start_time <= self.position && self.position <= elem.end_time }) {
-            if let Some(dest) = elem.component.peek(self.position) {
+        for elem in self.elements.iter().filter(|elem| { elem.structure.start_time <= self.position && self.position <= elem.structure.end_time }) {
+            if let Some(dest) = elem.data.peek(self.position) {
                 &dest.composite(
-                    &pixbuf, elem.coordinate.0, elem.coordinate.1,
-                    cmp::min(dest.get_width(), self.width - elem.coordinate.0),
-                    cmp::min(dest.get_height(), self.height - elem.coordinate.1),
-                    elem.coordinate.0.into(), elem.coordinate.1.into(), 1f64, 1f64, 0, 255);
+                    &pixbuf, elem.structure.coordinate.0, elem.structure.coordinate.1,
+                    cmp::min(dest.get_width(), self.width - elem.structure.coordinate.0),
+                    cmp::min(dest.get_height(), self.height - elem.structure.coordinate.1),
+                    elem.structure.coordinate.0.into(), elem.structure.coordinate.1.into(), 1f64, 1f64, 0, 255);
             }
         }
 

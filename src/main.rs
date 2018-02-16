@@ -16,7 +16,7 @@ use gtk::prelude::*;
 use gdk::prelude::*;
 
 extern crate madder_core;
-use madder_core::{Editor, serializer, Component};
+use madder_core::*;
 
 pub mod widget;
 use widget::*;
@@ -42,7 +42,7 @@ impl App {
         }
     }
 
-    pub fn new_from_json(json: &serializer::EditorStructure) -> Rc<RefCell<App>> {
+    pub fn new_from_json(json: &EditorStructure) -> Rc<RefCell<App>> {
         let app = Rc::new(RefCell::new(App::new(json.size.0, json.size.1)));
 
         {
@@ -61,8 +61,8 @@ impl App {
 
     fn register(self_: Rc<RefCell<App>>, component: Component) {
         let name = &component.name.clone();
-        let start_time = component.start_time;
-        let end_time = component.end_time;
+        let start_time = component.structure.start_time;
+        let end_time = component.structure.end_time;
         let index = self_.as_ref().borrow_mut().editor.register(component);
 
         {
@@ -82,7 +82,7 @@ impl App {
         }
     }
 
-    fn register_from_json(self_: Rc<RefCell<App>>, json: &serializer::ComponentStructure) {
+    fn register_from_json(self_: Rc<RefCell<App>>, json: &ComponentStructure) {
         App::register(self_, Component::new_from_structure(json))
     }
 
@@ -169,10 +169,10 @@ impl App {
                     }
                     dialog.run();
 
-                    App::register_from_json(self_.clone(), &serializer::ComponentStructure {
-                        component_type: serializer::ComponentType::Video,
-                        start_time: 0,
-                        end_time: 100,
+                    App::register_from_json(self_.clone(), &ComponentStructure {
+                        component_type: ComponentType::Video,
+                        start_time: 0 * gst::MSECOND,
+                        end_time: 100 * gst::MSECOND,
                         entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
                         coordinate: (0,0),
                     });
@@ -197,10 +197,10 @@ impl App {
                     }
                     dialog.run();
 
-                    App::register_from_json(self_.clone(), &serializer::ComponentStructure {
-                        component_type: serializer::ComponentType::Image,
-                        start_time: 0,
-                        end_time: 100,
+                    App::register_from_json(self_.clone(), &ComponentStructure {
+                        component_type: ComponentType::Image,
+                        start_time: 0 * gst::MSECOND,
+                        end_time: 100 * gst::MSECOND,
                         entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
                         coordinate: (0,0),
                     });
@@ -215,10 +215,10 @@ impl App {
 
                 let self_ = self_.clone();
                 text_item.connect_activate(move |_| {
-                    App::register_from_json(self_.clone(), &serializer::ComponentStructure {
-                        component_type: serializer::ComponentType::Text,
-                        start_time: 0,
-                        end_time: 100,
+                    App::register_from_json(self_.clone(), &ComponentStructure {
+                        component_type: ComponentType::Text,
+                        start_time: 0 * gst::MSECOND,
+                        end_time: 100 * gst::MSECOND,
                         entity: "dummy entity".to_string(),
                         coordinate: (50,50),
                     });
@@ -323,15 +323,15 @@ fn main() {
 
     let editor =
         if args.len() >= 2 {
-            serializer::EditorStructure::new_from_file(&args[1])
+            EditorStructure::new_from_file(&args[1])
         } else {
-            serializer::EditorStructure {
+            EditorStructure {
                 size: (640,480),
                 components: Box::new([
-                    serializer::ComponentStructure {
-                        component_type: serializer::ComponentType::Text,
-                        start_time: 0,
-                        end_time: 100,
+                    ComponentStructure {
+                        component_type: ComponentType::Text,
+                        start_time: 0 * gst::MSECOND,
+                        end_time: 100 * gst::MSECOND,
                         entity: "[ここにテキストを挿入]".to_string(),
                         coordinate: (50,50),
                     }

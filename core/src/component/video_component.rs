@@ -10,7 +10,7 @@ extern crate glib;
 pub struct VideoTestComponent(Component);
 
 impl VideoTestComponent {
-    pub fn new(start_time: gst::ClockTime, coordinate: (i32,i32)) -> VideoTestComponent {
+    pub fn new_from_structure(structure: &ComponentStructure) -> VideoTestComponent {
         let pipeline = gst::Pipeline::new(None);
         let src = gst::ElementFactory::make("videotestsrc", None).unwrap();
         let pixbufsink = gst::ElementFactory::make("gdkpixbufsink", None).unwrap();
@@ -21,11 +21,9 @@ impl VideoTestComponent {
         pipeline.set_state(gst::State::Paused).into_result().unwrap();
 
         VideoTestComponent(Component {
-            name: "videotest".to_string(),
-            start_time: start_time,
-            end_time: start_time + 100 * gst::MSECOND,
-            coordinate: coordinate,
-            component: Box::new(pixbufsink),
+            structure: structure.clone(),
+            name: "video_test".to_string(),
+            data: Box::new(pixbufsink),
         })
     }
 
@@ -37,7 +35,7 @@ impl VideoTestComponent {
 pub struct VideoFileComponent(Component);
 
 impl VideoFileComponent {
-    pub fn new(uri: &str, start_time: gst::ClockTime, coordinate: (i32,i32)) -> VideoFileComponent {
+    pub fn new_from_structure(structure: &ComponentStructure) -> VideoFileComponent {
         let pipeline = gst::Pipeline::new(None);
         let src = gst::ElementFactory::make("filesrc", None).unwrap();
         let decodebin = gst::ElementFactory::make("decodebin", None).unwrap();
@@ -45,7 +43,7 @@ impl VideoFileComponent {
         let convert = gst::ElementFactory::make("videoconvert", None).unwrap();
         let pixbufsink = gst::ElementFactory::make("gdkpixbufsink", None).unwrap();
 
-        src.set_property("location", &glib::Value::from(uri)).unwrap();
+        src.set_property("location", &glib::Value::from(structure.entity.as_str())).unwrap();
 
         pipeline.add_many(&[&src, &decodebin, &queue, &convert, &pixbufsink]).unwrap();
         gst::Element::link_many(&[&src, &decodebin]).unwrap();
@@ -59,11 +57,9 @@ impl VideoFileComponent {
         pipeline.set_state(gst::State::Paused).into_result().unwrap();
 
         VideoFileComponent(Component {
-            name: uri.to_string(),
-            start_time: start_time,
-            end_time: start_time + 100 * gst::MSECOND,
-            coordinate: coordinate,
-            component: Box::new(pixbufsink),
+            structure: structure.clone(),
+            name: "video_file".to_string(),
+            data: Box::new(pixbufsink),
         })
     }
 

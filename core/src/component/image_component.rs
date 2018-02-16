@@ -6,15 +6,13 @@ use component::component::*;
 pub struct ImageComponent(pub Component);
 
 impl ImageComponent {
-    pub fn new(uri: &str, start_time: gst::ClockTime, coordinate: (i32,i32)) -> ImageComponent {
-        let image = gdk_pixbuf::Pixbuf::new_from_file(uri).unwrap();
+    pub fn new_from_structure(structure: &ComponentStructure) -> ImageComponent {
+        let image = gdk_pixbuf::Pixbuf::new_from_file(&structure.entity).unwrap();
 
         ImageComponent(Component {
-            name: uri.to_string(),
-            start_time: start_time,
-            end_time: start_time + 100 * gst::MSECOND,
-            coordinate: coordinate,
-            component: Box::new(image),
+            structure: structure.clone(),
+            name: "image".to_string(),
+            data: Box::new(image),
         })
     }
 
