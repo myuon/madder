@@ -17,7 +17,7 @@ use widget::RulerWidget;
 
 pub struct TimelineWidget {
     fixed: gtk::Fixed,
-    fixed_box: gtk::EventBox,
+    ruler_box: gtk::EventBox,
     tracker: gtk::DrawingArea,
     container: gtk::Overlay,
     offset: i32,
@@ -26,11 +26,10 @@ pub struct TimelineWidget {
 // workaround for sharing a variable within callbacks
 impl TimelineWidget {
     pub fn new(width: i32) -> Rc<RefCell<TimelineWidget>> {
-        let fixed_box = gtk::EventBox::new();
         let fixed = gtk::Fixed::new();
         fixed.set_size_request(width, 50);
 
-        fixed_box.add(&fixed);
+        let ruler_box = gtk::EventBox::new();
 
         let overlay = gtk::Overlay::new();
         {
@@ -38,9 +37,10 @@ impl TimelineWidget {
             overlay.add(&vbox);
 
             let ruler = RulerWidget::new(width);
-            vbox.pack_start(ruler.to_widget(), true, true, 10);
+            ruler_box.add(ruler.to_widget());
+            vbox.pack_start(&ruler_box, true, true, 10);
 
-            vbox.pack_start(&fixed_box, true, true, 0);
+            vbox.pack_start(&fixed, true, true, 0);
         }
 
         let tracker = gtk::DrawingArea::new();
@@ -55,15 +55,15 @@ impl TimelineWidget {
 
         Rc::new(RefCell::new(TimelineWidget {
             fixed: fixed,
-            fixed_box: fixed_box,
+            ruler_box: ruler_box,
             container: overlay,
             tracker: tracker,
             offset: 0
         }))
     }
 
-    pub fn connect_button_press_event<F: Fn(&gdk::EventButton) -> gtk::Inhibit + 'static>(&self, cont: F) {
-        self.fixed_box.connect_button_press_event(move |_, event| {
+    pub fn ruler_connect_button_press_event<F: Fn(&gdk::EventButton) -> gtk::Inhibit + 'static>(&self, cont: F) {
+        self.ruler_box.connect_button_press_event(move |_, event| {
             cont(event)
         });
     }

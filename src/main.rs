@@ -102,7 +102,7 @@ impl App {
 
             {
                 let self_ = self_.clone();
-                timeline.as_ref().borrow().connect_button_press_event(move |event| {
+                timeline.as_ref().borrow().ruler_connect_button_press_event(move |event| {
                     let (x,_) = event.get_position();
                     self_.as_ref().borrow_mut().editor.seek_to(x as u64 * gst::MSECOND);
                     self_.as_ref().borrow().queue_draw();
