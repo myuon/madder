@@ -62,7 +62,7 @@ impl App {
     fn register(self_: Rc<RefCell<App>>, component: Component) {
         let name = &component.name.clone();
         let start_time = component.structure.start_time;
-        let end_time = component.structure.end_time;
+        let length = component.structure.length;
         let index = self_.as_ref().borrow_mut().editor.register(component);
 
         {
@@ -73,7 +73,7 @@ impl App {
                 self_.as_ref().borrow().timeline.clone(),
                 &index.to_string(),
                 &name,
-                time_to_length(start_time), time_to_length(end_time - start_time),
+                time_to_length(start_time), time_to_length(length),
                 Box::new(move |evbox| {
                     self__.as_ref().borrow_mut().select_component(evbox.clone());
                     gtk::Inhibit(false)
@@ -172,7 +172,7 @@ impl App {
                     App::register_from_json(self_.clone(), &ComponentStructure {
                         component_type: ComponentType::Video,
                         start_time: 0 * gst::MSECOND,
-                        end_time: 100 * gst::MSECOND,
+                        length: 100 * gst::MSECOND,
                         entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
                         coordinate: (0,0),
                     });
@@ -200,7 +200,7 @@ impl App {
                     App::register_from_json(self_.clone(), &ComponentStructure {
                         component_type: ComponentType::Image,
                         start_time: 0 * gst::MSECOND,
-                        end_time: 100 * gst::MSECOND,
+                        length: 100 * gst::MSECOND,
                         entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
                         coordinate: (0,0),
                     });
@@ -218,7 +218,7 @@ impl App {
                     App::register_from_json(self_.clone(), &ComponentStructure {
                         component_type: ComponentType::Text,
                         start_time: 0 * gst::MSECOND,
-                        end_time: 100 * gst::MSECOND,
+                        length: 100 * gst::MSECOND,
                         entity: "dummy entity".to_string(),
                         coordinate: (50,50),
                     });
@@ -332,7 +332,7 @@ fn main() {
                     ComponentStructure {
                         component_type: ComponentType::Text,
                         start_time: 0 * gst::MSECOND,
-                        end_time: 100 * gst::MSECOND,
+                        length: 100 * gst::MSECOND,
                         entity: "[ここにテキストを挿入]".to_string(),
                         coordinate: (50,50),
                     }

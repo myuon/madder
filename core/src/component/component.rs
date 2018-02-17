@@ -42,7 +42,7 @@ pub struct ComponentStructure {
 
     #[serde(serialize_with = "gst_clocktime_serialize")]
     #[serde(deserialize_with = "gst_clocktime_deserialize")]
-    pub end_time: gst::ClockTime,
+    pub length: gst::ClockTime,
 
     pub coordinate: (i32,i32),
 

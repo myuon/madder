@@ -75,7 +75,7 @@ impl Editor {
 
         vec![
             ("start_time", component.structure.start_time.mseconds().unwrap().to_string()),
-            ("end_time", component.structure.end_time.mseconds().unwrap().to_string()),
+            ("length", component.structure.length.mseconds().unwrap().to_string()),
             ("coordinate", format!("{:?}", component.structure.coordinate)),
         ]
     }
@@ -89,7 +89,7 @@ impl Editor {
             p[2] = 0;
         }
 
-        for elem in self.elements.iter().filter(|elem| { elem.structure.start_time <= self.position && self.position <= elem.structure.end_time }) {
+        for elem in self.elements.iter().filter(|elem| { elem.structure.start_time <= self.position && self.position <= elem.structure.start_time + elem.structure.length }) {
             if let Some(dest) = elem.data.peek(self.position) {
                 &dest.composite(
                     &pixbuf, elem.structure.coordinate.0, elem.structure.coordinate.1,
