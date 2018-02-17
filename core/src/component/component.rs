@@ -10,6 +10,15 @@ extern crate serde;
 pub trait Peekable {
     fn get_duration(&self) -> gst::ClockTime;
     fn peek(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf>;
+
+    // trick for Clone instance for Box<Peekable> object
+    fn box_clone(&self) -> Box<Peekable>;
+}
+
+impl Clone for Box<Peekable> {
+    fn clone(&self) -> Box<Peekable> {
+        self.box_clone()
+    }
 }
 
 impl Peekable for gst::Element {
@@ -21,6 +30,10 @@ impl Peekable for gst::Element {
         self.seek_simple(gst::SeekFlags::FLUSH, time).ok().and_then(|_| {
             self.get_property("last-pixbuf").ok().and_then(|x| x.get::<gdk_pixbuf::Pixbuf>())
         })
+    }
+
+    fn box_clone(&self) -> Box<Peekable> {
+        Box::new(self.clone())
     }
 }
 
@@ -57,6 +70,7 @@ fn gst_clocktime_deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) 
     serde::Deserialize::deserialize(deserializer).map(gst::ClockTime::from_mseconds)
 }
 
+#[derive(Clone)]
 pub struct Component {
     pub structure: ComponentStructure,
     pub name: String,

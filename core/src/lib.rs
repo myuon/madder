@@ -36,6 +36,7 @@ impl EditorStructure {
     }
 }
 
+#[derive(Clone)]
 pub struct Editor {
     pub elements: Vec<Box<Component>>,
     pub position: gst::ClockTime,
@@ -75,6 +76,18 @@ impl Editor {
         let value: serde_json::Value = serde_json::from_str(&json_str).unwrap();
         let vmap: serde_json::Map<String, serde_json::Value> = value.as_object().unwrap().clone();
         vmap.iter().map(|(k,v)| { (k.to_string(), v.to_string()) }).collect::<Vec<_>>()
+    }
+
+    pub fn request_set_component_property(&mut self, index: usize, key: String, value: String) {
+        match key.as_str() {
+            "start_time" => {
+                self.elements[index].structure.start_time = gst::ClockTime::from_mseconds(value.parse::<u64>().unwrap());
+            },
+            "length" => {
+                self.elements[index].structure.length = gst::ClockTime::from_mseconds(value.parse::<u64>().unwrap());
+            },
+            _ => unimplemented!(),
+        }
     }
 
     pub fn get_current_pixbuf(&self) -> gdk_pixbuf::Pixbuf {

@@ -29,5 +29,9 @@ impl Peekable for gdk_pixbuf::Pixbuf {
     fn peek(&self, _: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
         Some(self.clone())
     }
+
+    fn box_clone(&self) -> Box<Peekable> {
+        Box::new(self.clone())
+    }
 }
 

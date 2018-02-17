@@ -27,6 +27,7 @@ struct App {
     canvas: gtk::DrawingArea,
     property: gtk::TreeView,
     property_store: gtk::ListStore,
+    selected_component_index: Option<usize>,
     window: gtk::Window,
 }
 
@@ -38,6 +39,7 @@ impl App {
             canvas: gtk::DrawingArea::new(),
             property: gtk::TreeView::new(),
             property_store: gtk::ListStore::new(&[gtk::Type::String, gtk::Type::String]),
+            selected_component_index: None,
             window: gtk::Window::new(gtk::WindowType::Toplevel),
         }
     }
@@ -90,9 +92,12 @@ impl App {
         let name = gtk::WidgetExt::get_name(&selected_box).unwrap();
         self.property_store.clear();
 
-        for (i,j) in self.editor.request_component_info(name.parse::<usize>().unwrap()) {
+        let index = name.parse::<usize>().unwrap();
+        for (i,j) in self.editor.request_component_info(index) {
             self.property_store.insert_with_values(None, &[0,1], &[&i,&j]);
         }
+
+        self.selected_component_index = Some(index);
     }
 
     pub fn create_ui(self_: Rc<RefCell<App>>) {
@@ -252,7 +257,17 @@ impl App {
                 let column = gtk::TreeViewColumn::new();
                 column.set_title("Value");
 
+                let self_ = self_.clone();
                 let cell = gtk::CellRendererText::new();
+                cell.set_property("editable", &true).unwrap();
+                cell.connect_edited(move |_, tree_path, new_text| {
+                    let store = self_.as_ref().borrow().property_store.clone();
+                    let iter = store.get_iter(&tree_path).unwrap();
+                    let index = self_.as_ref().borrow().selected_component_index.unwrap();
+
+                    self_.as_ref().borrow_mut().editor.request_set_component_property(index, store.get_value(&iter, 0).get::<String>().unwrap(), new_text.to_string());
+                });
+
                 column.pack_start(&cell, true);
                 column.add_attribute(&cell, "text", 1);
 
