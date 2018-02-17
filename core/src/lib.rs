@@ -70,14 +70,11 @@ impl Editor {
         self.position = time;
     }
 
-    pub fn request_component_info(&self, index: usize) -> Vec<(&str, String)> {
-        let component = &self.elements[index];
-
-        vec![
-            ("start_time", component.structure.start_time.mseconds().unwrap().to_string()),
-            ("length", component.structure.length.mseconds().unwrap().to_string()),
-            ("coordinate", format!("{:?}", component.structure.coordinate)),
-        ]
+    pub fn request_component_info(&self, index: usize) -> Vec<(String, String)> {
+        let json_str = serde_json::to_string(&self.elements[index].structure).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+        let vmap: serde_json::Map<String, serde_json::Value> = value.as_object().unwrap().clone();
+        vmap.iter().map(|(k,v)| { (k.to_string(), v.to_string()) }).collect::<Vec<_>>()
     }
 
     pub fn get_current_pixbuf(&self) -> gdk_pixbuf::Pixbuf {
