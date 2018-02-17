@@ -25,20 +25,20 @@ struct App {
     editor: Editor,
     timeline: Rc<RefCell<TimelineWidget>>,
     canvas: gtk::DrawingArea,
-    property: gtk::TreeView,
-    property_store: gtk::ListStore,
+    property: PropertyViewerWidget,
     selected_component_index: Option<usize>,
     window: gtk::Window,
 }
 
 impl App {
     pub fn new(width: i32, height: i32) -> App {
+        let prop_width = 250;
+
         App {
             editor: Editor::new(width, height),
-            timeline: TimelineWidget::new(width + 250),
+            timeline: TimelineWidget::new(width + prop_width),
             canvas: gtk::DrawingArea::new(),
-            property: gtk::TreeView::new(),
-            property_store: gtk::ListStore::new(&[gtk::Type::String, gtk::Type::String]),
+            property: PropertyViewerWidget::new(prop_width),
             selected_component_index: None,
             window: gtk::Window::new(gtk::WindowType::Toplevel),
         }
@@ -62,11 +62,7 @@ impl App {
     }
 
     fn queue_change_component_property(&self, index: usize) {
-        self.property_store.clear();
-
-        for (i,j) in self.editor.request_component_info(index) {
-            self.property_store.insert_with_values(None, &[0,1], &[&i,&j]);
-        }
+        self.property.set_properties(self.editor.request_component_info(index));
     }
 
     fn register(self_: Rc<RefCell<App>>, component: Component) {
@@ -101,6 +97,90 @@ impl App {
         let index = name.parse::<usize>().unwrap();
         self.queue_change_component_property(index);
         self.selected_component_index = Some(index);
+    }
+
+    fn create_menu(self_: Rc<RefCell<App>>) -> gtk::MenuBar {
+        let menubar = gtk::MenuBar::new();
+
+        let editor_item = gtk::MenuItem::new_with_label("タイムライン");
+        menubar.append(&editor_item);
+
+        let editor_menu = gtk::Menu::new();
+        editor_item.set_submenu(&editor_menu);
+
+        {
+            let video_item = gtk::MenuItem::new_with_label("動画");
+            editor_menu.append(&video_item);
+
+            let self_ = self_.clone();
+            video_item.connect_activate(move |_| {
+                let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&self_.as_ref().borrow().window), gtk::FileChooserAction::Open);
+                dialog.add_button("追加", 0);
+
+                {
+                    let filter = gtk::FileFilter::new();
+                    filter.add_pattern("*.mkv");
+                    dialog.add_filter(&filter);
+                }
+                dialog.run();
+
+                App::register_from_json(self_.clone(), &ComponentStructure {
+                    component_type: ComponentType::Video,
+                    start_time: 0 * gst::MSECOND,
+                    length: 100 * gst::MSECOND,
+                    entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                    coordinate: (0,0),
+                });
+
+                dialog.destroy();
+            });
+        }
+
+        {
+            let image_item = gtk::MenuItem::new_with_label("画像");
+            editor_menu.append(&image_item);
+
+            let self_ = self_.clone();
+            image_item.connect_activate(move |_| {
+                let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), Some(&self_.as_ref().borrow().window), gtk::FileChooserAction::Open);
+                dialog.add_button("追加", 0);
+
+                {
+                    let filter = gtk::FileFilter::new();
+                    filter.add_pattern("*.png");
+                    dialog.add_filter(&filter);
+                }
+                dialog.run();
+
+                App::register_from_json(self_.clone(), &ComponentStructure {
+                    component_type: ComponentType::Image,
+                    start_time: 0 * gst::MSECOND,
+                    length: 100 * gst::MSECOND,
+                    entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                    coordinate: (0,0),
+                });
+
+                dialog.destroy();
+            });
+        }
+
+        {
+            let text_item = gtk::MenuItem::new_with_label("テキスト");
+            editor_menu.append(&text_item);
+
+            let self_ = self_.clone();
+            text_item.connect_activate(move |_| {
+                App::register_from_json(self_.clone(), &ComponentStructure {
+                    component_type: ComponentType::Text,
+                    start_time: 0 * gst::MSECOND,
+                    length: 100 * gst::MSECOND,
+                    entity: "dummy entity".to_string(),
+                    coordinate: (50,50),
+                });
+            });
+        }
+
+        menubar
     }
 
     pub fn create_ui(self_: Rc<RefCell<App>>) {
@@ -150,134 +230,26 @@ impl App {
         }
 
         let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-
-        let menubar = gtk::MenuBar::new();
-        vbox.pack_start(&menubar, true, true, 0);
-
-        {
-            let editor_item = gtk::MenuItem::new_with_label("タイムライン");
-            menubar.append(&editor_item);
-
-            let editor_menu = gtk::Menu::new();
-            editor_item.set_submenu(&editor_menu);
-
-            {
-                let video_item = gtk::MenuItem::new_with_label("動画");
-                editor_menu.append(&video_item);
-
-                let self_ = self_.clone();
-                video_item.connect_activate(move |_| {
-                    let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&self_.as_ref().borrow().window), gtk::FileChooserAction::Open);
-                    dialog.add_button("追加", 0);
-
-                    {
-                        let filter = gtk::FileFilter::new();
-                        filter.add_pattern("*.mkv");
-                        dialog.add_filter(&filter);
-                    }
-                    dialog.run();
-
-                    App::register_from_json(self_.clone(), &ComponentStructure {
-                        component_type: ComponentType::Video,
-                        start_time: 0 * gst::MSECOND,
-                        length: 100 * gst::MSECOND,
-                        entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
-                        coordinate: (0,0),
-                    });
-
-                    dialog.destroy();
-                });
-            }
-
-            {
-                let image_item = gtk::MenuItem::new_with_label("画像");
-                editor_menu.append(&image_item);
-
-                let self_ = self_.clone();
-                image_item.connect_activate(move |_| {
-                    let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), Some(&self_.as_ref().borrow().window), gtk::FileChooserAction::Open);
-                    dialog.add_button("追加", 0);
-
-                    {
-                        let filter = gtk::FileFilter::new();
-                        filter.add_pattern("*.png");
-                        dialog.add_filter(&filter);
-                    }
-                    dialog.run();
-
-                    App::register_from_json(self_.clone(), &ComponentStructure {
-                        component_type: ComponentType::Image,
-                        start_time: 0 * gst::MSECOND,
-                        length: 100 * gst::MSECOND,
-                        entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
-                        coordinate: (0,0),
-                    });
-
-                    dialog.destroy();
-                });
-            }
-
-            {
-                let text_item = gtk::MenuItem::new_with_label("テキスト");
-                editor_menu.append(&text_item);
-
-                let self_ = self_.clone();
-                text_item.connect_activate(move |_| {
-                    App::register_from_json(self_.clone(), &ComponentStructure {
-                        component_type: ComponentType::Text,
-                        start_time: 0 * gst::MSECOND,
-                        length: 100 * gst::MSECOND,
-                        entity: "dummy entity".to_string(),
-                        coordinate: (50,50),
-                    });
-                });
-            }
-        }
+        vbox.pack_start(&App::create_menu(self_.clone()), true, true, 0);
 
         let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         hbox.pack_start(&self_.as_ref().borrow().canvas, true, true, 0);
-        hbox.pack_start(&self_.as_ref().borrow().property, true, true, 0);
+        hbox.pack_start(&self_.as_ref().borrow().property.view, true, true, 0);
 
         {
             let property = &self_.as_ref().borrow().property;
-            let editor = &self_.as_ref().borrow().editor;
+            property.create_ui();
 
-            property.set_size_request(250, editor.height);
-            property.set_model(&self_.as_ref().borrow().property_store);
+            let self_ = self_.clone();
+            property.connect_cell_edited(Box::new(move |_, tree_path, new_text: &str| {
+                let store = self_.as_ref().borrow().property.store.clone();
+                let iter = store.get_iter(&tree_path).unwrap();
+                let index = self_.as_ref().borrow().selected_component_index.unwrap();
 
-            {
-                let column = gtk::TreeViewColumn::new();
-                column.set_title("Key");
-
-                let cell = gtk::CellRendererText::new();
-                column.pack_start(&cell, true);
-                column.add_attribute(&cell, "text", 0);
-
-                property.append_column(&column);
-            }
-
-            {
-                let column = gtk::TreeViewColumn::new();
-                column.set_title("Value");
-
-                let self_ = self_.clone();
-                let cell = gtk::CellRendererText::new();
-                cell.set_property("editable", &true).unwrap();
-                cell.connect_edited(move |_, tree_path, new_text| {
-                    let store = self_.as_ref().borrow().property_store.clone();
-                    let iter = store.get_iter(&tree_path).unwrap();
-                    let index = self_.as_ref().borrow().selected_component_index.unwrap();
-
-                    self_.as_ref().borrow_mut().editor.request_set_component_property(index, store.get_value(&iter, 0).get::<String>().unwrap(), new_text.to_string());
-                    self_.as_ref().borrow_mut().property_store.set_value(&iter, 1, &glib::Value::from(new_text));
-                    self_.as_ref().borrow().queue_change_component_property(index);
-                });
-
-                column.pack_start(&cell, true);
-                column.add_attribute(&cell, "text", 1);
-
-                property.append_column(&column);
-            }
+                self_.as_ref().borrow_mut().editor.request_set_component_property(index, store.get_value(&iter, 0).get::<String>().unwrap(), new_text.to_string());
+                self_.as_ref().borrow_mut().property.store.set_value(&iter, 1, &glib::Value::from(new_text));
+                self_.as_ref().borrow().queue_change_component_property(index);
+            }));
         }
 
         vbox.pack_start(&hbox, true, true, 0);
