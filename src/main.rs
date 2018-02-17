@@ -56,10 +56,17 @@ impl App {
 
     fn queue_draw(&self) {
         self.canvas.queue_draw();
-        self.property.queue_draw();
 
         let timeline: &TimelineWidget = &self.timeline.as_ref().borrow();
         timeline.queue_draw();
+    }
+
+    fn queue_change_component_property(&self, index: usize) {
+        self.property_store.clear();
+
+        for (i,j) in self.editor.request_component_info(index) {
+            self.property_store.insert_with_values(None, &[0,1], &[&i,&j]);
+        }
     }
 
     fn register(self_: Rc<RefCell<App>>, component: Component) {
@@ -91,13 +98,8 @@ impl App {
 
     fn select_component(&mut self, selected_box: gtk::EventBox) {
         let name = gtk::WidgetExt::get_name(&selected_box).unwrap();
-        self.property_store.clear();
-
         let index = name.parse::<usize>().unwrap();
-        for (i,j) in self.editor.request_component_info(index) {
-            self.property_store.insert_with_values(None, &[0,1], &[&i,&j]);
-        }
-
+        self.queue_change_component_property(index);
         self.selected_component_index = Some(index);
     }
 
@@ -268,7 +270,7 @@ impl App {
 
                     self_.as_ref().borrow_mut().editor.request_set_component_property(index, store.get_value(&iter, 0).get::<String>().unwrap(), new_text.to_string());
                     self_.as_ref().borrow_mut().property_store.set_value(&iter, 1, &glib::Value::from(new_text));
-                    self_.as_ref().borrow().queue_draw();
+                    self_.as_ref().borrow().queue_change_component_property(index);
                 });
 
                 column.pack_start(&cell, true);
