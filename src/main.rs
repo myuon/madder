@@ -56,6 +56,7 @@ impl App {
 
     fn queue_draw(&self) {
         self.canvas.queue_draw();
+        self.property.queue_draw();
 
         let timeline: &TimelineWidget = &self.timeline.as_ref().borrow();
         timeline.queue_draw();
@@ -266,6 +267,8 @@ impl App {
                     let index = self_.as_ref().borrow().selected_component_index.unwrap();
 
                     self_.as_ref().borrow_mut().editor.request_set_component_property(index, store.get_value(&iter, 0).get::<String>().unwrap(), new_text.to_string());
+                    self_.as_ref().borrow_mut().property_store.set_value(&iter, 1, &glib::Value::from(new_text));
+                    self_.as_ref().borrow().queue_draw();
                 });
 
                 column.pack_start(&cell, true);
