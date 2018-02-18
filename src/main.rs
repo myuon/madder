@@ -67,7 +67,9 @@ impl App {
     fn queue_change_component_property(&self, index: usize) {
         self.property.set_properties(
             self.editor.request_component_property(index).iter().map(|prop| { (prop.name.clone(), prop.edit_type.clone()) }).collect(),
-            Box::new(|edit_type| { gtk_impl::edit_type_to_widget(&edit_type) }),
+            Box::new(|edit_type| { gtk_impl::edit_type_to_widget(&edit_type, Rc::new(move |new_text| {
+                println!("{}", new_text);
+            })) }),
         );
     }
 
@@ -245,20 +247,6 @@ impl App {
         {
             let property = &self_.as_ref().borrow().property;
             property.create_ui();
-
-            let self_ = self_.clone();
-
-            /*
-            property.connect_cell_edited(Box::new(move |_, tree_path, new_text: &str| {
-                let store = self_.as_ref().borrow().property.store.clone();
-                let iter = store.get_iter(&tree_path).unwrap();
-                let index = self_.as_ref().borrow().selected_component_index.unwrap();
-
-                self_.as_ref().borrow_mut().editor.set_component_property(index, Property { name: store.get_value(&iter, 0).get::<String>().unwrap(), edit_type: EditType::ReadOnly(new_text.to_string()) });
-                self_.as_ref().borrow_mut().property.store.set_value(&iter, 1, &glib::Value::from(new_text));
-                self_.as_ref().borrow().queue_change_component_property(index);
-            }));
-            */
         }
 
         vbox.pack_start(&hbox, true, true, 0);
