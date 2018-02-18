@@ -70,7 +70,7 @@ fn gst_clocktime_deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) 
     serde::Deserialize::deserialize(deserializer).map(gst::ClockTime::from_mseconds)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum EditType {
     I32(i32),
     U64(u64),

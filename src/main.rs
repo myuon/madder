@@ -1,3 +1,4 @@
+#![feature(box_patterns)]
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -20,6 +21,8 @@ use madder_core::*;
 
 pub mod widget;
 use widget::*;
+
+pub mod gtk_impl;
 
 struct App {
     editor: Editor,
@@ -62,7 +65,10 @@ impl App {
     }
 
     fn queue_change_component_property(&self, index: usize) {
-        self.property.set_properties(self.editor.request_component_property(index).iter().map(|prop| { (prop.name.clone(), format!("{:?}", prop.edit_type)) }).collect());
+        self.property.set_properties(
+            self.editor.request_component_property(index).iter().map(|prop| { (prop.name.clone(), prop.edit_type.clone()) }).collect(),
+            Box::new(|edit_type| { gtk_impl::edit_type_to_widget(&edit_type) }),
+        );
     }
 
     fn register(self_: Rc<RefCell<App>>, component: Component) {
@@ -234,13 +240,15 @@ impl App {
 
         let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         hbox.pack_start(&self_.as_ref().borrow().canvas, true, true, 0);
-        hbox.pack_start(&self_.as_ref().borrow().property.view, true, true, 0);
+        hbox.pack_start(self_.as_ref().borrow().property.to_widget(), true, true, 0);
 
         {
             let property = &self_.as_ref().borrow().property;
             property.create_ui();
 
             let self_ = self_.clone();
+
+            /*
             property.connect_cell_edited(Box::new(move |_, tree_path, new_text: &str| {
                 let store = self_.as_ref().borrow().property.store.clone();
                 let iter = store.get_iter(&tree_path).unwrap();
@@ -250,6 +258,7 @@ impl App {
                 self_.as_ref().borrow_mut().property.store.set_value(&iter, 1, &glib::Value::from(new_text));
                 self_.as_ref().borrow().queue_change_component_property(index);
             }));
+            */
         }
 
         vbox.pack_start(&hbox, true, true, 0);
