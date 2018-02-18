@@ -251,15 +251,6 @@ impl App {
 
         vbox.pack_start(&hbox, true, true, 0);
 
-        let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-
-        let entry = gtk::Entry::new();
-        let go_btn = gtk::Button::new();
-
-        hbox.pack_start(&entry, true, true, 0);
-        hbox.pack_start(&go_btn, true, true, 5);
-        vbox.pack_start(&hbox, true, true, 5);
-
         let btn = gtk::Button::new();
         btn.set_label("render");
 
@@ -267,20 +258,6 @@ impl App {
             let self_ = self_.clone();
             btn.connect_clicked(move |_| {
                 self_.borrow_mut().editor.write("output/output.avi", 100, 5);
-            });
-        }
-
-        {
-            let entry = entry.clone();
-            let entry = Rc::new(entry);
-
-            go_btn.set_label("Go");
-
-            let self_ = self_.clone();
-            go_btn.connect_clicked(move |_| {
-                if let Ok(time) = entry.get_text().unwrap().parse::<u64>() {
-                    self_.borrow_mut().editor.seek_to(time * gst::MSECOND);
-                }
             });
         }
 
