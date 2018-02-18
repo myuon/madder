@@ -1,3 +1,5 @@
+#![feature(box_patterns)]
+#![feature(box_syntax)]
 use std::cmp;
 use std::fs::File;
 use std::io::BufReader;
@@ -71,23 +73,12 @@ impl Editor {
         self.position = time;
     }
 
-    pub fn request_component_info(&self, index: usize) -> Vec<(String, String)> {
-        let json_str = serde_json::to_string(&self.elements[index].structure).unwrap();
-        let value: serde_json::Value = serde_json::from_str(&json_str).unwrap();
-        let vmap: serde_json::Map<String, serde_json::Value> = value.as_object().unwrap().clone();
-        vmap.iter().map(|(k,v)| { (k.to_string(), v.to_string()) }).collect::<Vec<_>>()
+    pub fn request_component_property(&self, index: usize) -> Vec<Property> {
+        self.elements[index].structure.get_properties()
     }
 
-    pub fn request_set_component_property(&mut self, index: usize, key: String, value: String) {
-        match key.as_str() {
-            "start_time" => {
-                self.elements[index].structure.start_time = gst::ClockTime::from_mseconds(value.parse::<u64>().unwrap());
-            },
-            "length" => {
-                self.elements[index].structure.length = gst::ClockTime::from_mseconds(value.parse::<u64>().unwrap());
-            },
-            _ => unimplemented!(),
-        }
+    pub fn set_component_property(&mut self, index: usize, prop: Property) {
+        self.elements[index].structure.set_property(prop);
     }
 
     pub fn get_current_pixbuf(&self) -> gdk_pixbuf::Pixbuf {
