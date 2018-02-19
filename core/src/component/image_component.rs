@@ -20,6 +20,10 @@ impl ImageComponent {
             data: image,
         }
     }
+
+    pub fn reload(&mut self, uri: &str) {
+        self.data = gdk_pixbuf::Pixbuf::new_from_file(uri).unwrap();
+    }
 }
 
 impl Peekable for gdk_pixbuf::Pixbuf {
@@ -48,11 +52,22 @@ impl ComponentWrapper for ImageComponent {
     }
 
     fn get_properties(&self) -> Vec<Property> {
-        self.component.get_properties()
+        use EditType::*;
+
+        let mut vec = self.component.get_properties();
+        vec.push(
+            Property { name: "entity".to_string(), edit_type: FilePath(self.component.structure.entity.clone()) }
+        );
+        vec
     }
 
     fn set_property(&mut self, prop: Property) {
-        self.component.set_property(prop);
+        use EditType::*;
+
+        match (prop.name.as_str(), prop.edit_type) {
+            ("entity", FilePath(uri)) => self.reload(uri.as_str()),
+            (x,y) => self.component.set_property(Property { name: x.to_string(), edit_type: y }),
+        }
     }
 }
 

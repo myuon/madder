@@ -45,6 +45,7 @@ pub enum EditType {
     I32(i32),
     U64(u64),
     Pair(Box<EditType>, Box<EditType>),
+    FilePath(String),
     ReadOnly(String),
 }
 

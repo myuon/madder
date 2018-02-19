@@ -41,6 +41,24 @@ pub fn edit_type_to_widget(self_: &EditType, cont: Rc<Fn(String) + 'static>) -> 
             expander.add(&vbox);
             expander.dynamic_cast().unwrap()
         },
+        &FilePath(ref path) => {
+            let btn = gtk::Button::new();
+            btn.set_label(path);
+            btn.connect_clicked(move |_| {
+                let dialog = gtk::FileChooserDialog::new(Some("Entity"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
+                dialog.add_button("追加", 0);
+
+                {
+                    let filter = gtk::FileFilter::new();
+                    filter.add_pattern("*.png");
+                    dialog.add_filter(&filter);
+                }
+                dialog.run();
+                cont(dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string());
+                dialog.destroy();
+            });
+            btn.dynamic_cast().unwrap()
+        },
     }
 }
 
