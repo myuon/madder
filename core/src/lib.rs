@@ -74,11 +74,11 @@ impl Editor {
     }
 
     pub fn request_component_property(&self, index: usize) -> Vec<Property> {
-        self.elements[index].structure.get_properties()
+        self.elements[index].get_properties()
     }
 
     pub fn set_component_property(&mut self, index: usize, prop: Property) {
-        self.elements[index].structure.set_property(prop);
+        self.elements[index].set_property(prop);
     }
 
     pub fn get_current_pixbuf(&self) -> gdk_pixbuf::Pixbuf {

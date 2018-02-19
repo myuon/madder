@@ -84,16 +84,23 @@ pub struct Property {
     pub edit_type: EditType,
 }
 
-impl ComponentStructure {
+#[derive(Clone)]
+pub struct Component {
+    pub structure: ComponentStructure,
+    pub name: String,
+    pub data: Box<Peekable>,
+}
+
+impl Component {
     pub fn get_properties(&self) -> Vec<Property> {
         use EditType::*;
 
         vec![
-            Property { name: "component_type".to_string(), edit_type: ReadOnly(format!("{:?}", self.component_type)) },
-            Property { name: "start_time".to_string(), edit_type: U64(self.start_time.mseconds().unwrap()) },
-            Property { name: "length".to_string(), edit_type: U64(self.start_time.mseconds().unwrap()) },
-            Property { name: "coordinate".to_string(), edit_type: Pair(box I32(self.coordinate.0), box I32(self.coordinate.1)) },
-            Property { name: "entity".to_string(), edit_type: ReadOnly(self.entity.clone()) },
+            Property { name: "component_type".to_string(), edit_type: ReadOnly(format!("{:?}", self.structure.component_type)) },
+            Property { name: "start_time".to_string(), edit_type: U64(self.structure.start_time.mseconds().unwrap()) },
+            Property { name: "length".to_string(), edit_type: U64(self.structure.start_time.mseconds().unwrap()) },
+            Property { name: "coordinate".to_string(), edit_type: Pair(box I32(self.structure.coordinate.0), box I32(self.structure.coordinate.1)) },
+            Property { name: "entity".to_string(), edit_type: ReadOnly(self.structure.entity.clone()) },
         ]
     }
 
@@ -101,18 +108,12 @@ impl ComponentStructure {
         use EditType::*;
 
         match (prop.name.as_str(), prop.edit_type) {
-            ("start_time", U64(v)) => self.start_time = gst::ClockTime::from_mseconds(v),
-            ("length", U64(v)) => self.length = gst::ClockTime::from_mseconds(v),
-            ("coordinate", Pair(box I32(x), box I32(y))) => self.coordinate = (x,y),
+            ("start_time", U64(v)) => self.structure.start_time = gst::ClockTime::from_mseconds(v),
+            ("length", U64(v)) => self.structure.length = gst::ClockTime::from_mseconds(v),
+            ("coordinate", Pair(box I32(x), box I32(y))) => self.structure.coordinate = (x,y),
             _ => unimplemented!(),
         }
     }
 }
 
-#[derive(Clone)]
-pub struct Component {
-    pub structure: ComponentStructure,
-    pub name: String,
-    pub data: Box<Peekable>,
-}
 
