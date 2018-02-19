@@ -68,6 +68,15 @@ pub fn edit_type_to_widget(self_: &EditType, tracker: Vec<i32>, cont: Rc<Fn(Stri
             });
             btn.dynamic_cast().unwrap()
         },
+        &Document(ref doc) => {
+            let textarea = gtk::TextView::new();
+            let buffer = textarea.get_buffer().unwrap();
+            buffer.set_text(doc);
+            buffer.connect_changed(move |buffer| {
+                cont(buffer.get_text(&buffer.get_start_iter(), &buffer.get_end_iter(), true).unwrap(), &tracker.clone())
+            });
+            textarea.dynamic_cast().unwrap()
+        },
     }
 }
 
@@ -81,6 +90,7 @@ pub fn read_as_edit_type(dynamic_type: EditType, tracker: &[i32], new_text: Stri
                 I32(_) => I32(new_text.parse::<i32>().unwrap()),
                 U64(_) => U64(new_text.parse::<u64>().unwrap()),
                 FilePath(_) => FilePath(new_text),
+                Document(_) => Document(new_text),
                 _ => unimplemented!(),
             }
         },

@@ -14,22 +14,30 @@ pub struct TextComponent {
 
 impl TextComponent {
     pub fn new_from_structure(structure: &ComponentStructure) -> TextComponent {
+        TextComponent {
+            component: Component {
+                structure: structure.clone(),
+                name: "text".to_string(),
+            },
+            data: TextComponent::create_data(&structure.entity),
+        }
+    }
+
+    fn create_data(text: &str) -> gdk_pixbuf::Pixbuf {
         use pango::prelude::*;
 
         let surface = cairo::ImageSurface::create(cairo::Format::ARgb32, 640, 480).unwrap();
         let context = cairo::Context::new(&surface);
         let layout = pangocairo::functions::create_layout(&context).unwrap();
         layout.set_font_description(&pango::FontDescription::from_string("Serif 24"));
-        layout.set_markup(format!("<span foreground=\"blue\">{}</span>", structure.entity).as_str());
+        layout.set_markup(format!("<span foreground=\"white\">{}</span>", text).as_str());
         pangocairo::functions::show_layout(&context, &layout);
 
-        TextComponent {
-            component: Component {
-                structure: structure.clone(),
-                name: "text".to_string(),
-            },
-            data: gdk::pixbuf_get_from_surface(&surface, 0, 0, surface.get_width(), surface.get_height()).unwrap(),
-        }
+        gdk::pixbuf_get_from_surface(&surface, 0, 0, surface.get_width(), surface.get_height()).unwrap()
+    }
+
+    pub fn reload(&mut self, new_text: String) {
+        self.data = TextComponent::create_data(new_text.as_str());
     }
 }
 
@@ -49,11 +57,23 @@ impl ComponentWrapper for TextComponent {
     }
 
     fn get_properties(&self) -> Vec<Property> {
-        self.component.get_properties()
+        use EditType::*;
+
+        let mut vec = self.component.get_properties();
+        vec.pop();
+        vec.push(
+            Property { name: "entity".to_string(), edit_type: Document(self.component.structure.entity.clone()) }
+        );
+        vec
     }
 
     fn set_property(&mut self, prop: Property) {
-        self.component.set_property(prop);
+        use EditType::*;
+
+        match (prop.name.as_str(), prop.edit_type) {
+            ("entity", Document(doc)) => self.reload(doc),
+            (x,y) => self.component.set_property(Property { name: x.to_string(), edit_type: y }),
+        }
     }
 }
 
