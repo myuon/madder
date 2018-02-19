@@ -38,9 +38,8 @@ impl EditorStructure {
     }
 }
 
-#[derive(Clone)]
 pub struct Editor {
-    pub elements: Vec<Box<Component>>,
+    pub elements: Vec<Box<ComponentWrapper>>,
     pub position: gst::ClockTime,
     pub width: i32,
     pub height: i32,
@@ -90,13 +89,15 @@ impl Editor {
             p[2] = 0;
         }
 
-        for elem in self.elements.iter().filter(|elem| { elem.structure.start_time <= self.position && self.position <= elem.structure.start_time + elem.structure.length }) {
-            if let Some(dest) = elem.data.peek(self.position) {
+        for elem in self.elements.iter().filter(|&elem| { elem.get_component().structure.start_time <= self.position && self.position <= elem.get_component().structure.start_time + elem.get_component().structure.length }) {
+            if let Some(dest) = elem.get_component().data.peek(self.position) {
+                let elem = elem.get_component().structure;
+
                 &dest.composite(
-                    &pixbuf, elem.structure.coordinate.0, elem.structure.coordinate.1,
-                    cmp::min(dest.get_width(), self.width - elem.structure.coordinate.0),
-                    cmp::min(dest.get_height(), self.height - elem.structure.coordinate.1),
-                    elem.structure.coordinate.0.into(), elem.structure.coordinate.1.into(), 1f64, 1f64, 0, 255);
+                    &pixbuf, elem.coordinate.0, elem.coordinate.1,
+                    cmp::min(dest.get_width(), self.width - elem.coordinate.0),
+                    cmp::min(dest.get_height(), self.height - elem.coordinate.1),
+                    elem.coordinate.0.into(), elem.coordinate.1.into(), 1f64, 1f64, 0, 255);
             }
         }
 

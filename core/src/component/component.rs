@@ -91,8 +91,18 @@ pub struct Component {
     pub data: Box<Peekable>,
 }
 
-impl Component {
-    pub fn get_properties(&self) -> Vec<Property> {
+pub trait ComponentWrapper {
+    fn get_component(&self) -> Component;
+    fn get_properties(&self) -> Vec<Property>;
+    fn set_property(&mut self, prop: Property);
+}
+
+impl ComponentWrapper for Component {
+    fn get_component(&self) -> Component {
+        self.clone()
+    }
+
+    fn get_properties(&self) -> Vec<Property> {
         use EditType::*;
 
         vec![
@@ -104,7 +114,7 @@ impl Component {
         ]
     }
 
-    pub fn set_property(&mut self, prop: Property) {
+    fn set_property(&mut self, prop: Property) {
         use EditType::*;
 
         match (prop.name.as_str(), prop.edit_type) {
@@ -116,4 +126,17 @@ impl Component {
     }
 }
 
+impl<T: ComponentWrapper> ComponentWrapper for Box<T> {
+    fn get_component(&self) -> Component {
+        self.as_ref().get_component()
+    }
+
+    fn get_properties(&self) -> Vec<Property> {
+        self.as_ref().get_properties()
+    }
+
+    fn set_property(&mut self, prop: Property) {
+        self.as_mut().set_property(prop);
+    }
+}
 
