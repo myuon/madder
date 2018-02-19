@@ -1,13 +1,29 @@
-use component::component::*;
+extern crate gdk_pixbuf;
+extern crate glib;
 
 extern crate gstreamer as gst;
 extern crate gstreamer_video as gstv;
 extern crate gstreamer_app as gsta;
 use gstv::prelude::*;
 
-extern crate glib;
+use component::component::*;
 
-pub struct VideoTestComponent(Component);
+impl Peekable for gst::Element {
+    fn get_duration(&self) -> gst::ClockTime {
+        100 * 1000 * gst::MSECOND
+    }
+
+    fn peek(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
+        self.seek_simple(gst::SeekFlags::FLUSH, time).ok().and_then(|_| {
+            self.get_property("last-pixbuf").ok().and_then(|x| x.get::<gdk_pixbuf::Pixbuf>())
+        })
+    }
+}
+
+pub struct VideoTestComponent {
+    component: Component,
+    data: gst::Element,
+}
 
 impl VideoTestComponent {
     pub fn new_from_structure(structure: &ComponentStructure) -> VideoTestComponent {
@@ -20,19 +36,44 @@ impl VideoTestComponent {
 
         pipeline.set_state(gst::State::Paused).into_result().unwrap();
 
-        VideoTestComponent(Component {
-            structure: structure.clone(),
-            name: "video_test".to_string(),
-            data: Box::new(pixbufsink),
-        })
-    }
-
-    pub fn get_component(self) -> Component {
-        self.0
+        VideoTestComponent {
+            component: Component {
+                structure: structure.clone(),
+                name: "video_test".to_string(),
+            },
+            data: pixbufsink,
+        }
     }
 }
 
-pub struct VideoFileComponent(Component);
+impl Peekable for VideoTestComponent {
+    fn get_duration(&self) -> gst::ClockTime {
+        self.data.get_duration()
+    }
+
+    fn peek(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
+        self.data.peek(time)
+    }
+}
+
+impl ComponentWrapper for VideoTestComponent {
+    fn get_component(&self) -> Component {
+        self.component.get_component()
+    }
+
+    fn get_properties(&self) -> Vec<Property> {
+        self.component.get_properties()
+    }
+
+    fn set_property(&mut self, prop: Property) {
+        self.component.set_property(prop);
+    }
+}
+
+pub struct VideoFileComponent {
+    component: Component,
+    data: gst::Element,
+}
 
 impl VideoFileComponent {
     pub fn new_from_structure(structure: &ComponentStructure) -> VideoFileComponent {
@@ -56,14 +97,37 @@ impl VideoFileComponent {
 
         pipeline.set_state(gst::State::Paused).into_result().unwrap();
 
-        VideoFileComponent(Component {
-            structure: structure.clone(),
-            name: "video_file".to_string(),
-            data: Box::new(pixbufsink),
-        })
-    }
-
-    pub fn get_component(self) -> Component {
-        self.0
+        VideoFileComponent {
+            component: Component {
+                structure: structure.clone(),
+                name: "video_file".to_string(),
+            },
+            data: pixbufsink,
+        }
     }
 }
+
+impl Peekable for VideoFileComponent {
+    fn get_duration(&self) -> gst::ClockTime {
+        self.data.get_duration()
+    }
+
+    fn peek(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
+        self.data.peek(time)
+    }
+}
+
+impl ComponentWrapper for VideoFileComponent {
+    fn get_component(&self) -> Component {
+        self.component.get_component()
+    }
+
+    fn get_properties(&self) -> Vec<Property> {
+        self.component.get_properties()
+    }
+
+    fn set_property(&mut self, prop: Property) {
+        self.component.set_property(prop);
+    }
+}
+

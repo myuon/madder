@@ -1,40 +1,10 @@
-extern crate gstreamer as gst;
-extern crate gstreamer_video as gstv;
-extern crate gstreamer_app as gsta;
-use gstv::prelude::*;
-
 extern crate gdk_pixbuf;
-
+extern crate gstreamer as gst;
 extern crate serde;
 
 pub trait Peekable {
     fn get_duration(&self) -> gst::ClockTime;
     fn peek(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf>;
-
-    // trick for Clone instance for Box<Peekable> object
-    fn box_clone(&self) -> Box<Peekable>;
-}
-
-impl Clone for Box<Peekable> {
-    fn clone(&self) -> Box<Peekable> {
-        self.box_clone()
-    }
-}
-
-impl Peekable for gst::Element {
-    fn get_duration(&self) -> gst::ClockTime {
-        100 * 1000 * gst::MSECOND
-    }
-
-    fn peek(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
-        self.seek_simple(gst::SeekFlags::FLUSH, time).ok().and_then(|_| {
-            self.get_property("last-pixbuf").ok().and_then(|x| x.get::<gdk_pixbuf::Pixbuf>())
-        })
-    }
-
-    fn box_clone(&self) -> Box<Peekable> {
-        Box::new(self.clone())
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -45,7 +15,7 @@ pub enum ComponentType {
     Sound,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ComponentStructure {
     pub component_type: ComponentType,
 
@@ -84,11 +54,10 @@ pub struct Property {
     pub edit_type: EditType,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Component {
     pub structure: ComponentStructure,
     pub name: String,
-    pub data: Box<Peekable>,
 }
 
 pub trait ComponentWrapper {
@@ -139,4 +108,7 @@ impl<T: ComponentWrapper> ComponentWrapper for Box<T> {
         self.as_mut().set_property(prop);
     }
 }
+
+pub trait ComponentLike: ComponentWrapper + Peekable {}
+impl<T: ComponentWrapper + Peekable> ComponentLike for T {}
 

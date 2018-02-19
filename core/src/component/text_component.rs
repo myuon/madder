@@ -7,7 +7,10 @@ extern crate pangocairo;
 
 use component::component::*;
 
-pub struct TextComponent(pub Component);
+pub struct TextComponent {
+    component: Component,
+    data: gdk_pixbuf::Pixbuf,
+}
 
 impl TextComponent {
     pub fn new_from_structure(structure: &ComponentStructure) -> TextComponent {
@@ -20,15 +23,37 @@ impl TextComponent {
         layout.set_markup(format!("<span foreground=\"blue\">{}</span>", structure.entity).as_str());
         pangocairo::functions::show_layout(&context, &layout);
 
-        TextComponent(Component {
-            structure: structure.clone(),
-            name: "text".to_string(),
-            data: Box::new(gdk::pixbuf_get_from_surface(&surface, 0, 0, surface.get_width(), surface.get_height()).unwrap()),
-        })
+        TextComponent {
+            component: Component {
+                structure: structure.clone(),
+                name: "text".to_string(),
+            },
+            data: gdk::pixbuf_get_from_surface(&surface, 0, 0, surface.get_width(), surface.get_height()).unwrap(),
+        }
+    }
+}
+
+impl Peekable for TextComponent {
+    fn get_duration(&self) -> gst::ClockTime {
+        self.data.get_duration()
     }
 
-    pub fn get_component(self) -> Component {
-        self.0
+    fn peek(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
+        self.data.peek(time)
+    }
+}
+
+impl ComponentWrapper for TextComponent {
+    fn get_component(&self) -> Component {
+        self.component.get_component()
+    }
+
+    fn get_properties(&self) -> Vec<Property> {
+        self.component.get_properties()
+    }
+
+    fn set_property(&mut self, prop: Property) {
+        self.component.set_property(prop);
     }
 }
 

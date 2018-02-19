@@ -73,10 +73,10 @@ impl App {
         );
     }
 
-    fn register(self_: Rc<RefCell<App>>, component: Component) {
-        let name = &component.name.clone();
-        let start_time = component.structure.start_time;
-        let length = component.structure.length;
+    fn register(self_: Rc<RefCell<App>>, component: Box<ComponentLike>) {
+        let name = &component.get_component().name.clone();
+        let start_time = component.get_component().structure.start_time;
+        let length = component.get_component().structure.length;
         let index = self_.as_ref().borrow_mut().editor.register(component);
 
         {

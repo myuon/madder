@@ -11,11 +11,11 @@ mod text_component;
 pub use self::text_component::*;
 
 impl Component {
-    pub fn new_from_structure(structure: &ComponentStructure) -> Component {
+    pub fn new_from_structure(structure: &ComponentStructure) -> Box<ComponentLike> {
         match structure.component_type {
-            ComponentType::Video => VideoFileComponent::new_from_structure(structure).get_component(),
-            ComponentType::Image => ImageComponent::new_from_structure(structure).get_component(),
-            ComponentType::Text => TextComponent::new_from_structure(structure).get_component(),
+            ComponentType::Video => Box::new(VideoFileComponent::new_from_structure(structure)),
+            ComponentType::Image => Box::new(ImageComponent::new_from_structure(structure)),
+            ComponentType::Text => Box::new(TextComponent::new_from_structure(structure)),
             _ => unimplemented!(),
         }
     }

@@ -39,7 +39,7 @@ impl EditorStructure {
 }
 
 pub struct Editor {
-    pub elements: Vec<Box<ComponentWrapper>>,
+    pub elements: Vec<Box<ComponentLike>>,
     pub position: gst::ClockTime,
     pub width: i32,
     pub height: i32,
@@ -63,8 +63,8 @@ impl Editor {
         editor
     }
 
-    pub fn register(&mut self, component: Component) -> usize {
-        self.elements.push(Box::new(component));
+    pub fn register(&mut self, component: Box<ComponentLike>) -> usize {
+        self.elements.push(component);
         self.elements.len() - 1
     }
 
@@ -90,7 +90,7 @@ impl Editor {
         }
 
         for elem in self.elements.iter().filter(|&elem| { elem.get_component().structure.start_time <= self.position && self.position <= elem.get_component().structure.start_time + elem.get_component().structure.length }) {
-            if let Some(dest) = elem.get_component().data.peek(self.position) {
+            if let Some(dest) = elem.peek(self.position) {
                 let elem = elem.get_component().structure;
 
                 &dest.composite(
