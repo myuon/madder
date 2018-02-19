@@ -1,4 +1,5 @@
 #![feature(box_patterns)]
+#![feature(slice_patterns)]
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -64,15 +65,6 @@ impl App {
         timeline.queue_draw();
     }
 
-    fn queue_change_component_property(&self, index: usize) {
-        self.property.set_properties(
-            self.editor.request_component_property(index).iter().map(|prop| { (prop.name.clone(), prop.edit_type.clone()) }).collect(),
-            Box::new(|edit_type| { gtk_impl::edit_type_to_widget(&edit_type, Rc::new(move |new_text| {
-                println!("{}", new_text);
-            })) }),
-        );
-    }
-
     fn register(self_: Rc<RefCell<App>>, component: Box<ComponentLike>) {
         let name = &component.get_component().name.clone();
         let start_time = component.get_component().structure.start_time;
@@ -89,7 +81,7 @@ impl App {
                 &name,
                 time_to_length(start_time), time_to_length(length),
                 Box::new(move |evbox| {
-                    self__.as_ref().borrow_mut().select_component(evbox.clone());
+                    App::select_component(self__.clone(), evbox.clone());
                     gtk::Inhibit(false)
                 })
             );
@@ -100,11 +92,27 @@ impl App {
         App::register(self_, Component::new_from_structure(json))
     }
 
-    fn select_component(&mut self, selected_box: gtk::EventBox) {
+    fn select_component(self_: Rc<RefCell<App>>, selected_box: gtk::EventBox) {
         let name = gtk::WidgetExt::get_name(&selected_box).unwrap();
         let index = name.parse::<usize>().unwrap();
-        self.queue_change_component_property(index);
-        self.selected_component_index = Some(index);
+        let self__ = self_.clone();
+
+        self_.as_ref().borrow().property.set_properties(
+            self_.as_ref().borrow().editor.request_component_property(index).iter().map(|prop| { (prop.name.clone(), prop.edit_type.clone()) }).collect(),
+            Box::new(move |i, prop_name, edit_type| {
+                let prop_name = Rc::new(prop_name);
+                let edit_type = Rc::new(edit_type);
+                let self__ = self__.clone();
+
+                gtk_impl::edit_type_to_widget(&edit_type.clone(), vec![], Rc::new(move |new_text, tracker| {
+                    let edit_type = gtk_impl::read_as_edit_type(edit_type.as_ref().clone(), tracker, new_text);
+                    self__.as_ref().borrow_mut().editor.set_component_property(index, Property { name: prop_name.as_ref().clone(), edit_type: edit_type });
+                    self__.as_ref().borrow().queue_draw();
+                }))
+            }),
+        );
+
+        self_.as_ref().borrow_mut().selected_component_index = Some(index);
     }
 
     fn create_menu(self_: Rc<RefCell<App>>) -> gtk::MenuBar {

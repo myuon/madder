@@ -55,6 +55,7 @@ impl ComponentWrapper for ImageComponent {
         use EditType::*;
 
         let mut vec = self.component.get_properties();
+        vec.pop();
         vec.push(
             Property { name: "entity".to_string(), edit_type: FilePath(self.component.structure.entity.clone()) }
         );
