@@ -202,9 +202,11 @@ impl App {
     pub fn create_ui(self_: Rc<RefCell<App>>) {
         {
             let timeline = &self_.as_ref().borrow().timeline;
+            timeline.as_ref().borrow_mut().create_ui();
+
             {
                 let self_ = self_.clone();
-                timeline.as_ref().borrow().connect_draw(Box::new(move || {
+                timeline.as_ref().borrow().connect_request_objects(Box::new(move || {
                     self_.as_ref().borrow().editor.elements.iter().map(|component| {
                         BoxObject::new(
                             component.get_component().structure.start_time.mseconds().unwrap() as i32,

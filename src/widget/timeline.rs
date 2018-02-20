@@ -18,7 +18,7 @@ use widget::BoxViewerWidget;
 use widget::BoxObject;
 
 pub struct TimelineWidget {
-    timeline: BoxViewerWidget,
+    timeline: Rc<RefCell<BoxViewerWidget>>,
     ruler_box: gtk::EventBox,
     tracker: gtk::DrawingArea,
     container: gtk::Overlay,
@@ -43,7 +43,7 @@ impl TimelineWidget {
             ruler_box.add(ruler.to_widget());
             vbox.pack_start(&ruler_box, true, true, 10);
 
-            vbox.pack_start(timeline.to_widget(), true, true, 0);
+            vbox.pack_start(timeline.as_ref().borrow().to_widget(), true, true, 0);
         }
 
         let tracker = gtk::DrawingArea::new();
@@ -65,6 +65,14 @@ impl TimelineWidget {
         }))
     }
 
+    pub fn create_ui(&self) {
+        BoxViewerWidget::create_ui(self.timeline.clone());
+    }
+
+    pub fn connect_request_objects(&self, cont: Box<Fn() -> Vec<BoxObject>>) {
+        self.timeline.as_ref().borrow_mut().connect_request_objects(cont);
+    }
+
     pub fn ruler_connect_button_press_event<F: Fn(&gdk::EventButton) -> gtk::Inhibit + 'static>(&self, cont: F) {
         self.ruler_box.connect_button_press_event(move |_, event| {
             cont(event)
@@ -79,10 +87,6 @@ impl TimelineWidget {
 
     pub fn queue_draw(&self) {
         self.container.queue_draw();
-    }
-
-    pub fn connect_draw(&self, objects: Box<Fn() -> Vec<BoxObject>>) {
-        self.timeline.connect_draw(objects)
     }
 
     pub fn add_component_widget(self_: Rc<RefCell<TimelineWidget>>, widget_id: &str, label_text: &str, offset_x: i32, width: i32, connect_button_press_event_cont: Box<Fn(&gtk::EventBox) -> gtk::Inhibit + 'static>) {
