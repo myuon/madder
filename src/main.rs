@@ -101,11 +101,11 @@ impl App {
             self_.as_ref().borrow().editor.request_component_property(index).iter().map(|prop| { (prop.name.clone(), prop.edit_type.clone()) }).collect(),
             Box::new(move |i, prop_name, edit_type| {
                 let prop_name = Rc::new(prop_name);
-                let edit_type = Rc::new(edit_type);
                 let self__ = self__.clone();
 
-                gtk_impl::edit_type_to_widget(&edit_type.clone(), vec![], Rc::new(move |new_text, tracker| {
-                    let edit_type = gtk_impl::read_as_edit_type(edit_type.as_ref().clone(), tracker, new_text);
+                gtk_impl::edit_type_to_widget(&edit_type, vec![], Rc::new(move |new_text, tracker| {
+                    let edit_type = self__.as_ref().borrow().editor.request_component_property(index)[i].edit_type.clone();
+                    let edit_type = gtk_impl::read_as_edit_type(edit_type, tracker, new_text);
                     self__.as_ref().borrow_mut().editor.set_component_property(index, Property { name: prop_name.as_ref().clone(), edit_type: edit_type });
                     self__.as_ref().borrow().queue_draw();
                 }))
