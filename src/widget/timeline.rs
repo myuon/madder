@@ -122,22 +122,22 @@ impl TimelineWidget {
             evbox.connect_motion_notify_event(move |evbox,motion| {
                 let (x,_) = motion.get_position();
                 let evbox_window = motion.get_window().unwrap();
-                let (rx,_) = evbox_window.get_position();
 
                 let grab_edge = 5;
                 if (evbox_window.get_width() - x as i32) <= grab_edge {
                     evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "e-resize"));
-                } else if (x as i32) <= grab_edge {
-                    evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "w-resize"));
                 } else {
                     evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "default"));
                 }
 
                 if motion.get_state().contains(gdk::ModifierType::BUTTON1_MASK) {
+                    let (px,_) = evbox.get_parent().unwrap().get_window().unwrap().get_position();
+                    let (rx,_) = evbox_window.get_position();
+
                     let x_max = evbox.get_parent().unwrap().get_allocation().width - evbox.get_allocation().width;
 
                     let builder: &RefCell<TimelineWidget> = self_.borrow();
-                    builder.borrow().fixed.move_(evbox, cmp::max(cmp::min(rx + x as i32 - builder.borrow().offset, x_max), 0), 0);
+                    builder.borrow().fixed.move_(evbox, cmp::max(cmp::min(px + rx + x as i32 - builder.borrow().offset, x_max), 0), 0);
                 }
 
                 Inhibit(false)
