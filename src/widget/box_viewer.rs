@@ -2,20 +2,23 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 extern crate gtk;
+extern crate gdk;
 extern crate cairo;
 use gtk::prelude::*;
 
 use widget::WidgetWrapper;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BoxObject {
+    pub index: usize,
     coordinate: (i32,i32),
     size: (i32,i32),
 }
 
 impl BoxObject {
-    pub fn new(x: i32, y: i32, width: i32, height: i32) -> BoxObject {
+    pub fn new(x: i32, y: i32, width: i32, height: i32, index: usize) -> BoxObject {
         BoxObject {
+            index: index,
             coordinate: (x,y),
             size: (width, height),
         }
@@ -26,6 +29,11 @@ impl BoxObject {
         cr.rectangle(self.coordinate.0.into(), self.coordinate.1.into(), self.size.0.into(), self.size.1.into());
         cr.fill();
         cr.stroke();
+    }
+
+    fn contains(&self, x: i32, y: i32) -> bool {
+        self.coordinate.0 <= x && x <= self.coordinate.0 + self.size.0
+            && self.coordinate.1 <= y && y <= self.coordinate.1 + self.size.1
     }
 }
 
@@ -70,6 +78,18 @@ impl BoxViewerWidget {
     fn renderer(objects: Vec<BoxObject>, cr: &cairo::Context) {
         objects.iter().for_each(|object| {
             object.renderer(cr);
+        });
+    }
+
+    pub fn connect_select_box(self_: Rc<RefCell<BoxViewerWidget>>, cont: Box<Fn(BoxObject)>) {
+        let self__ = self_.clone();
+        self_.as_ref().borrow().canvas.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
+        self_.as_ref().borrow().canvas.connect_button_press_event(move |_,event| {
+            let (x,y) = event.get_position();
+            if let Some(object) = self__.as_ref().borrow().objects.iter().find(|&object| object.contains(x as i32, y as i32)) {
+                cont(object.clone());
+            }
+            Inhibit(false)
         });
     }
 }

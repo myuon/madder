@@ -81,7 +81,7 @@ impl App {
                 &name,
                 time_to_length(start_time), time_to_length(length),
                 Box::new(move |evbox| {
-                    App::select_component(self__.clone(), evbox.clone());
+//                    App::select_component(self__.clone(), evbox.clone());
                     gtk::Inhibit(false)
                 })
             );
@@ -92,9 +92,9 @@ impl App {
         App::register(self_, Component::new_from_structure(json))
     }
 
-    fn select_component(self_: Rc<RefCell<App>>, selected_box: gtk::EventBox) {
-        let name = gtk::WidgetExt::get_name(&selected_box).unwrap();
-        let index = name.parse::<usize>().unwrap();
+    fn select_component(self_: Rc<RefCell<App>>, index: usize) {
+//        let name = gtk::WidgetExt::get_name(&selected_box).unwrap();
+//        let index = name.parse::<usize>().unwrap();
         let self__ = self_.clone();
 
         self_.as_ref().borrow().property.set_properties(
@@ -201,18 +201,23 @@ impl App {
 
     pub fn create_ui(self_: Rc<RefCell<App>>) {
         {
+            let self__ = self_.clone();
             let timeline = &self_.as_ref().borrow().timeline;
             timeline.as_ref().borrow_mut().create_ui();
+            timeline.as_ref().borrow().connect_select_component(Box::new(move |object| {
+                App::select_component(self__.clone(), object.index);
+            }));
 
             {
                 let self_ = self_.clone();
                 timeline.as_ref().borrow().connect_request_objects(Box::new(move || {
-                    self_.as_ref().borrow().editor.elements.iter().map(|component| {
+                    self_.as_ref().borrow().editor.elements.iter().enumerate().map(|(i,component)| {
                         BoxObject::new(
                             component.get_component().structure.start_time.mseconds().unwrap() as i32,
                             0,
                             component.get_component().structure.length.mseconds().unwrap() as i32,
                             30,
+                            i,
                         )
                     }).collect()
                 }));

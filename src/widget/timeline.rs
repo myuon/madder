@@ -73,6 +73,10 @@ impl TimelineWidget {
         self.timeline.as_ref().borrow_mut().connect_request_objects(cont);
     }
 
+    pub fn connect_select_component(&self, cont: Box<Fn(BoxObject)>) {
+        BoxViewerWidget::connect_select_box(self.timeline.clone(), cont);
+    }
+
     pub fn ruler_connect_button_press_event<F: Fn(&gdk::EventButton) -> gtk::Inhibit + 'static>(&self, cont: F) {
         self.ruler_box.connect_button_press_event(move |_, event| {
             cont(event)
