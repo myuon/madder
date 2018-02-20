@@ -14,9 +14,11 @@ extern crate pango;
 
 use widget::WidgetWrapper;
 use widget::RulerWidget;
+use widget::BoxViewerWidget;
+use widget::BoxObject;
 
 pub struct TimelineWidget {
-    fixed: gtk::Fixed,
+    timeline: BoxViewerWidget,
     ruler_box: gtk::EventBox,
     tracker: gtk::DrawingArea,
     container: gtk::Overlay,
@@ -26,8 +28,9 @@ pub struct TimelineWidget {
 // workaround for sharing a variable within callbacks
 impl TimelineWidget {
     pub fn new(width: i32) -> Rc<RefCell<TimelineWidget>> {
-        let fixed = gtk::Fixed::new();
-        fixed.set_size_request(width, 50);
+        let timeline = BoxViewerWidget::new(width, 50);
+//        let fixed = gtk::Fixed::new();
+//        fixed.set_size_request(width, 50);
 
         let ruler_box = gtk::EventBox::new();
 
@@ -40,7 +43,7 @@ impl TimelineWidget {
             ruler_box.add(ruler.to_widget());
             vbox.pack_start(&ruler_box, true, true, 10);
 
-            vbox.pack_start(&fixed, true, true, 0);
+            vbox.pack_start(timeline.to_widget(), true, true, 0);
         }
 
         let tracker = gtk::DrawingArea::new();
@@ -54,7 +57,7 @@ impl TimelineWidget {
         });
 
         Rc::new(RefCell::new(TimelineWidget {
-            fixed: fixed,
+            timeline: timeline,
             ruler_box: ruler_box,
             container: overlay,
             tracker: tracker,
@@ -78,6 +81,10 @@ impl TimelineWidget {
         self.container.queue_draw();
     }
 
+    pub fn connect_draw(&self, objects: Box<Fn() -> Vec<BoxObject>>) {
+        self.timeline.connect_draw(objects)
+    }
+
     pub fn add_component_widget(self_: Rc<RefCell<TimelineWidget>>, widget_id: &str, label_text: &str, offset_x: i32, width: i32, connect_button_press_event_cont: Box<Fn(&gtk::EventBox) -> gtk::Inhibit + 'static>) {
         let evbox = gtk::EventBox::new();
         evbox.show();
@@ -90,7 +97,7 @@ impl TimelineWidget {
         {
             let builder: &RefCell<TimelineWidget> = self_.borrow();
             let builder: &TimelineWidget = &builder.borrow();
-            builder.fixed.put(&evbox, offset_x, 0);
+//            builder.fixed.put(&evbox, offset_x, 0);
         }
 
         let label = gtk::Label::new(label_text);
@@ -137,7 +144,7 @@ impl TimelineWidget {
                     let x_max = evbox.get_parent().unwrap().get_allocation().width - evbox.get_allocation().width;
 
                     let builder: &RefCell<TimelineWidget> = self_.borrow();
-                    builder.borrow().fixed.move_(evbox, cmp::max(cmp::min(px + rx + x as i32 - builder.borrow().offset, x_max), 0), 0);
+//                    builder.borrow().fixed.move_(evbox, cmp::max(cmp::min(px + rx + x as i32 - builder.borrow().offset, x_max), 0), 0);
                 }
 
                 Inhibit(false)
