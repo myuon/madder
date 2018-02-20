@@ -25,7 +25,7 @@ impl BoxObject {
     }
 
     fn renderer(&self, cr: &cairo::Context) {
-        cr.set_source_rgb(0.0, 0.5, 1.0);
+        cr.set_source_rgba(0.0, 0.5, 1.0, 0.5);
         cr.rectangle(self.coordinate.0.into(), self.coordinate.1.into(), self.size.0.into(), self.size.1.into());
         cr.fill();
         cr.stroke();

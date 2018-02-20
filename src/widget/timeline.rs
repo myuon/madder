@@ -1,7 +1,5 @@
-use std::cmp;
 use std::rc::Rc;
 use std::cell::RefCell;
-use std::borrow::Borrow;
 
 extern crate gtk;
 use gtk::prelude::*;
@@ -22,15 +20,12 @@ pub struct TimelineWidget {
     ruler_box: gtk::EventBox,
     tracker: gtk::DrawingArea,
     container: gtk::Overlay,
-    offset: i32,
 }
 
 // workaround for sharing a variable within callbacks
 impl TimelineWidget {
     pub fn new(width: i32) -> Rc<RefCell<TimelineWidget>> {
         let timeline = BoxViewerWidget::new(width, 50);
-//        let fixed = gtk::Fixed::new();
-//        fixed.set_size_request(width, 50);
 
         let ruler_box = gtk::EventBox::new();
 
@@ -61,7 +56,6 @@ impl TimelineWidget {
             ruler_box: ruler_box,
             container: overlay,
             tracker: tracker,
-            offset: 0
         }))
     }
 
@@ -91,73 +85,6 @@ impl TimelineWidget {
 
     pub fn queue_draw(&self) {
         self.container.queue_draw();
-    }
-
-    pub fn add_component_widget(self_: Rc<RefCell<TimelineWidget>>, widget_id: &str, label_text: &str, offset_x: i32, width: i32, connect_button_press_event_cont: Box<Fn(&gtk::EventBox) -> gtk::Inhibit + 'static>) {
-        let evbox = gtk::EventBox::new();
-        evbox.show();
-        gtk::WidgetExt::set_name(&evbox, widget_id);
-        evbox.connect_realize(move |evbox| {
-            let window = evbox.get_window().unwrap();
-            window.set_pass_through(false);
-        });
-
-        {
-            let builder: &RefCell<TimelineWidget> = self_.borrow();
-            let builder: &TimelineWidget = &builder.borrow();
-//            builder.fixed.put(&evbox, offset_x, 0);
-        }
-
-        let label = gtk::Label::new(label_text);
-        evbox.add(&label);
-        label.override_background_color(gtk::StateFlags::NORMAL, &gdk::RGBA::red());
-        label.set_ellipsize(pango::EllipsizeMode::End);
-        label.set_size_request(width,30);
-        label.show();
-
-        {
-            let self_: Rc<RefCell<TimelineWidget>> = self_.clone();
-            evbox.connect_button_press_event(move |evbox,button| {
-                let (rx,_) = evbox.get_parent().unwrap().get_window().unwrap().get_position();
-                let (x,_) = button.get_position();
-
-                {
-                    let self_ = self_.clone();
-                    let widget: &RefCell<TimelineWidget> = self_.borrow();
-                    widget.borrow_mut().offset = rx + x as i32;
-                }
-
-                connect_button_press_event_cont(evbox)
-            });
-        }
-
-        {
-            let self_: Rc<RefCell<TimelineWidget>> = self_.clone();
-            evbox.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
-            evbox.connect_motion_notify_event(move |evbox,motion| {
-                let (x,_) = motion.get_position();
-                let evbox_window = motion.get_window().unwrap();
-
-                let grab_edge = 5;
-                if (evbox_window.get_width() - x as i32) <= grab_edge {
-                    evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "e-resize"));
-                } else {
-                    evbox_window.set_cursor(&gdk::Cursor::new_from_name(&evbox_window.get_display(), "default"));
-                }
-
-                if motion.get_state().contains(gdk::ModifierType::BUTTON1_MASK) {
-                    let (px,_) = evbox.get_parent().unwrap().get_window().unwrap().get_position();
-                    let (rx,_) = evbox_window.get_position();
-
-                    let x_max = evbox.get_parent().unwrap().get_allocation().width - evbox.get_allocation().width;
-
-                    let builder: &RefCell<TimelineWidget> = self_.borrow();
-//                    builder.borrow().fixed.move_(evbox, cmp::max(cmp::min(px + rx + x as i32 - builder.borrow().offset, x_max), 0), 0);
-                }
-
-                Inhibit(false)
-            });
-        }
     }
 }
 

@@ -66,26 +66,7 @@ impl App {
     }
 
     fn register(self_: Rc<RefCell<App>>, component: Box<ComponentLike>) {
-        let name = &component.get_component().name.clone();
-        let start_time = component.get_component().structure.start_time;
-        let length = component.get_component().structure.length;
-        let index = self_.as_ref().borrow_mut().editor.register(component);
-
-        {
-            let self_ = self_.clone();
-            let self__ = self_.clone();
-            let time_to_length = |p: gst::ClockTime| p.mseconds().unwrap() as i32;
-            TimelineWidget::add_component_widget(
-                self_.as_ref().borrow().timeline.clone(),
-                &index.to_string(),
-                &name,
-                time_to_length(start_time), time_to_length(length),
-                Box::new(move |evbox| {
-//                    App::select_component(self__.clone(), evbox.clone());
-                    gtk::Inhibit(false)
-                })
-            );
-        }
+        self_.as_ref().borrow_mut().editor.register(component);
     }
 
     fn register_from_json(self_: Rc<RefCell<App>>, json: &ComponentStructure) {
@@ -93,8 +74,6 @@ impl App {
     }
 
     fn select_component(self_: Rc<RefCell<App>>, index: usize) {
-//        let name = gtk::WidgetExt::get_name(&selected_box).unwrap();
-//        let index = name.parse::<usize>().unwrap();
         let self__ = self_.clone();
 
         self_.as_ref().borrow().property.set_properties(
