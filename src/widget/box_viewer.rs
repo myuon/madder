@@ -13,14 +13,16 @@ pub struct BoxObject {
     pub index: usize,
     coordinate: (i32,i32),
     size: (i32,i32),
+    label: String,
 }
 
 impl BoxObject {
-    pub fn new(x: i32, y: i32, width: i32, height: i32, index: usize) -> BoxObject {
+    pub fn new(x: i32, y: i32, width: i32, height: i32, index: usize, label: String) -> BoxObject {
         BoxObject {
             index: index,
             coordinate: (x,y),
             size: (width, height),
+            label: label,
         }
     }
 
@@ -29,6 +31,19 @@ impl BoxObject {
         cr.rectangle(self.coordinate.0.into(), self.coordinate.1.into(), self.size.0.into(), self.size.1.into());
         cr.fill();
         cr.stroke();
+
+        cr.save();
+        cr.rectangle(self.coordinate.0.into(), self.coordinate.1.into(), self.size.0.into(), self.size.1.into());
+        cr.clip();
+
+        let font_extent = cr.font_extents();
+        cr.select_font_face("Serif", cairo::FontSlant::Normal, cairo::FontWeight::Normal);
+        cr.set_font_size(15.0);
+        cr.set_source_rgb(0.0, 0.0, 0.0);
+        cr.move_to(self.coordinate.0.into(), self.coordinate.1 as f64 - font_extent.descent + font_extent.height / 2.0 + self.size.1 as f64 / 2.0);
+        cr.show_text(self.label.as_str());
+        cr.stroke();
+        cr.restore();
     }
 
     fn contains(&self, x: i32, y: i32) -> bool {

@@ -197,6 +197,7 @@ impl App {
                             component.get_component().structure.length.mseconds().unwrap() as i32,
                             30,
                             i,
+                            component.get_component().structure.entity,
                         )
                     }).collect()
                 }));
