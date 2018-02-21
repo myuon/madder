@@ -78,7 +78,7 @@ impl App {
 
         self_.as_ref().borrow().property.set_properties(
             self_.as_ref().borrow().editor.request_component_property(index),
-            Box::new(move |i, prop_name, edit_type| {
+            Box::new(move |prop_name, edit_type| {
                 let prop_name = Rc::new(prop_name);
                 let self__ = self__.clone();
 

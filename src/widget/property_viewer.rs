@@ -25,7 +25,7 @@ impl PropertyViewerWidget {
         self.view.override_background_color(gtk::StateFlags::NORMAL, &gdk::RGBA::white());
     }
 
-    pub fn set_properties<T: Clone>(&self, props: HashMap<String,T>, renderer: Box<Fn(usize,String,T) -> gtk::Widget>) {
+    pub fn set_properties<T: Clone>(&self, props: HashMap<String,T>, renderer: Box<Fn(String,T) -> gtk::Widget>) {
         for widget in self.view.get_children() {
             self.view.remove(&widget);
         }
@@ -38,7 +38,7 @@ impl PropertyViewerWidget {
 
         for (i, (ref k,ref v)) in props.iter().enumerate() {
             self.view.attach(&new_label(k.as_str(), gtk::Align::End), 0, i as i32, 1, 1);
-            self.view.attach(&renderer(i,k.to_string(),v.clone().clone()), 1, i as i32, 1, 1);
+            self.view.attach(&renderer(k.to_string(),v.clone().clone()), 1, i as i32, 1, 1);
         }
 
         self.view.show_all();
