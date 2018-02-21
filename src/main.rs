@@ -180,139 +180,114 @@ impl App {
     }
 
     pub fn create_ui(self_: Rc<RefCell<App>>) {
-        {
-            let self__ = self_.clone();
-            let timeline = &self_.as_ref().borrow().timeline;
-            timeline.as_ref().borrow_mut().create_ui();
-            timeline.as_ref().borrow().connect_select_component(Box::new(move |index| {
-                App::select_component(self__.clone(), index);
-            }));
-            {
-                let self_ = self_.clone();
-                timeline.as_ref().borrow().connect_drag_component(Box::new(move |index,distance| {
-                    let props = self_.as_ref().borrow().editor.request_component_property(index);
-                    let get_from_prop = |p: Property| {
-                        match p {
-                            Property::Time(n) => n,
-                            _ => unimplemented!(),
-                        }
-                    };
-                    let add_time = |a: gst::ClockTime, b: f64| {
-                        if b < 0.0 {
-                            a - b.abs() as u64 * gst::MSECOND
-                        } else {
-                            a + b as u64 * gst::MSECOND
-                        }
-                    };
+        let app = self_.as_ref().borrow();
 
-                    self_.as_ref().borrow_mut().editor.set_component_property(
-                        index,
-                        "start_time".to_string(),
-                        Property::Time(add_time(get_from_prop(props["start_time"].clone()), distance as f64))
-                    );
-                    self_.as_ref().borrow().queue_draw();
-                }));
-            }
+        app.timeline.as_ref().borrow_mut().create_ui();
 
-            {
-                let self_ = self_.clone();
-                timeline.as_ref().borrow().connect_request_objects(Box::new(move || {
-                    self_.as_ref().borrow().editor.elements.iter().enumerate().map(|(i,component)| {
-                        BoxObject::new(
-                            component.get_component().structure.start_time.mseconds().unwrap() as i32,
-                            0,
-                            component.get_component().structure.length.mseconds().unwrap() as i32,
-                            30,
-                            i,
-                            component.get_component().structure.entity,
-                            Some(i) == self_.as_ref().borrow().selected_component_index,
-                        )
-                    }).collect()
-                }));
-            }
+        let self__ = self_.clone();
+        app.timeline.as_ref().borrow().connect_select_component(Box::new(move |index| {
+            App::select_component(self__.clone(), index);
+        }));
 
-            {
-                let self_ = self_.clone();
-                timeline.as_ref().borrow().ruler_connect_button_press_event(move |event| {
-                    let (x,_) = event.get_position();
-                    self_.as_ref().borrow_mut().editor.seek_to(x as u64 * gst::MSECOND);
-                    self_.as_ref().borrow().queue_draw();
+        let self__ = self_.clone();
+        app.timeline.as_ref().borrow().connect_drag_component(Box::new(move |index,distance| {
+            let props = self__.as_ref().borrow().editor.request_component_property(index);
+            let get_from_prop = |p: Property| {
+                match p {
+                    Property::Time(n) => n,
+                    _ => unimplemented!(),
+                }
+            };
+            let add_time = |a: gst::ClockTime, b: f64| {
+                if b < 0.0 {
+                    a - b.abs() as u64 * gst::MSECOND
+                } else {
+                    a + b as u64 * gst::MSECOND
+                }
+            };
 
-                    Inhibit(false)
-                });
-            }
+            self__.as_ref().borrow_mut().editor.set_component_property(
+                index,
+                "start_time".to_string(),
+                Property::Time(add_time(get_from_prop(props["start_time"].clone()), distance as f64))
+            );
+            self__.as_ref().borrow().queue_draw();
+        }));
 
-            {
-                let self_ = self_.clone();
-                timeline.as_ref().borrow().tracker_connect_draw(move |cr| {
-                    cr.set_source_rgb(200f64, 0f64, 0f64);
+        let self__ = self_.clone();
+        app.timeline.as_ref().borrow().connect_request_objects(Box::new(move || {
+            self__.as_ref().borrow().editor.elements.iter().enumerate().map(|(i,component)| {
+                BoxObject::new(
+                    component.get_component().structure.start_time.mseconds().unwrap() as i32,
+                    0,
+                    component.get_component().structure.length.mseconds().unwrap() as i32,
+                    30,
+                    i,
+                    component.get_component().structure.entity,
+                    Some(i) == self__.as_ref().borrow().selected_component_index,
+                )
+            }).collect()
+        }));
 
-                    cr.move_to(self_.as_ref().borrow().editor.position.mseconds().unwrap() as f64, 0f64);
-                    cr.rel_line_to(0f64, 100f64);
-                    cr.stroke();
+        let self__ = self_.clone();
+        app.timeline.as_ref().borrow().ruler_connect_button_press_event(move |event| {
+            let (x,_) = event.get_position();
+            self__.as_ref().borrow_mut().editor.seek_to(x as u64 * gst::MSECOND);
+            self__.as_ref().borrow().queue_draw();
 
-                    Inhibit(false)
-                });
-            }
-        }
+            Inhibit(false)
+        });
 
-        {
-            let canvas = &self_.as_ref().borrow().canvas;
-            let self_ = self_.clone();
-            canvas.connect_draw(move |_,cr| {
-                cr.set_source_pixbuf(&self_.as_ref().borrow().editor.get_current_pixbuf(), 0f64, 0f64);
-                cr.paint();
-                Inhibit(false)
-            });
-        }
+        let self__ = self_.clone();
+        app.timeline.as_ref().borrow().tracker_connect_draw(move |cr| {
+            cr.set_source_rgb(200f64, 0f64, 0f64);
 
-        {
-            let self_: &App = &(*self_.as_ref()).borrow();
-            self_.canvas.set_size_request(self_.editor.width, self_.editor.height);
-            self_.window.set_default_size(self_.editor.width, self_.editor.height + 200);
-            self_.window.set_title("madder");
-        }
+            cr.move_to(self__.as_ref().borrow().editor.position.mseconds().unwrap() as f64, 0f64);
+            cr.rel_line_to(0f64, 100f64);
+            cr.stroke();
+
+            Inhibit(false)
+        });
+
+        let self__ = self_.clone();
+        app.canvas.connect_draw(move |_,cr| {
+            cr.set_source_pixbuf(&self__.as_ref().borrow().editor.get_current_pixbuf(), 0f64, 0f64);
+            cr.paint();
+            Inhibit(false)
+        });
+
+        app.canvas.set_size_request(app.editor.width, app.editor.height);
+        app.window.set_default_size(app.editor.width, app.editor.height + 200);
+        app.window.set_title("madder");
 
         let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
         vbox.pack_start(&App::create_menu(self_.clone()), true, true, 0);
 
         let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-        hbox.pack_start(&self_.as_ref().borrow().canvas, true, true, 0);
-        hbox.pack_start(self_.as_ref().borrow().property.to_widget(), true, true, 0);
-
         {
-            let property = &self_.as_ref().borrow().property;
-            property.create_ui();
+            hbox.pack_start(&app.canvas, true, true, 0);
+            hbox.pack_start(app.property.to_widget(), true, true, 0);
         }
-
+        app.property.create_ui();
         vbox.pack_start(&hbox, true, true, 0);
 
         let btn = gtk::Button::new();
-        btn.set_label("render");
-
         {
-            let self_ = self_.clone();
+            let self__ = self_.clone();
+            btn.set_label("render");
             btn.connect_clicked(move |_| {
-                self_.borrow_mut().editor.write("output/output.avi", 100, 5);
+                self__.borrow_mut().editor.write("output/output.avi", 100, 5);
             });
         }
-
         vbox.pack_start(&btn, true, true, 5);
+        vbox.pack_start(app.timeline.as_ref().borrow().to_widget(), true, true, 5);
 
-        {
-            let self_: &App = &self_.as_ref().borrow();
-            vbox.pack_start(self_.timeline.as_ref().borrow().to_widget(), true, true, 5);
-        }
-
-        {
-            let self_: &App = &self_.as_ref().borrow();
-            self_.window.add(&vbox);
-            self_.window.show_all();
-            self_.window.connect_delete_event(move |_,_| {
-                gtk::main_quit();
-                Inhibit(false)
-            });
-        }
+        app.window.add(&vbox);
+        app.window.show_all();
+        app.window.connect_delete_event(move |_,_| {
+            gtk::main_quit();
+            Inhibit(false)
+        });
     }
 }
 
