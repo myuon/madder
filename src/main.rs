@@ -92,6 +92,7 @@ impl App {
         );
 
         self_.as_ref().borrow_mut().selected_component_index = Some(index);
+        self_.as_ref().borrow().queue_draw();
     }
 
     fn create_menu(self_: Rc<RefCell<App>>) -> gtk::MenuBar {
@@ -198,6 +199,7 @@ impl App {
                             30,
                             i,
                             component.get_component().structure.entity,
+                            Some(i) == self_.as_ref().borrow().selected_component_index,
                         )
                     }).collect()
                 }));

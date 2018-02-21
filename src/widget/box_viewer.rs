@@ -14,19 +14,27 @@ pub struct BoxObject {
     coordinate: (i32,i32),
     size: (i32,i32),
     label: String,
+    selected: bool,
 }
 
 impl BoxObject {
-    pub fn new(x: i32, y: i32, width: i32, height: i32, index: usize, label: String) -> BoxObject {
+    pub fn new(x: i32, y: i32, width: i32, height: i32, index: usize, label: String, selected: bool) -> BoxObject {
         BoxObject {
             index: index,
             coordinate: (x,y),
             size: (width, height),
             label: label,
+            selected: selected,
         }
     }
 
     fn renderer(&self, cr: &cairo::Context) {
+        if self.selected {
+            cr.set_source_rgba(0.0, 0.0, 0.0, 0.5);
+            cr.rectangle(self.coordinate.0 as f64 - 2.0, self.coordinate.1 as f64 - 2.0, self.size.0 as f64 + 4.0, self.size.1 as f64 + 4.0);
+            cr.stroke();
+        }
+
         cr.set_source_rgba(0.0, 0.5, 1.0, 0.5);
         cr.rectangle(self.coordinate.0.into(), self.coordinate.1.into(), self.size.0.into(), self.size.1.into());
         cr.fill();
@@ -106,6 +114,11 @@ impl BoxViewerWidget {
             }
             Inhibit(false)
         });
+    }
+
+    pub fn queue_draw(&self) {
+        self.canvas.queue_draw();
+        println!("queue");
     }
 }
 
