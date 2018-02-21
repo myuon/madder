@@ -72,12 +72,12 @@ impl Editor {
         self.position = time;
     }
 
-    pub fn request_component_property(&self, index: usize) -> Vec<Property> {
+    pub fn request_component_property(&self, index: usize) -> Properties {
         self.elements[index].get_properties()
     }
 
-    pub fn set_component_property(&mut self, index: usize, prop: Property) {
-        self.elements[index].set_property(prop);
+    pub fn set_component_property(&mut self, index: usize, name: String, prop: Property) {
+        self.elements[index].set_property(name, prop);
     }
 
     pub fn get_current_pixbuf(&self) -> gdk_pixbuf::Pixbuf {

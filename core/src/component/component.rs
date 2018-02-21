@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 extern crate serde;
@@ -41,20 +42,16 @@ fn gst_clocktime_deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) 
 }
 
 #[derive(Debug, Clone)]
-pub enum EditType {
+pub enum Property {
     I32(i32),
     Time(gst::ClockTime),
-    Pair(Box<EditType>, Box<EditType>),
+    Pair(Box<Property>, Box<Property>),
     FilePath(String),
     Document(String),
     ReadOnly(String),
 }
 
-#[derive(Debug)]
-pub struct Property {
-    pub name: String,
-    pub edit_type: EditType,
-}
+pub type Properties = HashMap<String, Property>;
 
 #[derive(Debug, Clone)]
 pub struct Component {
@@ -64,8 +61,8 @@ pub struct Component {
 
 pub trait ComponentWrapper {
     fn get_component(&self) -> Component;
-    fn get_properties(&self) -> Vec<Property>;
-    fn set_property(&mut self, prop: Property);
+    fn get_properties(&self) -> Properties;
+    fn set_property(&mut self, name: String, prop: Property);
 }
 
 impl ComponentWrapper for Component {
@@ -73,22 +70,22 @@ impl ComponentWrapper for Component {
         self.clone()
     }
 
-    fn get_properties(&self) -> Vec<Property> {
-        use EditType::*;
+    fn get_properties(&self) -> Properties {
+        use Property::*;
 
-        vec![
-            Property { name: "component_type".to_string(), edit_type: ReadOnly(format!("{:?}", self.structure.component_type)) },
-            Property { name: "start_time".to_string(), edit_type: Time(self.structure.start_time) },
-            Property { name: "length".to_string(), edit_type: Time(self.structure.start_time) },
-            Property { name: "coordinate".to_string(), edit_type: Pair(box I32(self.structure.coordinate.0), box I32(self.structure.coordinate.1)) },
-            Property { name: "entity".to_string(), edit_type: ReadOnly(self.structure.entity.clone()) },
-        ]
+        [
+            ("component_type".to_string(), ReadOnly(format!("{:?}", self.structure.component_type))),
+            ("start_time".to_string(), Time(self.structure.start_time)),
+            ("length".to_string(), Time(self.structure.start_time)),
+            ("coordinate".to_string(), Pair(box I32(self.structure.coordinate.0), box I32(self.structure.coordinate.1))),
+            ("entity".to_string(), ReadOnly(self.structure.entity.clone())),
+        ].iter().cloned().collect()
     }
 
-    fn set_property(&mut self, prop: Property) {
-        use EditType::*;
+    fn set_property(&mut self, name: String, prop: Property) {
+        use Property::*;
 
-        match (prop.name.as_str(), prop.edit_type) {
+        match (name.as_str(), prop) {
             ("start_time", Time(v)) => self.structure.start_time = v,
             ("length", Time(v)) => self.structure.length = v,
             ("coordinate", Pair(box I32(x), box I32(y))) => self.structure.coordinate = (x,y),
@@ -102,12 +99,12 @@ impl<T: ComponentWrapper> ComponentWrapper for Box<T> {
         self.as_ref().get_component()
     }
 
-    fn get_properties(&self) -> Vec<Property> {
+    fn get_properties(&self) -> Properties {
         self.as_ref().get_properties()
     }
 
-    fn set_property(&mut self, prop: Property) {
-        self.as_mut().set_property(prop);
+    fn set_property(&mut self, name: String, prop: Property) {
+        self.as_mut().set_property(name, prop);
     }
 }
 

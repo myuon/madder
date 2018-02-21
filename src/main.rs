@@ -77,15 +77,15 @@ impl App {
         let self__ = self_.clone();
 
         self_.as_ref().borrow().property.set_properties(
-            self_.as_ref().borrow().editor.request_component_property(index).iter().map(|prop| { (prop.name.clone(), prop.edit_type.clone()) }).collect(),
+            self_.as_ref().borrow().editor.request_component_property(index),
             Box::new(move |i, prop_name, edit_type| {
                 let prop_name = Rc::new(prop_name);
                 let self__ = self__.clone();
 
                 gtk_impl::edit_type_to_widget(&edit_type, vec![], Rc::new(move |new_text, tracker| {
-                    let edit_type = self__.as_ref().borrow().editor.request_component_property(index)[i].edit_type.clone();
+                    let edit_type = self__.as_ref().borrow().editor.request_component_property(index)[prop_name.as_ref()].clone();
                     let edit_type = gtk_impl::read_as_edit_type(edit_type, tracker, new_text);
-                    self__.as_ref().borrow_mut().editor.set_component_property(index, Property { name: prop_name.as_ref().clone(), edit_type: edit_type });
+                    self__.as_ref().borrow_mut().editor.set_component_property(index, prop_name.as_ref().clone(), edit_type);
                     self__.as_ref().borrow().queue_draw();
                 }))
             }),
@@ -191,9 +191,9 @@ impl App {
                 let self_ = self_.clone();
                 timeline.as_ref().borrow().connect_drag_component(Box::new(move |index,distance| {
                     let props = self_.as_ref().borrow().editor.request_component_property(index);
-                    let get_from_U64 = |p: EditType| {
+                    let get_from_prop = |p: Property| {
                         match p {
-                            EditType::Time(n) => n,
+                            Property::Time(n) => n,
                             _ => unimplemented!(),
                         }
                     };
@@ -205,7 +205,11 @@ impl App {
                         }
                     };
 
-                    self_.as_ref().borrow_mut().editor.set_component_property(index, Property { name: "start_time".to_string(), edit_type: EditType::Time(add_time(get_from_U64(props[1].edit_type.clone()), distance as f64)) });
+                    self_.as_ref().borrow_mut().editor.set_component_property(
+                        index,
+                        "start_time".to_string(),
+                        Property::Time(add_time(get_from_prop(props["start_time"].clone()), distance as f64))
+                    );
                     self_.as_ref().borrow().queue_draw();
                 }));
             }

@@ -61,12 +61,12 @@ impl ComponentWrapper for VideoTestComponent {
         self.component.get_component()
     }
 
-    fn get_properties(&self) -> Vec<Property> {
+    fn get_properties(&self) -> Properties {
         self.component.get_properties()
     }
 
-    fn set_property(&mut self, prop: Property) {
-        self.component.set_property(prop);
+    fn set_property(&mut self, name: String, prop: Property) {
+        self.component.set_property(name, prop);
     }
 }
 
@@ -122,12 +122,12 @@ impl ComponentWrapper for VideoFileComponent {
         self.component.get_component()
     }
 
-    fn get_properties(&self) -> Vec<Property> {
+    fn get_properties(&self) -> Properties {
         self.component.get_properties()
     }
 
-    fn set_property(&mut self, prop: Property) {
-        self.component.set_property(prop);
+    fn set_property(&mut self, name: String, prop: Property) {
+        self.component.set_property(name, prop);
     }
 }
 

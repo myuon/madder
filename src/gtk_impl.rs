@@ -6,8 +6,8 @@ extern crate gtk;
 use gtk::prelude::*;
 use madder_core::*;
 
-pub fn edit_type_to_widget(self_: &EditType, tracker: Vec<i32>, cont: Rc<Fn(String, &[i32]) + 'static>) -> gtk::Widget {
-    use EditType::*;
+pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(String, &[i32]) + 'static>) -> gtk::Widget {
+    use Property::*;
 
     match self_ {
         &ReadOnly(ref s) => {
@@ -81,8 +81,8 @@ pub fn edit_type_to_widget(self_: &EditType, tracker: Vec<i32>, cont: Rc<Fn(Stri
     }
 }
 
-pub fn read_as_edit_type(dynamic_type: EditType, tracker: &[i32], new_text: String) -> EditType {
-    use EditType::*;
+pub fn read_as_edit_type(dynamic_type: Property, tracker: &[i32], new_text: String) -> Property {
+    use Property::*;
 
     match tracker {
         &[] => {

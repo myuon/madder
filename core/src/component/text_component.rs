@@ -56,23 +56,20 @@ impl ComponentWrapper for TextComponent {
         self.component.get_component()
     }
 
-    fn get_properties(&self) -> Vec<Property> {
-        use EditType::*;
+    fn get_properties(&self) -> Properties {
+        use Property::*;
 
-        let mut vec = self.component.get_properties();
-        vec.pop();
-        vec.push(
-            Property { name: "entity".to_string(), edit_type: Document(self.component.structure.entity.clone()) }
-        );
-        vec
+        let mut props = self.component.get_properties();
+        props.insert("entity".to_string(), Document(self.component.structure.entity.clone()));
+        props
     }
 
-    fn set_property(&mut self, prop: Property) {
-        use EditType::*;
+    fn set_property(&mut self, name: String, prop: Property) {
+        use Property::*;
 
-        match (prop.name.as_str(), prop.edit_type) {
+        match (name.as_str(), prop) {
             ("entity", Document(doc)) => self.reload(doc),
-            (x,y) => self.component.set_property(Property { name: x.to_string(), edit_type: y }),
+            (x,y) => self.component.set_property(x.to_string(), y),
         }
     }
 }
