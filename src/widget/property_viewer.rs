@@ -36,7 +36,9 @@ impl PropertyViewerWidget {
             w
         };
 
-        for (i, (ref k,ref v)) in props.iter().enumerate() {
+        let mut props = props.iter().collect::<Vec<_>>();
+        props.sort_by_key(|&(x,_)| x);
+        for (i, &(ref k,ref v)) in props.iter().enumerate() {
             self.view.attach(&new_label(k.as_str(), gtk::Align::End), 0, i as i32, 1, 1);
             self.view.attach(&renderer(k.to_string(),v.clone().clone()), 1, i as i32, 1, 1);
         }
