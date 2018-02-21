@@ -200,7 +200,11 @@ impl App {
             };
             let add_time = |a: gst::ClockTime, b: f64| {
                 if b < 0.0 {
-                    a - b.abs() as u64 * gst::MSECOND
+                    if a < b.abs() as u64 * gst::MSECOND {
+                        0 * gst::MSECOND
+                    } else {
+                        a - b.abs() as u64 * gst::MSECOND
+                    }
                 } else {
                     a + b as u64 * gst::MSECOND
                 }

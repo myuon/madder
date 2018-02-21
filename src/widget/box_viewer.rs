@@ -128,7 +128,8 @@ impl BoxViewerWidget {
         self_.as_ref().borrow().canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
         self_.as_ref().borrow().canvas.connect_motion_notify_event(move |_,event| {
             if event.get_state().contains(gdk::ModifierType::BUTTON1_MASK) {
-                cont(self__.as_ref().borrow().selecting_box_index.unwrap(), event.get_position().0 as i32 - self__.as_ref().borrow().offset);
+                let distance = event.get_position().0 as i32 - self__.as_ref().borrow().offset;
+                cont(self__.as_ref().borrow().selecting_box_index.unwrap(), distance);
                 self__.as_ref().borrow_mut().offset = event.get_position().0 as i32;
             }
 
