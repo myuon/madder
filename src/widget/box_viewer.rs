@@ -64,6 +64,8 @@ pub struct BoxViewerWidget {
     canvas: gtk::DrawingArea,
     objects: Vec<BoxObject>,
     requester: Box<Fn() -> Vec<BoxObject>>,
+    offset: i32,
+    selecting_box_index: Option<usize>,
 }
 
 impl BoxViewerWidget {
@@ -75,6 +77,8 @@ impl BoxViewerWidget {
             canvas: canvas,
             objects: vec![],
             requester: Box::new(|| vec![]),
+            offset: 0,
+            selecting_box_index: None,
         }))
     }
 
@@ -104,21 +108,32 @@ impl BoxViewerWidget {
         });
     }
 
-    pub fn connect_select_box(self_: Rc<RefCell<BoxViewerWidget>>, cont: Box<Fn(BoxObject)>) {
+    pub fn connect_select_box(self_: Rc<RefCell<BoxViewerWidget>>, cont: Box<Fn(usize)>) {
         let self__ = self_.clone();
         self_.as_ref().borrow().canvas.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
         self_.as_ref().borrow().canvas.connect_button_press_event(move |_,event| {
             let (x,y) = event.get_position();
-            if let Some(object) = self__.as_ref().borrow().objects.iter().find(|&object| object.contains(x as i32, y as i32)) {
-                cont(object.clone());
+            let objects = self__.as_ref().borrow().objects.clone();
+            if let Some(object) = objects.iter().find(|&object| object.contains(x as i32, y as i32)) {
+                self__.as_ref().borrow_mut().offset = event.get_position().0 as i32;
+                self__.as_ref().borrow_mut().selecting_box_index = Some(object.index);
+                cont(object.index);
             }
             Inhibit(false)
         });
     }
 
-    pub fn queue_draw(&self) {
-        self.canvas.queue_draw();
-        println!("queue");
+    pub fn connect_drag_box(self_: Rc<RefCell<BoxViewerWidget>>, cont: Box<Fn(usize, i32)>) {
+        let self__ = self_.clone();
+        self_.as_ref().borrow().canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
+        self_.as_ref().borrow().canvas.connect_motion_notify_event(move |_,event| {
+            if event.get_state().contains(gdk::ModifierType::BUTTON1_MASK) {
+                cont(self__.as_ref().borrow().selecting_box_index.unwrap(), event.get_position().0 as i32 - self__.as_ref().borrow().offset);
+                self__.as_ref().borrow_mut().offset = event.get_position().0 as i32;
+            }
+
+            Inhibit(false)
+        });
     }
 }
 

@@ -184,9 +184,24 @@ impl App {
             let self__ = self_.clone();
             let timeline = &self_.as_ref().borrow().timeline;
             timeline.as_ref().borrow_mut().create_ui();
-            timeline.as_ref().borrow().connect_select_component(Box::new(move |object| {
-                App::select_component(self__.clone(), object.index);
+            timeline.as_ref().borrow().connect_select_component(Box::new(move |index| {
+                App::select_component(self__.clone(), index);
             }));
+            {
+                let self_ = self_.clone();
+                timeline.as_ref().borrow().connect_drag_component(Box::new(move |index,distance| {
+                    let props = self_.as_ref().borrow().editor.request_component_property(index);
+                    let get_from_U64 = |p: EditType| {
+                        match p {
+                            EditType::U64(n) => n,
+                            _ => unimplemented!(),
+                        }
+                    };
+
+                    self_.as_ref().borrow_mut().editor.set_component_property(index, Property { name: "start_time".to_string(), edit_type: EditType::U64((get_from_U64(props[1].edit_type.clone()) as f64 + distance as f64) as u64) });
+                    self_.as_ref().borrow().queue_draw();
+                }));
+            }
 
             {
                 let self_ = self_.clone();
