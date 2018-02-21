@@ -1,8 +1,9 @@
 use std::rc::Rc;
 
+extern crate gstreamer as gst;
 extern crate gtk;
-use gtk::prelude::*;
 
+use gtk::prelude::*;
 use madder_core::*;
 
 pub fn edit_type_to_widget(self_: &EditType, tracker: Vec<i32>, cont: Rc<Fn(String, &[i32]) + 'static>) -> gtk::Widget {
@@ -22,9 +23,9 @@ pub fn edit_type_to_widget(self_: &EditType, tracker: Vec<i32>, cont: Rc<Fn(Stri
             entry.connect_changed(move |entry| cont(entry.get_text().unwrap(), &tracker.clone()));
             entry.dynamic_cast().unwrap()
         },
-        &U64(ref i) => {
+        &Time(ref time) => {
             let entry = gtk::Entry::new();
-            entry.set_text(&i.to_string());
+            entry.set_text(&time.mseconds().unwrap().to_string());
             entry.connect_changed(move |entry| cont(entry.get_text().unwrap(), &tracker.clone()));
             entry.dynamic_cast().unwrap()
         },
@@ -88,7 +89,7 @@ pub fn read_as_edit_type(dynamic_type: EditType, tracker: &[i32], new_text: Stri
             match dynamic_type {
                 ReadOnly(s) => ReadOnly(s),
                 I32(_) => I32(new_text.parse::<i32>().unwrap()),
-                U64(_) => U64(new_text.parse::<u64>().unwrap()),
+                Time(_) => Time(gst::ClockTime::from_mseconds(new_text.parse::<u64>().unwrap())),
                 FilePath(_) => FilePath(new_text),
                 Document(_) => Document(new_text),
                 _ => unimplemented!(),

@@ -43,7 +43,7 @@ fn gst_clocktime_deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) 
 #[derive(Debug, Clone)]
 pub enum EditType {
     I32(i32),
-    U64(u64),
+    Time(gst::ClockTime),
     Pair(Box<EditType>, Box<EditType>),
     FilePath(String),
     Document(String),
@@ -78,8 +78,8 @@ impl ComponentWrapper for Component {
 
         vec![
             Property { name: "component_type".to_string(), edit_type: ReadOnly(format!("{:?}", self.structure.component_type)) },
-            Property { name: "start_time".to_string(), edit_type: U64(self.structure.start_time.mseconds().unwrap()) },
-            Property { name: "length".to_string(), edit_type: U64(self.structure.start_time.mseconds().unwrap()) },
+            Property { name: "start_time".to_string(), edit_type: Time(self.structure.start_time) },
+            Property { name: "length".to_string(), edit_type: Time(self.structure.start_time) },
             Property { name: "coordinate".to_string(), edit_type: Pair(box I32(self.structure.coordinate.0), box I32(self.structure.coordinate.1)) },
             Property { name: "entity".to_string(), edit_type: ReadOnly(self.structure.entity.clone()) },
         ]
@@ -89,8 +89,8 @@ impl ComponentWrapper for Component {
         use EditType::*;
 
         match (prop.name.as_str(), prop.edit_type) {
-            ("start_time", U64(v)) => self.structure.start_time = gst::ClockTime::from_mseconds(v),
-            ("length", U64(v)) => self.structure.length = gst::ClockTime::from_mseconds(v),
+            ("start_time", Time(v)) => self.structure.start_time = v,
+            ("length", Time(v)) => self.structure.length = v,
             ("coordinate", Pair(box I32(x), box I32(y))) => self.structure.coordinate = (x,y),
             _ => unimplemented!(),
         }

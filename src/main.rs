@@ -193,12 +193,19 @@ impl App {
                     let props = self_.as_ref().borrow().editor.request_component_property(index);
                     let get_from_U64 = |p: EditType| {
                         match p {
-                            EditType::U64(n) => n,
+                            EditType::Time(n) => n,
                             _ => unimplemented!(),
                         }
                     };
+                    let add_time = |a: gst::ClockTime, b: f64| {
+                        if b < 0.0 {
+                            a - b.abs() as u64 * gst::MSECOND
+                        } else {
+                            a + b as u64 * gst::MSECOND
+                        }
+                    };
 
-                    self_.as_ref().borrow_mut().editor.set_component_property(index, Property { name: "start_time".to_string(), edit_type: EditType::U64((get_from_U64(props[1].edit_type.clone()) as f64 + distance as f64) as u64) });
+                    self_.as_ref().borrow_mut().editor.set_component_property(index, Property { name: "start_time".to_string(), edit_type: EditType::Time(add_time(get_from_U64(props[1].edit_type.clone()), distance as f64)) });
                     self_.as_ref().borrow().queue_draw();
                 }));
             }
