@@ -52,6 +52,7 @@ pub enum Property {
     Pair(Box<Property>, Box<Property>),
     FilePath(String),
     Document(String),
+    Font(String),
     Color(gdk::RGBA),
     ReadOnly(String),
 }

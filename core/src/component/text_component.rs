@@ -10,28 +10,33 @@ use component::component::*;
 pub struct TextComponent {
     component: Component,
     text_color: gdk::RGBA,
+    text_font: String,
     data: gdk_pixbuf::Pixbuf,
 }
 
 impl TextComponent {
     pub fn new_from_structure(structure: &ComponentStructure) -> TextComponent {
+        let text_color = gdk::RGBA::white();
+        let text_font = "Serif 24".to_string();
+
         TextComponent {
             component: Component {
                 structure: structure.clone(),
                 name: "text".to_string(),
             },
-            text_color: gdk::RGBA::white(),
-            data: TextComponent::create_data(&structure.entity, gdk::RGBA::white()),
+            text_color: text_color,
+            text_font: text_font.clone(),
+            data: TextComponent::create_data(&structure.entity, &text_font, text_color),
         }
     }
 
-    fn create_data(text: &str, color: gdk::RGBA) -> gdk_pixbuf::Pixbuf {
+    fn create_data(text: &str, font: &str, color: gdk::RGBA) -> gdk_pixbuf::Pixbuf {
         use pango::prelude::*;
 
         let surface = cairo::ImageSurface::create(cairo::Format::ARgb32, 640, 480).unwrap();
         let context = cairo::Context::new(&surface);
         let layout = pangocairo::functions::create_layout(&context).unwrap();
-        layout.set_font_description(&pango::FontDescription::from_string("Serif 24"));
+        layout.set_font_description(&pango::FontDescription::from_string(font));
         let markup = format!("<span foreground=\"#{:02X}{:02X}{:02X}{:02X}\">{}</span>", (color.red * 255.0) as i32, (color.green * 255.0) as i32, (color.blue * 255.0) as i32, (color.alpha * 255.0) as i32, text);
         layout.set_markup(markup.as_str());
         pangocairo::functions::show_layout(&context, &layout);
@@ -40,7 +45,7 @@ impl TextComponent {
     }
 
     pub fn reload(&mut self) {
-        self.data = TextComponent::create_data(&self.component.structure.entity, self.text_color);
+        self.data = TextComponent::create_data(&self.component.structure.entity, &self.text_font, self.text_color);
     }
 }
 
@@ -64,6 +69,7 @@ impl ComponentWrapper for TextComponent {
 
         let mut props = self.component.get_properties();
         props.insert("entity".to_string(), Document(self.component.structure.entity.clone()));
+        props.insert("text_font".to_string(), Font(self.text_font.clone()));
         props.insert("text_color".to_string(), Color(self.text_color.clone()));
         props
     }
@@ -75,6 +81,10 @@ impl ComponentWrapper for TextComponent {
             ("entity", Document(doc)) => {
                 self.component.structure.entity = doc;
                 self.reload()
+            },
+            ("text_font", Font(font)) => {
+                self.text_font = font;
+                self.reload();
             },
             ("text_color", Color(rgba)) => {
                 self.text_color = rgba;

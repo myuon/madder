@@ -91,6 +91,13 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Opti
             });
             textarea.dynamic_cast().unwrap()
         },
+        &Font(ref font) => {
+            let fontbtn = gtk::FontButton::new_with_font(font);
+            fontbtn.connect_font_set(move |fontbtn| {
+                cont(fontbtn.get_font().map(Font), &tracker.clone())
+            });
+            fontbtn.dynamic_cast().unwrap()
+        },
         &Color(ref rgba) => {
             let colorbtn = gtk::ColorButton::new_with_rgba(rgba);
             colorbtn.connect_color_set(move |colorbtn| {
