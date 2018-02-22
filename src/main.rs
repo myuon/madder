@@ -108,16 +108,27 @@ impl App {
 
     fn create_menu(self_: Rc<RefCell<App>>) -> gtk::MenuBar {
         let menubar = gtk::MenuBar::new();
+        let file_item = {
+            let file_item = gtk::MenuItem::new_with_label("ファイル");
+            let file_menu = gtk::Menu::new();
+            file_item.set_submenu(&file_menu);
 
-        let editor_item = gtk::MenuItem::new_with_label("タイムライン");
-        menubar.append(&editor_item);
+            let output = gtk::MenuItem::new_with_label("動画の書き出し");
+            file_menu.append(&output);
 
-        let editor_menu = gtk::Menu::new();
-        editor_item.set_submenu(&editor_menu);
+            file_item
+        };
+        let editor_item = {
+            let editor_item = gtk::MenuItem::new_with_label("タイムライン");
+            let editor_menu = gtk::Menu::new();
+            editor_item.set_submenu(&editor_menu);
 
-        {
             let video_item = gtk::MenuItem::new_with_label("動画");
+            let image_item = gtk::MenuItem::new_with_label("画像");
+            let text_item = gtk::MenuItem::new_with_label("テキスト");
             editor_menu.append(&video_item);
+            editor_menu.append(&image_item);
+            editor_menu.append(&text_item);
 
             let self__ = self_.clone();
             video_item.connect_activate(move |_| {
@@ -143,11 +154,6 @@ impl App {
                 self__.as_ref().borrow().queue_draw();
                 dialog.destroy();
             });
-        }
-
-        {
-            let image_item = gtk::MenuItem::new_with_label("画像");
-            editor_menu.append(&image_item);
 
             let self__ = self_.clone();
             image_item.connect_activate(move |_| {
@@ -173,11 +179,6 @@ impl App {
                 self__.as_ref().borrow().queue_draw();
                 dialog.destroy();
             });
-        }
-
-        {
-            let text_item = gtk::MenuItem::new_with_label("テキスト");
-            editor_menu.append(&text_item);
 
             let self__ = self_.clone();
             text_item.connect_activate(move |_| {
@@ -191,7 +192,12 @@ impl App {
                 });
                 self__.as_ref().borrow().queue_draw();
             });
-        }
+
+            editor_item
+        };
+
+        menubar.append(&file_item);
+        menubar.append(&editor_item);
 
         menubar
     }
