@@ -128,6 +128,7 @@ impl App {
                     start_time: 0 * gst::MSECOND,
                     length: 100 * gst::MSECOND,
                     entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                    layer_index: 0,
                     coordinate: (0,0),
                 });
 
@@ -156,6 +157,7 @@ impl App {
                     start_time: 0 * gst::MSECOND,
                     length: 100 * gst::MSECOND,
                     entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                    layer_index: 0,
                     coordinate: (0,0),
                 });
 
@@ -174,6 +176,7 @@ impl App {
                     start_time: 0 * gst::MSECOND,
                     length: 100 * gst::MSECOND,
                     entity: "dummy entity".to_string(),
+                    layer_index: 0,
                     coordinate: (50,50),
                 });
             });
@@ -226,13 +229,11 @@ impl App {
             self__.as_ref().borrow().editor.elements.iter().enumerate().map(|(i,component)| {
                 BoxObject::new(
                     component.get_component().structure.start_time.mseconds().unwrap() as i32,
-                    0,
                     component.get_component().structure.length.mseconds().unwrap() as i32,
-                    30,
-                    i,
-                    component.get_component().structure.entity,
-                    Some(i) == self__.as_ref().borrow().selected_component_index,
-                )
+                    i
+                ).label(component.get_component().structure.entity)
+                    .selected(Some(i) == self__.as_ref().borrow().selected_component_index)
+                    .layer_index(component.get_component().structure.layer_index)
             }).collect()
         }));
 
@@ -318,6 +319,7 @@ fn main() {
                         start_time: 0 * gst::MSECOND,
                         length: 100 * gst::MSECOND,
                         entity: "[ここにテキストを挿入]".to_string(),
+                        layer_index: 0,
                         coordinate: (50,50),
                     }
                 ]),

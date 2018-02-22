@@ -25,6 +25,12 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Stri
             entry.connect_changed(move |entry| cont(entry.get_text().unwrap(), &tracker.clone()));
             entry.dynamic_cast().unwrap()
         },
+        &Usize(ref i) => {
+            let entry = gtk::Entry::new();
+            entry.set_text(&i.to_string());
+            entry.connect_changed(move |entry| cont(entry.get_text().unwrap(), &tracker.clone()));
+            entry.dynamic_cast().unwrap()
+        },
         &Time(ref time) => {
             let entry = gtk::Entry::new();
             entry.set_text(&time.mseconds().unwrap().to_string());
@@ -102,11 +108,12 @@ pub fn read_as_edit_type(dynamic_type: Property, tracker: &[i32], new_text: Stri
         &[] => {
             match dynamic_type {
                 ReadOnly(s) => Some(ReadOnly(s)),
-                I32(_) => new_text.parse::<i32>().ok().map(|x| I32(x)),
+                I32(_) => new_text.parse::<i32>().ok().map(I32),
+                Usize(_) => new_text.parse::<usize>().ok().map(Usize),
                 Time(_) => new_text.parse::<u64>().ok().map(|x| Time(gst::ClockTime::from_mseconds(x))),
                 FilePath(_) => Some(FilePath(new_text)),
                 Document(_) => Some(Document(new_text)),
-                Color(_) => new_text.parse().ok().map(|x| Color(x)),
+                Color(_) => new_text.parse().ok().map(Color),
                 _ => unimplemented!(),
             }
         },

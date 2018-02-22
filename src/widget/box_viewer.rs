@@ -11,57 +11,68 @@ use widget::WidgetWrapper;
 #[derive(Clone, Debug)]
 pub struct BoxObject {
     pub index: usize,
-    coordinate: (i32,i32),
-    size: (i32,i32),
+    x: i32,
+    width: i32,
     label: String,
+    layer_index: usize,
     selected: bool,
 }
 
 impl BoxObject {
-    pub fn new(x: i32, y: i32, width: i32, height: i32, index: usize, label: String, selected: bool) -> BoxObject {
+    const HEIGHT: i32 = 30;
+
+    pub fn new(x: i32, width: i32, index: usize) -> BoxObject {
         BoxObject {
             index: index,
-            coordinate: (x,y),
-            size: (width, height),
-            label: label,
-            selected: selected,
+            x: x,
+            width: width,
+            label: "".to_string(),
+            layer_index: 0,
+            selected: false,
         }
     }
+
+    pub fn label(mut self: BoxObject, label: String) -> BoxObject { self.label = label; self }
+    pub fn selected(mut self: BoxObject, selected: bool) -> BoxObject { self.selected = selected; self }
+    pub fn layer_index(mut self: BoxObject, layer_index: usize) -> BoxObject { self.layer_index = layer_index; self }
+
+    fn coordinate(&self) -> (i32,i32) { (self.x, self.layer_index as i32 * BoxObject::HEIGHT) }
+    fn size(&self) -> (i32,i32) { (self.width, BoxObject::HEIGHT) }
 
     fn renderer(&self, cr: &cairo::Context) {
         if self.selected {
             cr.set_source_rgba(0.0, 0.0, 0.0, 0.5);
-            cr.rectangle(self.coordinate.0 as f64 - 2.0, self.coordinate.1 as f64 - 2.0, self.size.0 as f64 + 4.0, self.size.1 as f64 + 4.0);
+            cr.rectangle(self.coordinate().0 as f64 - 2.0, self.coordinate().1 as f64 - 2.0, self.size().0 as f64 + 4.0, self.size().1 as f64 + 4.0);
             cr.stroke();
         }
 
         let edge_size = 5.0;
         cr.set_source_rgba(0.0, 0.5, 1.0, 0.5);
-        cr.rectangle(self.coordinate.0.into(), self.coordinate.1.into(), self.size.0 as f64 - edge_size, self.size.1.into());
+        cr.rectangle(self.coordinate().0.into(), self.coordinate().1.into(), self.size().0 as f64 - edge_size, self.size().1.into());
         cr.fill();
         cr.stroke();
         cr.set_source_rgba(0.5, 0.5, 0.5, 0.5);
-        cr.rectangle(self.coordinate.0 as f64 + self.size.0 as f64 - edge_size, self.coordinate.1.into(), edge_size, self.size.1.into());
+        cr.rectangle(self.coordinate().0 as f64 + self.size().0 as f64 - edge_size, self.coordinate().1.into(), edge_size, self.size().1.into());
         cr.fill();
         cr.stroke();
 
         cr.save();
-        cr.rectangle(self.coordinate.0.into(), self.coordinate.1.into(), self.size.0.into(), self.size.1.into());
+        cr.rectangle(self.coordinate().0.into(), self.coordinate().1.into(), self.size().0.into(), self.size().1.into());
         cr.clip();
 
         let font_extent = cr.font_extents();
         cr.select_font_face("Serif", cairo::FontSlant::Normal, cairo::FontWeight::Normal);
         cr.set_font_size(15.0);
         cr.set_source_rgb(0.0, 0.0, 0.0);
-        cr.move_to(self.coordinate.0.into(), self.coordinate.1 as f64 - font_extent.descent + font_extent.height / 2.0 + self.size.1 as f64 / 2.0);
+        cr.move_to(self.coordinate().0.into(), self.coordinate().1 as f64 - font_extent.descent + font_extent.height / 2.0 + self.size().1 as f64 / 2.0);
         cr.show_text(self.label.as_str());
         cr.stroke();
         cr.restore();
     }
 
     fn contains(&self, x: i32, y: i32) -> bool {
-        self.coordinate.0 <= x && x <= self.coordinate.0 + self.size.0
-            && self.coordinate.1 <= y && y <= self.coordinate.1 + self.size.1
+        self.coordinate().0 <= x && x <= self.coordinate().0 + self.size().0
+            && self.coordinate().1 <= y && y <= self.coordinate().1 + self.size().1
     }
 }
 

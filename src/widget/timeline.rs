@@ -25,7 +25,7 @@ pub struct TimelineWidget {
 // workaround for sharing a variable within callbacks
 impl TimelineWidget {
     pub fn new(width: i32) -> Rc<RefCell<TimelineWidget>> {
-        let timeline = BoxViewerWidget::new(width, 50);
+        let timeline = BoxViewerWidget::new(width, 100);
 
         let ruler_box = gtk::EventBox::new();
 
@@ -43,7 +43,7 @@ impl TimelineWidget {
 
         let tracker = gtk::DrawingArea::new();
         overlay.add_overlay(&tracker);
-        tracker.set_size_request(width, 50);
+        tracker.set_size_request(width, 100);
 
         overlay.set_overlay_pass_through(&tracker, true);
         tracker.connect_realize(move |tracker| {

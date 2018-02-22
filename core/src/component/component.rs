@@ -31,6 +31,8 @@ pub struct ComponentStructure {
 
     pub coordinate: (i32,i32),
 
+    pub layer_index: usize,
+
     pub entity: String,
 }
 
@@ -45,6 +47,7 @@ fn gst_clocktime_deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) 
 #[derive(Debug, Clone)]
 pub enum Property {
     I32(i32),
+    Usize(usize),
     Time(gst::ClockTime),
     Pair(Box<Property>, Box<Property>),
     FilePath(String),
@@ -78,9 +81,10 @@ impl ComponentWrapper for Component {
         [
             ("component_type".to_string(), ReadOnly(format!("{:?}", self.structure.component_type))),
             ("start_time".to_string(), Time(self.structure.start_time)),
-            ("length".to_string(), Time(self.structure.start_time)),
+            ("length".to_string(), Time(self.structure.length)),
             ("coordinate".to_string(), Pair(box I32(self.structure.coordinate.0), box I32(self.structure.coordinate.1))),
             ("entity".to_string(), ReadOnly(self.structure.entity.clone())),
+            ("layer_index".to_string(), Usize(self.structure.layer_index)),
         ].iter().cloned().collect()
     }
 
@@ -91,6 +95,7 @@ impl ComponentWrapper for Component {
             ("start_time", Time(v)) => self.structure.start_time = v,
             ("length", Time(v)) => self.structure.length = v,
             ("coordinate", Pair(box I32(x), box I32(y))) => self.structure.coordinate = (x,y),
+            ("layer_index", Usize(v)) => self.structure.layer_index = v,
             _ => unimplemented!(),
         }
     }
