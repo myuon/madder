@@ -84,8 +84,11 @@ impl App {
 
                 gtk_impl::edit_type_to_widget(&edit_type, vec![], Rc::new(move |new_text, tracker| {
                     let edit_type = self__.as_ref().borrow().editor.request_component_property(index)[prop_name.as_ref()].clone();
-                    let edit_type = gtk_impl::read_as_edit_type(edit_type, tracker, new_text);
-                    self__.as_ref().borrow_mut().editor.set_component_property(index, prop_name.as_ref().clone(), edit_type);
+                    match gtk_impl::read_as_edit_type(edit_type, tracker, new_text) {
+                        Some(edit_type) => self__.as_ref().borrow_mut().editor.set_component_property(index, prop_name.as_ref().clone(), edit_type),
+                        None => (),
+                    }
+
                     self__.as_ref().borrow().queue_draw();
                 }))
             }),

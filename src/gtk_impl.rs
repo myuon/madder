@@ -81,29 +81,29 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Stri
     }
 }
 
-pub fn read_as_edit_type(dynamic_type: Property, tracker: &[i32], new_text: String) -> Property {
+pub fn read_as_edit_type(dynamic_type: Property, tracker: &[i32], new_text: String) -> Option<Property> {
     use Property::*;
 
     match tracker {
         &[] => {
             match dynamic_type {
-                ReadOnly(s) => ReadOnly(s),
-                I32(_) => I32(new_text.parse::<i32>().unwrap()),
-                Time(_) => Time(gst::ClockTime::from_mseconds(new_text.parse::<u64>().unwrap())),
-                FilePath(_) => FilePath(new_text),
-                Document(_) => Document(new_text),
+                ReadOnly(s) => Some(ReadOnly(s)),
+                I32(_) => new_text.parse::<i32>().ok().map(|x| I32(x)),
+                Time(_) => new_text.parse::<u64>().ok().map(|x| Time(gst::ClockTime::from_mseconds(x))),
+                FilePath(_) => Some(FilePath(new_text)),
+                Document(_) => Some(Document(new_text)),
                 _ => unimplemented!(),
             }
         },
         &[0,ref tracker..] => {
             match dynamic_type {
-                Pair(box x,y) => Pair(Box::new(read_as_edit_type(x, &tracker, new_text)), y),
+                Pair(box x,y) => read_as_edit_type(x, &tracker, new_text).map(|x| Pair(Box::new(x),y)),
                 _ => unimplemented!(),
             }
         },
         &[1,ref tracker..] => {
             match dynamic_type {
-                Pair(x,box y) => Pair(x, Box::new(read_as_edit_type(y, &tracker, new_text))),
+                Pair(x,box y) => read_as_edit_type(y, &tracker, new_text).map(|y| Pair(x, Box::new(y))),
                 _ => unimplemented!(),
             }
         },
