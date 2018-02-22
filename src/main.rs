@@ -116,6 +116,17 @@ impl App {
             let output = gtk::MenuItem::new_with_label("動画の書き出し");
             file_menu.append(&output);
 
+            let self__ = self_.clone();
+            output.connect_activate(move |_| {
+                let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&self__.as_ref().borrow().window), gtk::FileChooserAction::Save);
+                dialog.add_button("出力", 0);
+                dialog.run();
+                let path = dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string();
+                dialog.destroy();
+
+                self__.borrow_mut().editor.write(&path, 100, 5);
+            });
+
             file_item
         };
         let editor_item = {
