@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+extern crate gdk;
 extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 extern crate serde;
@@ -48,6 +49,7 @@ pub enum Property {
     Pair(Box<Property>, Box<Property>),
     FilePath(String),
     Document(String),
+    Color(gdk::RGBA),
     ReadOnly(String),
 }
 

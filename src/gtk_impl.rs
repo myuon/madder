@@ -78,6 +78,10 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Stri
             });
             textarea.dynamic_cast().unwrap()
         },
+        &Color(ref rgba) => {
+            let colorbtn = gtk::ColorButton::new_with_rgba(rgba);
+            colorbtn.dynamic_cast().unwrap()
+        }
     }
 }
 
