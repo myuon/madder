@@ -7,15 +7,20 @@ use widget::WidgetWrapper;
 
 pub struct PropertyViewerWidget {
     pub view: gtk::Grid,
+    pub scrolled: gtk::ScrolledWindow,
 }
 
 impl PropertyViewerWidget {
     pub fn new(width: i32) -> PropertyViewerWidget {
         let view = gtk::Grid::new();
-        view.set_size_request(width, 100);
+
+        let scrolled = gtk::ScrolledWindow::new(&gtk::Adjustment::new(0.0, 0.0, width as f64, 1.0, 1.0, width as f64), None);
+        scrolled.add(&view);
+        scrolled.set_size_request(width, 100);
 
         PropertyViewerWidget {
             view: view,
+            scrolled: scrolled,
         }
     }
 
@@ -48,9 +53,9 @@ impl PropertyViewerWidget {
 }
 
 impl WidgetWrapper for PropertyViewerWidget {
-    type T = gtk::Grid;
+    type T = gtk::ScrolledWindow;
 
     fn to_widget(&self) -> &Self::T {
-        &self.view
+        &self.scrolled
     }
 }
