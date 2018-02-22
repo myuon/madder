@@ -80,6 +80,9 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Stri
         },
         &Color(ref rgba) => {
             let colorbtn = gtk::ColorButton::new_with_rgba(rgba);
+            colorbtn.connect_color_set(move |colorbtn| {
+                cont(colorbtn.get_rgba().to_string(), &tracker.clone())
+            });
             colorbtn.dynamic_cast().unwrap()
         }
     }
@@ -96,6 +99,7 @@ pub fn read_as_edit_type(dynamic_type: Property, tracker: &[i32], new_text: Stri
                 Time(_) => new_text.parse::<u64>().ok().map(|x| Time(gst::ClockTime::from_mseconds(x))),
                 FilePath(_) => Some(FilePath(new_text)),
                 Document(_) => Some(Document(new_text)),
+                Color(_) => new_text.parse().ok().map(|x| Color(x)),
                 _ => unimplemented!(),
             }
         },
