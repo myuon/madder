@@ -60,7 +60,7 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Stri
 
                 {
                     let filter = gtk::FileFilter::new();
-                    filter.add_pattern("*.png");
+                    filter.add_pattern("*.*");
                     dialog.add_filter(&filter);
                 }
                 dialog.run();

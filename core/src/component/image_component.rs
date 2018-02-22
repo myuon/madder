@@ -10,15 +10,17 @@ pub struct ImageComponent {
 
 impl ImageComponent {
     pub fn new_from_structure(structure: &ComponentStructure) -> ImageComponent {
-        let image = gdk_pixbuf::Pixbuf::new_from_file(&structure.entity).unwrap();
-
         ImageComponent {
             component: Component {
                 structure: structure.clone(),
                 name: "image".to_string(),
             },
-            data: image,
+            data: ImageComponent::create_data(&structure.entity),
         }
+    }
+
+    fn create_data(uri: &str) -> gdk_pixbuf::Pixbuf {
+        gdk_pixbuf::Pixbuf::new_from_file(uri).unwrap()
     }
 
     pub fn reload(&mut self, uri: &str) {

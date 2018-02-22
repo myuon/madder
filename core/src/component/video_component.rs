@@ -77,6 +77,16 @@ pub struct VideoFileComponent {
 
 impl VideoFileComponent {
     pub fn new_from_structure(structure: &ComponentStructure) -> VideoFileComponent {
+        VideoFileComponent {
+            component: Component {
+                structure: structure.clone(),
+                name: "video_file".to_string(),
+            },
+            data: VideoFileComponent::create_data(&structure.entity),
+        }
+    }
+
+    fn create_data(uri: &str) -> gst::Element {
         let pipeline = gst::Pipeline::new(None);
         let src = gst::ElementFactory::make("filesrc", None).unwrap();
         let decodebin = gst::ElementFactory::make("decodebin", None).unwrap();
@@ -84,7 +94,7 @@ impl VideoFileComponent {
         let convert = gst::ElementFactory::make("videoconvert", None).unwrap();
         let pixbufsink = gst::ElementFactory::make("gdkpixbufsink", None).unwrap();
 
-        src.set_property("location", &glib::Value::from(structure.entity.as_str())).unwrap();
+        src.set_property("location", &glib::Value::from(uri)).unwrap();
 
         pipeline.add_many(&[&src, &decodebin, &queue, &convert, &pixbufsink]).unwrap();
         gst::Element::link_many(&[&src, &decodebin]).unwrap();
@@ -97,13 +107,11 @@ impl VideoFileComponent {
 
         pipeline.set_state(gst::State::Paused).into_result().unwrap();
 
-        VideoFileComponent {
-            component: Component {
-                structure: structure.clone(),
-                name: "video_file".to_string(),
-            },
-            data: pixbufsink,
-        }
+        pixbufsink
+    }
+
+    pub fn reload(&mut self, uri: &str) {
+        self.data = VideoFileComponent::create_data(uri);
     }
 }
 
@@ -123,11 +131,20 @@ impl ComponentWrapper for VideoFileComponent {
     }
 
     fn get_properties(&self) -> Properties {
-        self.component.get_properties()
+        use Property::*;
+
+        let mut props = self.component.get_properties();
+        props.insert("entity".to_string(), FilePath(self.component.structure.entity.clone()));
+        props
     }
 
     fn set_property(&mut self, name: String, prop: Property) {
-        self.component.set_property(name, prop);
+        use Property::*;
+
+        match (name.as_str(), prop) {
+            ("entity", FilePath(uri)) => self.reload(uri.as_str()),
+            (x,y) => self.component.set_property(x.to_string(), y),
+        }
     }
 }
 
