@@ -73,6 +73,14 @@ impl App {
         App::register(self_, Component::new_from_structure(json))
     }
 
+    fn remove_selected(self_: Rc<RefCell<App>>) {
+        let index = self_.as_ref().borrow().selected_component_index.unwrap();
+        self_.as_ref().borrow_mut().editor.elements.remove(index);
+        self_.as_ref().borrow_mut().selected_component_index = None;
+        self_.as_ref().borrow().property.clear();
+        self_.as_ref().borrow().queue_draw();
+    }
+
     fn select_component(self_: Rc<RefCell<App>>, index: usize) {
         let self__ = self_.clone();
 
@@ -300,6 +308,12 @@ impl App {
             hbox.pack_start(app.property.to_widget(), true, true, 0);
         }
         app.property.create_ui();
+
+        let self__ = self_.clone();
+        app.property.connect_remove(Box::new(move || {
+            App::remove_selected(self__.clone());
+        }));
+
         vbox.pack_start(&hbox, true, true, 0);
 
         let btn = gtk::Button::new();

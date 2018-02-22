@@ -6,8 +6,9 @@ use gtk::prelude::*;
 use widget::WidgetWrapper;
 
 pub struct PropertyViewerWidget {
-    pub view: gtk::Grid,
-    pub scrolled: gtk::ScrolledWindow,
+    view: gtk::Grid,
+    scrolled: gtk::ScrolledWindow,
+    remove_button: gtk::Button,
 }
 
 impl PropertyViewerWidget {
@@ -15,12 +16,15 @@ impl PropertyViewerWidget {
         let view = gtk::Grid::new();
 
         let scrolled = gtk::ScrolledWindow::new(&gtk::Adjustment::new(0.0, 0.0, width as f64, 1.0, 1.0, width as f64), None);
-        scrolled.add(&view);
         scrolled.set_size_request(width, 100);
+
+        let remove_button = gtk::Button::new();
+        remove_button.set_label("Remove");
 
         PropertyViewerWidget {
             view: view,
             scrolled: scrolled,
+            remove_button: remove_button,
         }
     }
 
@@ -28,12 +32,25 @@ impl PropertyViewerWidget {
         self.view.set_column_spacing(10);
         self.view.set_row_spacing(10);
         self.view.override_background_color(gtk::StateFlags::NORMAL, &gdk::RGBA::white());
+
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        vbox.add(&self.view);
+        vbox.add(&self.remove_button);
+        self.scrolled.add(&vbox);
     }
 
-    pub fn set_properties<T: Clone>(&self, props: HashMap<String,T>, renderer: Box<Fn(String,T) -> gtk::Widget>) {
+    pub fn connect_remove(&self, cont: Box<Fn()>) {
+        self.remove_button.connect_clicked(move |_| cont());
+    }
+
+    pub fn clear(&self) {
         for widget in self.view.get_children() {
             self.view.remove(&widget);
         }
+    }
+
+    pub fn set_properties<T: Clone>(&self, props: HashMap<String,T>, renderer: Box<Fn(String,T) -> gtk::Widget>) {
+        self.clear();
 
         let new_label = |label: &str, align: gtk::Align| {
             let w = gtk::Label::new(label);
