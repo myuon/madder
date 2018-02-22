@@ -8,7 +8,7 @@ use gdk::prelude::*;
 use gtk::prelude::*;
 use madder_core::*;
 
-pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(String, &[i32]) + 'static>) -> gtk::Widget {
+pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Option<Property>, &[i32]) + 'static>) -> gtk::Widget {
     use Property::*;
 
     match self_ {
@@ -22,13 +22,13 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Stri
         &I32(ref i) => {
             let entry = gtk::Entry::new();
             entry.set_text(&i.to_string());
-            entry.connect_changed(move |entry| cont(entry.get_text().unwrap(), &tracker.clone()));
+            entry.connect_changed(move |entry| cont(entry.get_text().and_then(|x| x.parse().ok()).map(I32), &tracker.clone()));
             entry.dynamic_cast().unwrap()
         },
         &Usize(ref i) => {
             let entry = gtk::Entry::new();
             entry.set_text(&i.to_string());
-            entry.connect_changed(move |entry| cont(entry.get_text().unwrap(), &tracker.clone()));
+            entry.connect_changed(move |entry| cont(entry.get_text().and_then(|x| x.parse().ok()).map(Usize), &tracker.clone()));
             entry.dynamic_cast().unwrap()
         },
         &Time(ref time) => {
@@ -38,7 +38,7 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Stri
 //            window.add(&gtk::Label::new("piyo"));
             entry.connect_changed(move |entry| {
 //                window.show_all();
-                cont(entry.get_text().unwrap(), &tracker.clone());
+                cont(entry.get_text().and_then(|x| x.parse::<u64>().ok()).map(gst::ClockTime::from_mseconds).map(Time), &tracker.clone());
             });
             entry.dynamic_cast().unwrap()
         },
@@ -77,7 +77,7 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Stri
                     dialog.add_filter(&filter);
                 }
                 dialog.run();
-                cont(dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(), &tracker.clone());
+                cont(dialog.get_filename().unwrap().as_path().to_str().map(|x| FilePath(x.to_string())), &tracker.clone());
                 dialog.destroy();
             });
             btn.dynamic_cast().unwrap()
@@ -87,45 +87,34 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Stri
             let buffer = textarea.get_buffer().unwrap();
             buffer.set_text(doc);
             buffer.connect_changed(move |buffer| {
-                cont(buffer.get_text(&buffer.get_start_iter(), &buffer.get_end_iter(), true).unwrap(), &tracker.clone())
+                cont(buffer.get_text(&buffer.get_start_iter(), &buffer.get_end_iter(), true).map(Document), &tracker.clone())
             });
             textarea.dynamic_cast().unwrap()
         },
         &Color(ref rgba) => {
             let colorbtn = gtk::ColorButton::new_with_rgba(rgba);
             colorbtn.connect_color_set(move |colorbtn| {
-                cont(colorbtn.get_rgba().to_string(), &tracker.clone())
+                cont(Some(Color(colorbtn.get_rgba())), &tracker.clone())
             });
             colorbtn.dynamic_cast().unwrap()
         }
     }
 }
 
-pub fn read_as_edit_type(dynamic_type: Property, tracker: &[i32], new_text: String) -> Option<Property> {
+pub fn recover_property(dynamic_type: Property, tracker: &[i32], value: Property) -> Property {
     use Property::*;
 
     match tracker {
-        &[] => {
-            match dynamic_type {
-                ReadOnly(s) => Some(ReadOnly(s)),
-                I32(_) => new_text.parse::<i32>().ok().map(I32),
-                Usize(_) => new_text.parse::<usize>().ok().map(Usize),
-                Time(_) => new_text.parse::<u64>().ok().map(|x| Time(gst::ClockTime::from_mseconds(x))),
-                FilePath(_) => Some(FilePath(new_text)),
-                Document(_) => Some(Document(new_text)),
-                Color(_) => new_text.parse().ok().map(Color),
-                _ => unimplemented!(),
-            }
-        },
+        &[] => value,
         &[0,ref tracker..] => {
             match dynamic_type {
-                Pair(box x,y) => read_as_edit_type(x, &tracker, new_text).map(|x| Pair(Box::new(x),y)),
+                Pair(box x,y) => Pair(Box::new(recover_property(x, &tracker, value)),y),
                 _ => unimplemented!(),
             }
         },
         &[1,ref tracker..] => {
             match dynamic_type {
-                Pair(x,box y) => read_as_edit_type(y, &tracker, new_text).map(|y| Pair(x, Box::new(y))),
+                Pair(x,box y) => Pair(x, Box::new(recover_property(y, &tracker, value))),
                 _ => unimplemented!(),
             }
         },

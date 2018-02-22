@@ -86,15 +86,15 @@ impl App {
 
         self_.as_ref().borrow().property.set_properties(
             self_.as_ref().borrow().editor.request_component_property(index),
-            Box::new(move |prop_name, edit_type| {
+            Box::new(move |prop_name, prop| {
                 let prop_name = Rc::new(prop_name);
                 let self__ = self__.clone();
 
-                gtk_impl::edit_type_to_widget(&edit_type, vec![], Rc::new(move |new_text, tracker| {
-                    let edit_type = self__.as_ref().borrow().editor.request_component_property(index)[prop_name.as_ref()].clone();
-                    match gtk_impl::read_as_edit_type(edit_type, tracker, new_text) {
-                        Some(edit_type) => self__.as_ref().borrow_mut().editor.set_component_property(index, prop_name.as_ref().clone(), edit_type),
-                        None => (),
+                gtk_impl::edit_type_to_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
+                    // request the property again, since in this callback the value of property might have been changed
+                    let prop = self__.as_ref().borrow().editor.request_component_property(index)[prop_name.as_str()].clone();
+                    if let Some(new_prop) = new_prop {
+                        self__.as_ref().borrow_mut().editor.set_component_property(index, prop_name.as_ref().clone(), gtk_impl::recover_property(prop, tracker, new_prop));
                     }
 
                     self__.as_ref().borrow().queue_draw();
