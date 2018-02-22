@@ -89,7 +89,10 @@ impl Editor {
             p[2] = 0;
         }
 
-        for elem in self.elements.iter().filter(|&elem| { elem.get_component().structure.start_time <= self.position && self.position <= elem.get_component().structure.start_time + elem.get_component().structure.length }) {
+        let mut elems = self.elements.iter().filter(|&elem| { elem.get_component().structure.start_time <= self.position && self.position <= elem.get_component().structure.start_time + elem.get_component().structure.length }).collect::<Vec<_>>();
+        elems.sort_by_key(|elem| elem.get_component().structure.layer_index);
+
+        for elem in elems.iter().rev() {
             if let Some(dest) = elem.peek(self.position) {
                 let elem = elem.get_component().structure;
 
