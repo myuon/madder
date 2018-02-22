@@ -119,9 +119,9 @@ impl App {
             let video_item = gtk::MenuItem::new_with_label("動画");
             editor_menu.append(&video_item);
 
-            let self_ = self_.clone();
+            let self__ = self_.clone();
             video_item.connect_activate(move |_| {
-                let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&self_.as_ref().borrow().window), gtk::FileChooserAction::Open);
+                let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&self__.as_ref().borrow().window), gtk::FileChooserAction::Open);
                 dialog.add_button("追加", 0);
 
                 {
@@ -131,7 +131,7 @@ impl App {
                 }
                 dialog.run();
 
-                App::register_from_json(self_.clone(), &ComponentStructure {
+                App::register_from_json(self__.clone(), &ComponentStructure {
                     component_type: ComponentType::Video,
                     start_time: 0 * gst::MSECOND,
                     length: 100 * gst::MSECOND,
@@ -140,6 +140,7 @@ impl App {
                     coordinate: (0,0),
                 });
 
+                self__.as_ref().borrow().queue_draw();
                 dialog.destroy();
             });
         }
@@ -148,9 +149,9 @@ impl App {
             let image_item = gtk::MenuItem::new_with_label("画像");
             editor_menu.append(&image_item);
 
-            let self_ = self_.clone();
+            let self__ = self_.clone();
             image_item.connect_activate(move |_| {
-                let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), Some(&self_.as_ref().borrow().window), gtk::FileChooserAction::Open);
+                let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), Some(&self__.as_ref().borrow().window), gtk::FileChooserAction::Open);
                 dialog.add_button("追加", 0);
 
                 {
@@ -160,7 +161,7 @@ impl App {
                 }
                 dialog.run();
 
-                App::register_from_json(self_.clone(), &ComponentStructure {
+                App::register_from_json(self__.clone(), &ComponentStructure {
                     component_type: ComponentType::Image,
                     start_time: 0 * gst::MSECOND,
                     length: 100 * gst::MSECOND,
@@ -169,6 +170,7 @@ impl App {
                     coordinate: (0,0),
                 });
 
+                self__.as_ref().borrow().queue_draw();
                 dialog.destroy();
             });
         }
@@ -177,9 +179,9 @@ impl App {
             let text_item = gtk::MenuItem::new_with_label("テキスト");
             editor_menu.append(&text_item);
 
-            let self_ = self_.clone();
+            let self__ = self_.clone();
             text_item.connect_activate(move |_| {
-                App::register_from_json(self_.clone(), &ComponentStructure {
+                App::register_from_json(self__.clone(), &ComponentStructure {
                     component_type: ComponentType::Text,
                     start_time: 0 * gst::MSECOND,
                     length: 100 * gst::MSECOND,
@@ -187,6 +189,7 @@ impl App {
                     layer_index: 0,
                     coordinate: (50,50),
                 });
+                self__.as_ref().borrow().queue_draw();
             });
         }
 
