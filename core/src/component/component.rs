@@ -56,6 +56,17 @@ pub enum Property {
     ReadOnly(String),
 }
 
+impl Property {
+    pub fn as_time(&self) -> Option<gst::ClockTime> {
+        use Property::*;
+
+        match self {
+            &Time(t) => Some(t),
+            _ => None,
+        }
+    }
+}
+
 pub type Properties = HashMap<String, Property>;
 
 #[derive(Debug, Clone)]
