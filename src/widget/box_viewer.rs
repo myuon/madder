@@ -21,6 +21,7 @@ pub struct BoxObject {
 
 impl BoxObject {
     const HEIGHT: i32 = 30;
+    const EDGE_WIDTH: i32 = 15;
 
     pub fn new(x: i32, width: i32, index: usize) -> BoxObject {
         BoxObject {
@@ -47,13 +48,12 @@ impl BoxObject {
             cr.stroke();
         }
 
-        let edge_size = 5.0;
         cr.set_source_rgba(0.0, 0.5, 1.0, 0.5);
-        cr.rectangle(self.coordinate().0.into(), self.coordinate().1.into(), self.size().0 as f64 - edge_size, self.size().1.into());
+        cr.rectangle(self.coordinate().0.into(), self.coordinate().1.into(), self.size().0 as f64 - BoxObject::EDGE_WIDTH as f64, self.size().1.into());
         cr.fill();
         cr.stroke();
         cr.set_source_rgba(0.5, 0.5, 0.5, 0.5);
-        cr.rectangle(self.coordinate().0 as f64 + self.size().0 as f64 - edge_size, self.coordinate().1.into(), edge_size, self.size().1.into());
+        cr.rectangle(self.coordinate().0 as f64 + self.size().0 as f64 - BoxObject::EDGE_WIDTH as f64, self.coordinate().1.into(), BoxObject::EDGE_WIDTH as f64, self.size().1.into());
         cr.fill();
         cr.stroke();
 
@@ -87,8 +87,6 @@ pub struct BoxViewerWidget {
 }
 
 impl BoxViewerWidget {
-    const EDGE_HANDLE: i32 = 5;
-
     pub fn new(width: i32, height: i32) -> Rc<RefCell<BoxViewerWidget>> {
         let canvas = gtk::DrawingArea::new();
         canvas.set_size_request(width, height);
@@ -170,7 +168,7 @@ impl BoxViewerWidget {
                 self__.as_ref().borrow_mut().offset = event.get_position().0 as i32;
             } else {
                 match objects.iter().find(|&object| object.contains(x,y)) {
-                    Some(object) if object.coordinate().0 + object.size().0 - BoxViewerWidget::EDGE_HANDLE <= x
+                    Some(object) if object.coordinate().0 + object.size().0 - BoxObject::EDGE_WIDTH <= x
                                  && x <= object.coordinate().0 + object.size().0 => {
                         window.set_cursor(&gdk::Cursor::new_from_name(&window.get_display(), "e-resize"));
                         self__.as_ref().borrow_mut().flag_resize = true;
