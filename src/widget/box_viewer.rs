@@ -35,8 +35,13 @@ impl BoxObject {
             cr.stroke();
         }
 
+        let edge_size = 5.0;
         cr.set_source_rgba(0.0, 0.5, 1.0, 0.5);
-        cr.rectangle(self.coordinate.0.into(), self.coordinate.1.into(), self.size.0.into(), self.size.1.into());
+        cr.rectangle(self.coordinate.0.into(), self.coordinate.1.into(), self.size.0 as f64 - edge_size, self.size.1.into());
+        cr.fill();
+        cr.stroke();
+        cr.set_source_rgba(0.5, 0.5, 0.5, 0.5);
+        cr.rectangle(self.coordinate.0 as f64 + self.size.0 as f64 - edge_size, self.coordinate.1.into(), edge_size, self.size.1.into());
         cr.fill();
         cr.stroke();
 
