@@ -5,6 +5,7 @@ extern crate gtk;
 extern crate gdk;
 extern crate cairo;
 use gtk::prelude::*;
+use gdk::prelude::*;
 
 use widget::WidgetWrapper;
 
@@ -85,6 +86,8 @@ pub struct BoxViewerWidget {
 }
 
 impl BoxViewerWidget {
+    const EDGE_HANDLE: i32 = 5;
+
     pub fn new(width: i32, height: i32) -> Rc<RefCell<BoxViewerWidget>> {
         let canvas = gtk::DrawingArea::new();
         canvas.set_size_request(width, height);
@@ -129,9 +132,12 @@ impl BoxViewerWidget {
         self_.as_ref().borrow().canvas.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
         self_.as_ref().borrow().canvas.connect_button_press_event(move |_,event| {
             let (x,y) = event.get_position();
+            let x = x as i32;
+            let y = y as i32;
+
             let objects = self__.as_ref().borrow().objects.clone();
-            if let Some(object) = objects.iter().find(|&object| object.contains(x as i32, y as i32)) {
-                self__.as_ref().borrow_mut().offset = event.get_position().0 as i32;
+            if let Some(object) = objects.iter().find(|&object| object.contains(x,y)) {
+                self__.as_ref().borrow_mut().offset = x;
                 self__.as_ref().borrow_mut().selecting_box_index = Some(object.index);
                 cont(object.index);
             }
@@ -142,10 +148,27 @@ impl BoxViewerWidget {
     pub fn connect_drag_box(self_: Rc<RefCell<BoxViewerWidget>>, cont: Box<Fn(usize, i32, usize)>) {
         let self__ = self_.clone();
         self_.as_ref().borrow().canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
-        self_.as_ref().borrow().canvas.connect_motion_notify_event(move |_,event| {
+        self_.as_ref().borrow().canvas.connect_motion_notify_event(move |canvas,event| {
+            let (x,y) = event.get_position();
+            let x = x as i32;
+            let y = y as i32;
+
+            let objects = self__.as_ref().borrow().objects.clone();
+            let window = canvas.get_window().unwrap();
+
+            match objects.iter().find(|&object| object.contains(x,y)) {
+                Some(object) if object.coordinate().0 + object.size().0 - BoxViewerWidget::EDGE_HANDLE <= x
+                                 && x <= object.coordinate().0 + object.size().0 => {
+                    window.set_cursor(&gdk::Cursor::new_from_name(&window.get_display(), "e-resize"));
+                },
+                _ => {
+                    window.set_cursor(&gdk::Cursor::new_from_name(&window.get_display(), "default"));
+                },
+            }
+
             if event.get_state().contains(gdk::ModifierType::BUTTON1_MASK) {
-                let distance = event.get_position().0 as i32 - self__.as_ref().borrow().offset;
-                let layer_index = event.get_position().1 as i32 / BoxObject::HEIGHT;
+                let distance = x - self__.as_ref().borrow().offset;
+                let layer_index = y / BoxObject::HEIGHT;
                 cont(self__.as_ref().borrow().selecting_box_index.unwrap(), distance, layer_index as usize);
                 self__.as_ref().borrow_mut().offset = event.get_position().0 as i32;
             }
