@@ -2,6 +2,8 @@ use std::rc::Rc;
 
 extern crate gstreamer as gst;
 extern crate gtk;
+extern crate gdk;
+use gdk::prelude::*;
 
 use gtk::prelude::*;
 use madder_core::*;
@@ -26,7 +28,12 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Stri
         &Time(ref time) => {
             let entry = gtk::Entry::new();
             entry.set_text(&time.mseconds().unwrap().to_string());
-            entry.connect_changed(move |entry| cont(entry.get_text().unwrap(), &tracker.clone()));
+//            let window = gtk::Window::new(gtk::WindowType::Popup);
+//            window.add(&gtk::Label::new("piyo"));
+            entry.connect_changed(move |entry| {
+//                window.show_all();
+                cont(entry.get_text().unwrap(), &tracker.clone());
+            });
             entry.dynamic_cast().unwrap()
         },
         &Pair(box ref wx, box ref wy) => {
