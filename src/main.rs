@@ -196,38 +196,68 @@ impl App {
         }));
 
         let self__ = self_.clone();
-        app.timeline.as_ref().borrow().connect_drag_component(Box::new(move |index,distance,layer_index| {
-            let props = self__.as_ref().borrow().editor.request_component_property(index);
-            let get_from_prop = |p: Property| {
-                match p {
-                    Property::Time(n) => n,
-                    _ => unimplemented!(),
-                }
-            };
-            let add_time = |a: gst::ClockTime, b: f64| {
-                if b < 0.0 {
-                    if a < b.abs() as u64 * gst::MSECOND {
-                        0 * gst::MSECOND
-                    } else {
-                        a - b.abs() as u64 * gst::MSECOND
+        let self___ = self_.clone();
+        app.timeline.as_ref().borrow().connect_drag_component(
+            Box::new(move |index,distance,layer_index| {
+                let props = self__.as_ref().borrow().editor.request_component_property(index);
+                let get_from_prop = |p: Property| {
+                    match p {
+                        Property::Time(n) => n,
+                        _ => unimplemented!(),
                     }
-                } else {
-                    a + b as u64 * gst::MSECOND
-                }
-            };
+                };
+                let add_time = |a: gst::ClockTime, b: f64| {
+                    if b < 0.0 {
+                        if a < b.abs() as u64 * gst::MSECOND {
+                            0 * gst::MSECOND
+                        } else {
+                            a - b.abs() as u64 * gst::MSECOND
+                        }
+                    } else {
+                        a + b as u64 * gst::MSECOND
+                    }
+                };
 
-            self__.as_ref().borrow_mut().editor.set_component_property(
-                index,
-                "start_time".to_string(),
-                Property::Time(add_time(get_from_prop(props["start_time"].clone()), distance as f64)),
-            );
-            self__.as_ref().borrow_mut().editor.set_component_property(
-                index,
-                "layer_index".to_string(),
-                Property::Usize(std::cmp::max(layer_index, 0)),
-            );
-            self__.as_ref().borrow().queue_draw();
-        }));
+                self__.as_ref().borrow_mut().editor.set_component_property(
+                    index,
+                    "start_time".to_string(),
+                    Property::Time(add_time(get_from_prop(props["start_time"].clone()), distance as f64)),
+                );
+                self__.as_ref().borrow_mut().editor.set_component_property(
+                    index,
+                    "layer_index".to_string(),
+                    Property::Usize(std::cmp::max(layer_index, 0)),
+                );
+                self__.as_ref().borrow().queue_draw();
+            }),
+            Box::new(move |index,distance| {
+                let props = self___.as_ref().borrow().editor.request_component_property(index);
+                let get_from_prop = |p: Property| {
+                    match p {
+                        Property::Time(n) => n,
+                        _ => unimplemented!(),
+                    }
+                };
+                let add_time = |a: gst::ClockTime, b: f64| {
+                    if b < 0.0 {
+                        if a < b.abs() as u64 * gst::MSECOND {
+                            0 * gst::MSECOND
+                        } else {
+                            a - b.abs() as u64 * gst::MSECOND
+                        }
+                    } else {
+                        a + b as u64 * gst::MSECOND
+                    }
+                };
+
+                self___.as_ref().borrow_mut().editor.set_component_property(
+                    index,
+                    "length".to_string(),
+                    Property::Time(add_time(get_from_prop(props["length"].clone()), distance as f64)),
+                );
+                self___.as_ref().borrow().queue_draw();
+            }),
+        );
 
         let self__ = self_.clone();
         app.timeline.as_ref().borrow().connect_request_objects(Box::new(move || {

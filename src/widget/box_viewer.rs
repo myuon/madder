@@ -83,6 +83,7 @@ pub struct BoxViewerWidget {
     requester: Box<Fn() -> Vec<BoxObject>>,
     offset: i32,
     selecting_box_index: Option<usize>,
+    flag_resize: bool,
 }
 
 impl BoxViewerWidget {
@@ -98,6 +99,7 @@ impl BoxViewerWidget {
             requester: Box::new(|| vec![]),
             offset: 0,
             selecting_box_index: None,
+            flag_resize: false,
         }))
     }
 
@@ -145,7 +147,7 @@ impl BoxViewerWidget {
         });
     }
 
-    pub fn connect_drag_box(self_: Rc<RefCell<BoxViewerWidget>>, cont: Box<Fn(usize, i32, usize)>) {
+    pub fn connect_drag_box(self_: Rc<RefCell<BoxViewerWidget>>, cont_move: Box<Fn(usize, i32, usize)>, cont_resize: Box<Fn(usize, i32)>) {
         let self__ = self_.clone();
         self_.as_ref().borrow().canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
         self_.as_ref().borrow().canvas.connect_motion_notify_event(move |canvas,event| {
@@ -156,21 +158,28 @@ impl BoxViewerWidget {
             let objects = self__.as_ref().borrow().objects.clone();
             let window = canvas.get_window().unwrap();
 
-            match objects.iter().find(|&object| object.contains(x,y)) {
-                Some(object) if object.coordinate().0 + object.size().0 - BoxViewerWidget::EDGE_HANDLE <= x
-                                 && x <= object.coordinate().0 + object.size().0 => {
-                    window.set_cursor(&gdk::Cursor::new_from_name(&window.get_display(), "e-resize"));
-                },
-                _ => {
-                    window.set_cursor(&gdk::Cursor::new_from_name(&window.get_display(), "default"));
-                },
-            }
-
             if event.get_state().contains(gdk::ModifierType::BUTTON1_MASK) {
                 let distance = x - self__.as_ref().borrow().offset;
                 let layer_index = y / BoxObject::HEIGHT;
-                cont(self__.as_ref().borrow().selecting_box_index.unwrap(), distance, layer_index as usize);
+
+                if self__.as_ref().borrow().flag_resize {
+                    cont_resize(self__.as_ref().borrow().selecting_box_index.unwrap(), distance);
+                } else {
+                    cont_move(self__.as_ref().borrow().selecting_box_index.unwrap(), distance, layer_index as usize);
+                }
                 self__.as_ref().borrow_mut().offset = event.get_position().0 as i32;
+            } else {
+                match objects.iter().find(|&object| object.contains(x,y)) {
+                    Some(object) if object.coordinate().0 + object.size().0 - BoxViewerWidget::EDGE_HANDLE <= x
+                                 && x <= object.coordinate().0 + object.size().0 => {
+                        window.set_cursor(&gdk::Cursor::new_from_name(&window.get_display(), "e-resize"));
+                        self__.as_ref().borrow_mut().flag_resize = true;
+                    },
+                    _ => {
+                        window.set_cursor(&gdk::Cursor::new_from_name(&window.get_display(), "default"));
+                        self__.as_ref().borrow_mut().flag_resize = false;
+                    },
+                }
             }
 
             Inhibit(false)

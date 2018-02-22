@@ -71,8 +71,8 @@ impl TimelineWidget {
         BoxViewerWidget::connect_select_box(self.timeline.clone(), cont);
     }
 
-    pub fn connect_drag_component(&self, cont: Box<Fn(usize, i32, usize)>) {
-        BoxViewerWidget::connect_drag_box(self.timeline.clone(), cont);
+    pub fn connect_drag_component(&self, cont_move: Box<Fn(usize, i32, usize)>, cont_resize: Box<Fn(usize, i32)>) {
+        BoxViewerWidget::connect_drag_box(self.timeline.clone(), cont_move, cont_resize);
     }
 
     pub fn ruler_connect_button_press_event<F: Fn(&gdk::EventButton) -> gtk::Inhibit + 'static>(&self, cont: F) {
