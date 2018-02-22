@@ -139,13 +139,14 @@ impl BoxViewerWidget {
         });
     }
 
-    pub fn connect_drag_box(self_: Rc<RefCell<BoxViewerWidget>>, cont: Box<Fn(usize, i32)>) {
+    pub fn connect_drag_box(self_: Rc<RefCell<BoxViewerWidget>>, cont: Box<Fn(usize, i32, usize)>) {
         let self__ = self_.clone();
         self_.as_ref().borrow().canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
         self_.as_ref().borrow().canvas.connect_motion_notify_event(move |_,event| {
             if event.get_state().contains(gdk::ModifierType::BUTTON1_MASK) {
                 let distance = event.get_position().0 as i32 - self__.as_ref().borrow().offset;
-                cont(self__.as_ref().borrow().selecting_box_index.unwrap(), distance);
+                let layer_index = event.get_position().1 as i32 / BoxObject::HEIGHT;
+                cont(self__.as_ref().borrow().selecting_box_index.unwrap(), distance, layer_index as usize);
                 self__.as_ref().borrow_mut().offset = event.get_position().0 as i32;
             }
 

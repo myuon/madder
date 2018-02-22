@@ -196,7 +196,7 @@ impl App {
         }));
 
         let self__ = self_.clone();
-        app.timeline.as_ref().borrow().connect_drag_component(Box::new(move |index,distance| {
+        app.timeline.as_ref().borrow().connect_drag_component(Box::new(move |index,distance,layer_index| {
             let props = self__.as_ref().borrow().editor.request_component_property(index);
             let get_from_prop = |p: Property| {
                 match p {
@@ -219,7 +219,12 @@ impl App {
             self__.as_ref().borrow_mut().editor.set_component_property(
                 index,
                 "start_time".to_string(),
-                Property::Time(add_time(get_from_prop(props["start_time"].clone()), distance as f64))
+                Property::Time(add_time(get_from_prop(props["start_time"].clone()), distance as f64)),
+            );
+            self__.as_ref().borrow_mut().editor.set_component_property(
+                index,
+                "layer_index".to_string(),
+                Property::Usize(std::cmp::max(layer_index, 0)),
             );
             self__.as_ref().borrow().queue_draw();
         }));

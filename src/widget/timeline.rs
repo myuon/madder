@@ -71,7 +71,7 @@ impl TimelineWidget {
         BoxViewerWidget::connect_select_box(self.timeline.clone(), cont);
     }
 
-    pub fn connect_drag_component(&self, cont: Box<Fn(usize, i32)>) {
+    pub fn connect_drag_component(&self, cont: Box<Fn(usize, i32, usize)>) {
         BoxViewerWidget::connect_drag_box(self.timeline.clone(), cont);
     }
 
