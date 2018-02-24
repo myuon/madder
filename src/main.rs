@@ -125,18 +125,21 @@ impl App {
                 let path = dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string();
                 dialog.destroy();
 
+                let self__ = self__.clone();
                 let window = gtk::Window::new(gtk::WindowType::Popup);
                 let progress_bar = gtk::ProgressBar::new();
                 let label = gtk::Label::new("進捗…");
                 let vbox = gtk::Box::new(gtk::Orientation::Vertical, 10);
                 window.add(&vbox);
+                window.set_transient_for(&self__.borrow().window);
+                window.set_position(gtk::WindowPosition::CenterOnParent);
+
                 vbox.pack_start(&label, true, true, 0);
                 vbox.pack_start(&progress_bar, true, true, 0);
                 progress_bar.set_pulse_step(0.0);
 
                 window.show_all();
 
-                let self__ = self__.clone();
                 let progress_bar = progress_bar.clone();
                 self__.borrow_mut().editor.write_init(&path, 100, 5);
 
