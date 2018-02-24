@@ -11,6 +11,7 @@ extern crate gtk;
 extern crate glib;
 extern crate gdk;
 extern crate gdk_pixbuf;
+extern crate gio;
 extern crate cairo;
 extern crate pango;
 
@@ -124,10 +125,26 @@ impl App {
                 let path = dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string();
                 dialog.destroy();
 
-                let window = self__.borrow().window.clone();
-                self__.borrow_mut().editor.write(&path, 100, 5, Box::new(move |i,n| {
-                    println!("{}/{}", i, n);
-                }));
+                let window = gtk::Window::new(gtk::WindowType::Popup);
+                let progress_bar = gtk::ProgressBar::new();
+                let label = gtk::Label::new("進捗…");
+                let vbox = gtk::Box::new(gtk::Orientation::Vertical, 10);
+                window.add(&vbox);
+                vbox.pack_start(&label, true, true, 0);
+                vbox.pack_start(&progress_bar, true, true, 0);
+                progress_bar.set_pulse_step(0.0);
+
+                window.show_all();
+
+                let self__ = self__.clone();
+                let progress_bar = progress_bar.clone();
+                self__.borrow_mut().editor.write_init(&path, 100, 5);
+
+                idle_add(move || {
+                    let (cont, frac) = self__.borrow_mut().editor.write_next();
+                    progress_bar.set_fraction(frac);
+                    Continue(cont)
+                });
             });
 
             file_item

@@ -43,6 +43,7 @@ pub struct Editor {
     pub position: gst::ClockTime,
     pub width: i32,
     pub height: i32,
+    renderer: Option<AviRenderer>,
 }
 
 impl Editor {
@@ -52,6 +53,7 @@ impl Editor {
             position: 0 * gst::MSECOND,
             width: width,
             height: height,
+            renderer: None,
         }
     }
 
@@ -107,18 +109,24 @@ impl Editor {
         pixbuf
     }
 
-    pub fn write(&mut self, uri: &str, frames: u64, delta: u64, cont: Box<Fn(u64, u64)>) {
-        let avi_renderer = AviRenderer::new(uri, self.width as usize, self.height as usize);
+    pub fn write_init(&mut self, uri: &str, frames: i32, delta: u64) {
+        self.renderer = Some(AviRenderer::new(uri, self.width as usize, self.height as usize, frames, delta));
+    }
 
-        for i in 0..frames {
-            if i % 10 == 0 {
-                cont(i,frames);
-            }
-            &avi_renderer.render_step(&self.get_current_pixbuf(), i*delta*gst::MSECOND);
-            self.seek_to(i*delta*gst::MSECOND);
+    pub fn write_next(&mut self) -> (bool, f64) {
+        let current = self.renderer.as_ref().unwrap().current.clone();
+        let frames = self.renderer.as_ref().unwrap().frames.clone();
+        let delta = self.renderer.as_ref().unwrap().delta.clone();
+
+        self.seek_to(current as u64 * delta * gst::MSECOND);
+
+        let pixbuf = self.get_current_pixbuf();
+        if self.renderer.as_mut().unwrap().render_step(&pixbuf) {
+            (true, current as f64 / frames as f64)
+        } else {
+            self.renderer.as_ref().unwrap().render_finish();
+            (false, 1.0)
         }
-
-        avi_renderer.render_finish();
     }
 }
 
