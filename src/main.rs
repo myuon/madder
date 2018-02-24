@@ -62,12 +62,12 @@ impl App {
     fn queue_draw(&self) {
         self.canvas.queue_draw();
 
-        let timeline: &TimelineWidget = &self.timeline.as_ref().borrow();
+        let timeline: &TimelineWidget = &self.timeline.borrow();
         timeline.queue_draw();
     }
 
     fn register(self_: Rc<RefCell<App>>, component: Box<ComponentLike>) {
-        self_.as_ref().borrow_mut().editor.register(component);
+        self_.borrow_mut().editor.register(component);
     }
 
     fn register_from_json(self_: Rc<RefCell<App>>, json: &ComponentStructure) {
@@ -75,36 +75,36 @@ impl App {
     }
 
     fn remove_selected(self_: Rc<RefCell<App>>) {
-        let index = self_.as_ref().borrow().selected_component_index.unwrap();
-        self_.as_ref().borrow_mut().editor.elements.remove(index);
-        self_.as_ref().borrow_mut().selected_component_index = None;
-        self_.as_ref().borrow().property.clear();
-        self_.as_ref().borrow().queue_draw();
+        let index = self_.borrow().selected_component_index.unwrap();
+        self_.borrow_mut().editor.elements.remove(index);
+        self_.borrow_mut().selected_component_index = None;
+        self_.borrow().property.clear();
+        self_.borrow().queue_draw();
     }
 
     fn select_component(self_: Rc<RefCell<App>>, index: usize) {
         let self__ = self_.clone();
 
-        self_.as_ref().borrow().property.set_properties(
-            self_.as_ref().borrow().editor.request_component_property(index),
+        self_.borrow().property.set_properties(
+            self_.borrow().editor.request_component_property(index),
             Box::new(move |prop_name, prop| {
                 let prop_name = Rc::new(prop_name);
                 let self__ = self__.clone();
 
                 gtk_impl::edit_type_to_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
                     // request the property again, since in this callback the value of property might have been changed
-                    let prop = self__.as_ref().borrow().editor.request_component_property(index)[prop_name.as_str()].clone();
+                    let prop = self__.borrow().editor.request_component_property(index)[prop_name.as_str()].clone();
                     if let Some(new_prop) = new_prop {
-                        self__.as_ref().borrow_mut().editor.set_component_property(index, prop_name.as_ref().clone(), gtk_impl::recover_property(prop, tracker, new_prop));
+                        self__.borrow_mut().editor.set_component_property(index, prop_name.as_ref().clone(), gtk_impl::recover_property(prop, tracker, new_prop));
                     }
 
-                    self__.as_ref().borrow().queue_draw();
+                    self__.borrow().queue_draw();
                 }))
             }),
         );
 
-        self_.as_ref().borrow_mut().selected_component_index = Some(index);
-        self_.as_ref().borrow().queue_draw();
+        self_.borrow_mut().selected_component_index = Some(index);
+        self_.borrow().queue_draw();
     }
 
     fn create_menu(self_: Rc<RefCell<App>>) -> gtk::MenuBar {
@@ -119,7 +119,7 @@ impl App {
 
             let self__ = self_.clone();
             output.connect_activate(move |_| {
-                let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&self__.as_ref().borrow().window), gtk::FileChooserAction::Save);
+                let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&self__.borrow().window), gtk::FileChooserAction::Save);
                 dialog.add_button("出力", 0);
                 dialog.run();
                 let path = dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string();
@@ -170,7 +170,7 @@ impl App {
 
             let self__ = self_.clone();
             video_item.connect_activate(move |_| {
-                let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&self__.as_ref().borrow().window), gtk::FileChooserAction::Open);
+                let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&self__.borrow().window), gtk::FileChooserAction::Open);
                 dialog.add_button("追加", 0);
 
                 {
@@ -189,13 +189,13 @@ impl App {
                     coordinate: (0,0),
                 });
 
-                self__.as_ref().borrow().queue_draw();
+                self__.borrow().queue_draw();
                 dialog.destroy();
             });
 
             let self__ = self_.clone();
             image_item.connect_activate(move |_| {
-                let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), Some(&self__.as_ref().borrow().window), gtk::FileChooserAction::Open);
+                let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), Some(&self__.borrow().window), gtk::FileChooserAction::Open);
                 dialog.add_button("追加", 0);
 
                 {
@@ -214,7 +214,7 @@ impl App {
                     coordinate: (0,0),
                 });
 
-                self__.as_ref().borrow().queue_draw();
+                self__.borrow().queue_draw();
                 dialog.destroy();
             });
 
@@ -228,7 +228,7 @@ impl App {
                     layer_index: 0,
                     coordinate: (50,50),
                 });
-                self__.as_ref().borrow().queue_draw();
+                self__.borrow().queue_draw();
             });
 
             editor_item
@@ -241,20 +241,20 @@ impl App {
     }
 
     pub fn create_ui(self_: Rc<RefCell<App>>) {
-        let app = self_.as_ref().borrow();
+        let app = self_.borrow();
 
-        app.timeline.as_ref().borrow_mut().create_ui();
+        app.timeline.borrow_mut().create_ui();
 
         let self__ = self_.clone();
-        app.timeline.as_ref().borrow().connect_select_component(Box::new(move |index| {
+        app.timeline.borrow().connect_select_component(Box::new(move |index| {
             App::select_component(self__.clone(), index);
         }));
 
         let self__ = self_.clone();
         let self___ = self_.clone();
-        app.timeline.as_ref().borrow().connect_drag_component(
+        app.timeline.borrow().connect_drag_component(
             Box::new(move |index,distance,layer_index| {
-                let props = self__.as_ref().borrow().editor.request_component_property(index);
+                let props = self__.borrow().editor.request_component_property(index);
                 let add_time = |a: gst::ClockTime, b: f64| {
                     if b < 0.0 {
                         if a < b.abs() as u64 * gst::MSECOND {
@@ -267,20 +267,20 @@ impl App {
                     }
                 };
 
-                self__.as_ref().borrow_mut().editor.set_component_property(
+                self__.borrow_mut().editor.set_component_property(
                     index,
                     "start_time".to_string(),
                     Property::Time(add_time(props["start_time"].as_time().unwrap(), distance as f64)),
                 );
-                self__.as_ref().borrow_mut().editor.set_component_property(
+                self__.borrow_mut().editor.set_component_property(
                     index,
                     "layer_index".to_string(),
                     Property::Usize(std::cmp::max(layer_index, 0)),
                 );
-                self__.as_ref().borrow().queue_draw();
+                self__.borrow().queue_draw();
             }),
             Box::new(move |index,distance| {
-                let props = self___.as_ref().borrow().editor.request_component_property(index);
+                let props = self___.borrow().editor.request_component_property(index);
                 let add_time = |a: gst::ClockTime, b: f64| {
                     if b < 0.0 {
                         if a < b.abs() as u64 * gst::MSECOND {
@@ -293,42 +293,42 @@ impl App {
                     }
                 };
 
-                self___.as_ref().borrow_mut().editor.set_component_property(
+                self___.borrow_mut().editor.set_component_property(
                     index,
                     "length".to_string(),
                     Property::Time(add_time(props["length"].as_time().unwrap(), distance as f64)),
                 );
-                self___.as_ref().borrow().queue_draw();
+                self___.borrow().queue_draw();
             }),
         );
 
         let self__ = self_.clone();
-        app.timeline.as_ref().borrow().connect_request_objects(Box::new(move || {
-            self__.as_ref().borrow().editor.elements.iter().enumerate().map(|(i,component)| {
+        app.timeline.borrow().connect_request_objects(Box::new(move || {
+            self__.borrow().editor.elements.iter().enumerate().map(|(i,component)| {
                 BoxObject::new(
                     component.get_component().structure.start_time.mseconds().unwrap() as i32,
                     component.get_component().structure.length.mseconds().unwrap() as i32,
                     i
                 ).label(component.get_component().structure.entity)
-                    .selected(Some(i) == self__.as_ref().borrow().selected_component_index)
+                    .selected(Some(i) == self__.borrow().selected_component_index)
                     .layer_index(component.get_component().structure.layer_index)
             }).collect()
         }));
 
         let self__ = self_.clone();
-        app.timeline.as_ref().borrow().ruler_connect_button_press_event(move |event| {
+        app.timeline.borrow().ruler_connect_button_press_event(move |event| {
             let (x,_) = event.get_position();
-            self__.as_ref().borrow_mut().editor.seek_to(x as u64 * gst::MSECOND);
-            self__.as_ref().borrow().queue_draw();
+            self__.borrow_mut().editor.seek_to(x as u64 * gst::MSECOND);
+            self__.borrow().queue_draw();
 
             Inhibit(false)
         });
 
         let self__ = self_.clone();
-        app.timeline.as_ref().borrow().tracker_connect_draw(move |cr| {
+        app.timeline.borrow().tracker_connect_draw(move |cr| {
             cr.set_source_rgb(200f64, 0f64, 0f64);
 
-            cr.move_to(self__.as_ref().borrow().editor.position.mseconds().unwrap() as f64, 0f64);
+            cr.move_to(self__.borrow().editor.position.mseconds().unwrap() as f64, 0f64);
             cr.rel_line_to(0f64, 100f64);
             cr.stroke();
 
@@ -337,7 +337,7 @@ impl App {
 
         let self__ = self_.clone();
         app.canvas.connect_draw(move |_,cr| {
-            cr.set_source_pixbuf(&self__.as_ref().borrow().editor.get_current_pixbuf(), 0f64, 0f64);
+            cr.set_source_pixbuf(&self__.borrow().editor.get_current_pixbuf(), 0f64, 0f64);
             cr.paint();
             Inhibit(false)
         });
@@ -362,7 +362,7 @@ impl App {
         }));
 
         vbox.pack_start(&hbox, true, true, 0);
-        vbox.pack_start(app.timeline.as_ref().borrow().to_widget(), true, true, 5);
+        vbox.pack_start(app.timeline.borrow().to_widget(), true, true, 5);
 
         app.window.add(&vbox);
         app.window.show_all();

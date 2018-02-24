@@ -38,7 +38,7 @@ impl TimelineWidget {
             ruler_box.add(ruler.to_widget());
             vbox.pack_start(&ruler_box, true, true, 10);
 
-            vbox.pack_start(timeline.as_ref().borrow().to_widget(), true, true, 0);
+            vbox.pack_start(timeline.borrow().to_widget(), true, true, 0);
         }
 
         let tracker = gtk::DrawingArea::new();
@@ -64,7 +64,7 @@ impl TimelineWidget {
     }
 
     pub fn connect_request_objects(&self, cont: Box<Fn() -> Vec<BoxObject>>) {
-        self.timeline.as_ref().borrow_mut().connect_request_objects(cont);
+        self.timeline.borrow_mut().connect_request_objects(cont);
     }
 
     pub fn connect_select_component(&self, cont: Box<Fn(usize)>) {

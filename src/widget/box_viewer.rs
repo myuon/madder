@@ -112,10 +112,10 @@ impl BoxViewerWidget {
     pub fn create_ui(self_: Rc<RefCell<BoxViewerWidget>>) {
         let self__ = self_.clone();
 
-        self_.as_ref().borrow().canvas.connect_draw(move |_,cr| {
-            let objects = (self__.as_ref().borrow().requester)();
+        self_.borrow().canvas.connect_draw(move |_,cr| {
+            let objects = (self__.borrow().requester)();
             BoxViewerWidget::renderer(objects.clone(), cr);
-            self__.as_ref().borrow_mut().objects = objects;
+            self__.borrow_mut().objects = objects;
 
             Inhibit(false)
         });
@@ -129,16 +129,16 @@ impl BoxViewerWidget {
 
     pub fn connect_select_box(self_: Rc<RefCell<BoxViewerWidget>>, cont: Box<Fn(usize)>) {
         let self__ = self_.clone();
-        self_.as_ref().borrow().canvas.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
-        self_.as_ref().borrow().canvas.connect_button_press_event(move |_,event| {
+        self_.borrow().canvas.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
+        self_.borrow().canvas.connect_button_press_event(move |_,event| {
             let (x,y) = event.get_position();
             let x = x as i32;
             let y = y as i32;
 
-            let objects = self__.as_ref().borrow().objects.clone();
+            let objects = self__.borrow().objects.clone();
             if let Some(object) = objects.iter().find(|&object| object.contains(x,y)) {
-                self__.as_ref().borrow_mut().offset = x;
-                self__.as_ref().borrow_mut().selecting_box_index = Some(object.index);
+                self__.borrow_mut().offset = x;
+                self__.borrow_mut().selecting_box_index = Some(object.index);
                 cont(object.index);
             }
             Inhibit(false)
@@ -147,35 +147,35 @@ impl BoxViewerWidget {
 
     pub fn connect_drag_box(self_: Rc<RefCell<BoxViewerWidget>>, cont_move: Box<Fn(usize, i32, usize)>, cont_resize: Box<Fn(usize, i32)>) {
         let self__ = self_.clone();
-        self_.as_ref().borrow().canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
-        self_.as_ref().borrow().canvas.connect_motion_notify_event(move |canvas,event| {
+        self_.borrow().canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
+        self_.borrow().canvas.connect_motion_notify_event(move |canvas,event| {
             let (x,y) = event.get_position();
             let x = x as i32;
             let y = y as i32;
 
-            let objects = self__.as_ref().borrow().objects.clone();
+            let objects = self__.borrow().objects.clone();
             let window = canvas.get_window().unwrap();
 
             if event.get_state().contains(gdk::ModifierType::BUTTON1_MASK) {
-                let distance = x - self__.as_ref().borrow().offset;
+                let distance = x - self__.borrow().offset;
                 let layer_index = y / BoxObject::HEIGHT;
 
-                if self__.as_ref().borrow().flag_resize {
-                    cont_resize(self__.as_ref().borrow().selecting_box_index.unwrap(), distance);
+                if self__.borrow().flag_resize {
+                    cont_resize(self__.borrow().selecting_box_index.unwrap(), distance);
                 } else {
-                    cont_move(self__.as_ref().borrow().selecting_box_index.unwrap(), distance, layer_index as usize);
+                    cont_move(self__.borrow().selecting_box_index.unwrap(), distance, layer_index as usize);
                 }
-                self__.as_ref().borrow_mut().offset = event.get_position().0 as i32;
+                self__.borrow_mut().offset = event.get_position().0 as i32;
             } else {
                 match objects.iter().find(|&object| object.contains(x,y)) {
                     Some(object) if object.coordinate().0 + object.size().0 - BoxObject::EDGE_WIDTH <= x
                                  && x <= object.coordinate().0 + object.size().0 => {
                         window.set_cursor(&gdk::Cursor::new_from_name(&window.get_display(), "e-resize"));
-                        self__.as_ref().borrow_mut().flag_resize = true;
+                        self__.borrow_mut().flag_resize = true;
                     },
                     _ => {
                         window.set_cursor(&gdk::Cursor::new_from_name(&window.get_display(), "default"));
-                        self__.as_ref().borrow_mut().flag_resize = false;
+                        self__.borrow_mut().flag_resize = false;
                     },
                 }
             }
