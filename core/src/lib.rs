@@ -107,12 +107,12 @@ impl Editor {
         pixbuf
     }
 
-    pub fn write(&mut self, uri: &str, frames: u64, delta: u64) {
+    pub fn write(&mut self, uri: &str, frames: u64, delta: u64, cont: Box<Fn(u64, u64)>) {
         let avi_renderer = AviRenderer::new(uri, self.width as usize, self.height as usize);
 
         for i in 0..frames {
             if i % 10 == 0 {
-                println!("{} / {}", i, frames);
+                cont(i,frames);
             }
             &avi_renderer.render_step(&self.get_current_pixbuf(), i*delta*gst::MSECOND);
             self.seek_to(i*delta*gst::MSECOND);

@@ -124,7 +124,10 @@ impl App {
                 let path = dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string();
                 dialog.destroy();
 
-                self__.borrow_mut().editor.write(&path, 100, 5);
+                let window = self__.borrow().window.clone();
+                self__.borrow_mut().editor.write(&path, 100, 5, Box::new(move |i,n| {
+                    println!("{}/{}", i, n);
+                }));
             });
 
             file_item
@@ -335,16 +338,6 @@ impl App {
         }));
 
         vbox.pack_start(&hbox, true, true, 0);
-
-        let btn = gtk::Button::new();
-        {
-            let self__ = self_.clone();
-            btn.set_label("render");
-            btn.connect_clicked(move |_| {
-                self__.borrow_mut().editor.write("output/output.avi", 100, 5);
-            });
-        }
-        vbox.pack_start(&btn, true, true, 5);
         vbox.pack_start(app.timeline.as_ref().borrow().to_widget(), true, true, 5);
 
         app.window.add(&vbox);
