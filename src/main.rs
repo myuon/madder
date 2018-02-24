@@ -143,6 +143,10 @@ impl App {
                 idle_add(move || {
                     let (cont, frac) = self__.borrow_mut().editor.write_next();
                     progress_bar.set_fraction(frac);
+
+                    if cont == false {
+                        window.destroy();
+                    }
                     Continue(cont)
                 });
             });
