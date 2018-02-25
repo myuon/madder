@@ -70,7 +70,7 @@ impl App {
         self_.borrow_mut().editor.register(component);
     }
 
-    fn register_from_json(self_: Rc<RefCell<App>>, json: &ComponentStructure) {
+    fn register_from_json(self_: Rc<RefCell<App>>, json: &Component) {
         App::register(self_, Component::new_from_structure(json))
     }
 
@@ -180,7 +180,7 @@ impl App {
                 }
                 dialog.run();
 
-                App::register_from_json(self__.clone(), &ComponentStructure {
+                App::register_from_json(self__.clone(), &Component {
                     component_type: ComponentType::Video,
                     start_time: 0 * gst::MSECOND,
                     length: 100 * gst::MSECOND,
@@ -205,7 +205,7 @@ impl App {
                 }
                 dialog.run();
 
-                App::register_from_json(self__.clone(), &ComponentStructure {
+                App::register_from_json(self__.clone(), &Component {
                     component_type: ComponentType::Image,
                     start_time: 0 * gst::MSECOND,
                     length: 100 * gst::MSECOND,
@@ -220,7 +220,7 @@ impl App {
 
             let self__ = self_.clone();
             text_item.connect_activate(move |_| {
-                App::register_from_json(self__.clone(), &ComponentStructure {
+                App::register_from_json(self__.clone(), &Component {
                     component_type: ComponentType::Text,
                     start_time: 0 * gst::MSECOND,
                     length: 100 * gst::MSECOND,
@@ -306,12 +306,12 @@ impl App {
         app.timeline.borrow().connect_request_objects(Box::new(move || {
             self__.borrow().editor.elements.iter().enumerate().map(|(i,component)| {
                 BoxObject::new(
-                    component.get_component().structure.start_time.mseconds().unwrap() as i32,
-                    component.get_component().structure.length.mseconds().unwrap() as i32,
+                    component.get_component().start_time.mseconds().unwrap() as i32,
+                    component.get_component().length.mseconds().unwrap() as i32,
                     i
-                ).label(component.get_component().structure.entity)
+                ).label(component.get_component().entity)
                     .selected(Some(i) == self__.borrow().selected_component_index)
-                    .layer_index(component.get_component().structure.layer_index)
+                    .layer_index(component.get_component().layer_index)
             }).collect()
         }));
 
@@ -350,10 +350,8 @@ impl App {
         vbox.pack_start(&App::create_menu(self_.clone()), true, true, 0);
 
         let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-        {
-            hbox.pack_start(&app.canvas, true, true, 0);
-            hbox.pack_start(app.property.to_widget(), true, true, 0);
-        }
+        hbox.pack_start(&app.canvas, true, true, 0);
+        hbox.pack_start(app.property.to_widget(), true, true, 0);
         app.property.create_ui();
 
         let self__ = self_.clone();
@@ -388,7 +386,7 @@ fn main() {
                 width: 640,
                 height: 480,
                 components: Box::new([
-                    ComponentStructure {
+                    Component {
                         component_type: ComponentType::Text,
                         start_time: 0 * gst::MSECOND,
                         length: 100 * gst::MSECOND,

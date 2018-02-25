@@ -18,7 +18,7 @@ pub enum ComponentType {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ComponentStructure {
+pub struct Component {
     pub component_type: ComponentType,
 
     #[serde(serialize_with = "gst_clocktime_serialize")]
@@ -70,12 +70,6 @@ impl Property {
 
 pub type Properties = HashMap<String, Property>;
 
-#[derive(Debug, Clone)]
-pub struct Component {
-    pub structure: ComponentStructure,
-    pub name: String,
-}
-
 pub trait ComponentWrapper {
     fn get_component(&self) -> Component;
     fn get_properties(&self) -> Properties;
@@ -91,12 +85,12 @@ impl ComponentWrapper for Component {
         use Property::*;
 
         [
-            ("component_type".to_string(), ReadOnly(format!("{:?}", self.structure.component_type))),
-            ("start_time".to_string(), Time(self.structure.start_time)),
-            ("length".to_string(), Time(self.structure.length)),
-            ("coordinate".to_string(), Pair(box I32(self.structure.coordinate.0), box I32(self.structure.coordinate.1))),
-            ("entity".to_string(), ReadOnly(self.structure.entity.clone())),
-            ("layer_index".to_string(), Usize(self.structure.layer_index)),
+            ("component_type".to_string(), ReadOnly(format!("{:?}", self.component_type))),
+            ("start_time".to_string(), Time(self.start_time)),
+            ("length".to_string(), Time(self.length)),
+            ("coordinate".to_string(), Pair(box I32(self.coordinate.0), box I32(self.coordinate.1))),
+            ("entity".to_string(), ReadOnly(self.entity.clone())),
+            ("layer_index".to_string(), Usize(self.layer_index)),
         ].iter().cloned().collect()
     }
 
@@ -104,10 +98,10 @@ impl ComponentWrapper for Component {
         use Property::*;
 
         match (name.as_str(), prop) {
-            ("start_time", Time(v)) => self.structure.start_time = v,
-            ("length", Time(v)) => self.structure.length = v,
-            ("coordinate", Pair(box I32(x), box I32(y))) => self.structure.coordinate = (x,y),
-            ("layer_index", Usize(v)) => self.structure.layer_index = v,
+            ("start_time", Time(v)) => self.start_time = v,
+            ("length", Time(v)) => self.length = v,
+            ("coordinate", Pair(box I32(x), box I32(y))) => self.coordinate = (x,y),
+            ("layer_index", Usize(v)) => self.layer_index = v,
             _ => unimplemented!(),
         }
     }

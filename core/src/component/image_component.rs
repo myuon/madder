@@ -9,13 +9,10 @@ pub struct ImageComponent {
 }
 
 impl ImageComponent {
-    pub fn new_from_structure(structure: &ComponentStructure) -> ImageComponent {
+    pub fn new_from_structure(component: &Component) -> ImageComponent {
         ImageComponent {
-            component: Component {
-                structure: structure.clone(),
-                name: "image".to_string(),
-            },
-            data: ImageComponent::create_data(&structure.entity),
+            component: component.clone(),
+            data: ImageComponent::create_data(&component.entity),
         }
     }
 
@@ -57,7 +54,7 @@ impl ComponentWrapper for ImageComponent {
         use Property::*;
 
         let mut props = self.component.get_properties();
-        props.insert("entity".to_string(), FilePath(self.component.structure.entity.clone()));
+        props.insert("entity".to_string(), FilePath(self.component.entity.clone()));
         props
     }
 

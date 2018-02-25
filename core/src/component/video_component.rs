@@ -26,7 +26,7 @@ pub struct VideoTestComponent {
 }
 
 impl VideoTestComponent {
-    pub fn new_from_structure(structure: &ComponentStructure) -> VideoTestComponent {
+    pub fn new_from_structure(component: &Component) -> VideoTestComponent {
         let pipeline = gst::Pipeline::new(None);
         let src = gst::ElementFactory::make("videotestsrc", None).unwrap();
         let pixbufsink = gst::ElementFactory::make("gdkpixbufsink", None).unwrap();
@@ -37,10 +37,7 @@ impl VideoTestComponent {
         pipeline.set_state(gst::State::Paused).into_result().unwrap();
 
         VideoTestComponent {
-            component: Component {
-                structure: structure.clone(),
-                name: "video_test".to_string(),
-            },
+            component: component.clone(),
             data: pixbufsink,
         }
     }
@@ -76,13 +73,10 @@ pub struct VideoFileComponent {
 }
 
 impl VideoFileComponent {
-    pub fn new_from_structure(structure: &ComponentStructure) -> VideoFileComponent {
+    pub fn new_from_structure(component: &Component) -> VideoFileComponent {
         VideoFileComponent {
-            component: Component {
-                structure: structure.clone(),
-                name: "video_file".to_string(),
-            },
-            data: VideoFileComponent::create_data(&structure.entity),
+            component: component.clone(),
+            data: VideoFileComponent::create_data(&component.entity),
         }
     }
 
@@ -134,7 +128,7 @@ impl ComponentWrapper for VideoFileComponent {
         use Property::*;
 
         let mut props = self.component.get_properties();
-        props.insert("entity".to_string(), FilePath(self.component.structure.entity.clone()));
+        props.insert("entity".to_string(), FilePath(self.component.entity.clone()));
         props
     }
 

@@ -15,18 +15,15 @@ pub struct TextComponent {
 }
 
 impl TextComponent {
-    pub fn new_from_structure(structure: &ComponentStructure) -> TextComponent {
+    pub fn new_from_structure(component: &Component) -> TextComponent {
         let text_color = gdk::RGBA::white();
         let text_font = "Serif 24".to_string();
 
         TextComponent {
-            component: Component {
-                structure: structure.clone(),
-                name: "text".to_string(),
-            },
+            component: component.clone(),
             text_color: text_color,
             text_font: text_font.clone(),
-            data: TextComponent::create_data(&structure.entity, &text_font, text_color),
+            data: TextComponent::create_data(&component.entity, &text_font, text_color),
         }
     }
 
@@ -45,7 +42,7 @@ impl TextComponent {
     }
 
     pub fn reload(&mut self) {
-        self.data = TextComponent::create_data(&self.component.structure.entity, &self.text_font, self.text_color);
+        self.data = TextComponent::create_data(&self.component.entity, &self.text_font, self.text_color);
     }
 }
 
@@ -68,7 +65,7 @@ impl ComponentWrapper for TextComponent {
         use Property::*;
 
         let mut props = self.component.get_properties();
-        props.insert("entity".to_string(), Document(self.component.structure.entity.clone()));
+        props.insert("entity".to_string(), Document(self.component.entity.clone()));
         props.insert("text_font".to_string(), Font(self.text_font.clone()));
         props.insert("text_color".to_string(), Color(self.text_color.clone()));
         props
@@ -79,7 +76,7 @@ impl ComponentWrapper for TextComponent {
 
         match (name.as_str(), prop) {
             ("entity", Document(doc)) => {
-                self.component.structure.entity = doc;
+                self.component.entity = doc;
                 self.reload()
             },
             ("text_font", Font(font)) => {

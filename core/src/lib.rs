@@ -22,7 +22,7 @@ pub use self::component::*;
 
 #[derive(Serialize, Deserialize)]
 pub struct EditorStructure {
-    pub components: Box<[ComponentStructure]>,
+    pub components: Box<[Component]>,
     pub width: i32,
     pub height: i32,
 }
@@ -91,12 +91,15 @@ impl Editor {
             p[2] = 0;
         }
 
-        let mut elems = self.elements.iter().filter(|&elem| { elem.get_component().structure.start_time <= self.position && self.position <= elem.get_component().structure.start_time + elem.get_component().structure.length }).collect::<Vec<_>>();
-        elems.sort_by_key(|elem| elem.get_component().structure.layer_index);
+        let mut elems = self.elements.iter().filter(|&elem| {
+            elem.get_component().start_time <= self.position
+            && self.position <= elem.get_component().start_time + elem.get_component().length
+        }).collect::<Vec<_>>();
+        elems.sort_by_key(|elem| elem.get_component().layer_index);
 
         for elem in elems.iter().rev() {
             if let Some(dest) = elem.peek(self.position) {
-                let elem = elem.get_component().structure;
+                let elem = elem.get_component();
 
                 &dest.composite(
                     &pixbuf, elem.coordinate.0, elem.coordinate.1,
