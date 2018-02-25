@@ -18,6 +18,29 @@ pub enum ComponentType {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum EffectType {
+    Coordinate,
+    Rotate,
+    Scale,
+    Alpha,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum Transition {
+    None,
+    Linear,
+    Ease,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Effect {
+    pub effect_type: EffectType,
+    pub transition: Transition,
+    pub start_value: f64,
+    pub end_value: f64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Component {
     pub component_type: ComponentType,
 
@@ -34,6 +57,9 @@ pub struct Component {
     pub layer_index: usize,
 
     pub entity: String,
+
+    #[serde(default = "Vec::new")]
+    pub effect: Vec<Effect>,
 }
 
 fn gst_clocktime_serialize<S: serde::Serializer>(g: &gst::ClockTime, serializer: S) -> Result<S::Ok, S::Error> {
@@ -55,6 +81,8 @@ pub enum Property {
     Font(String),
     Color(gdk::RGBA),
     ReadOnly(String),
+    EffectInfo(EffectType, Transition, f64, f64),
+    Array(Vec<Property>),
 }
 
 impl Property {
@@ -91,6 +119,7 @@ impl ComponentWrapper for Component {
             ("coordinate".to_string(), Pair(box I32(self.coordinate.0), box I32(self.coordinate.1))),
             ("entity".to_string(), ReadOnly(self.entity.clone())),
             ("layer_index".to_string(), Usize(self.layer_index)),
+            ("effect".to_string(), Array(self.effect.iter().map(|eff| EffectInfo(eff.effect_type.clone(), eff.transition.clone(), eff.start_value, eff.end_value)).collect()))
         ].iter().cloned().collect()
     }
 
@@ -102,6 +131,17 @@ impl ComponentWrapper for Component {
             ("length", Time(v)) => self.length = v,
             ("coordinate", Pair(box I32(x), box I32(y))) => self.coordinate = (x,y),
             ("layer_index", Usize(v)) => self.layer_index = v,
+            ("effect", Array(arr)) => self.effect = arr.iter().map(|eff| {
+                match eff {
+                    &EffectInfo(ref effect_type, ref transition, ref start_value, ref end_value) => Effect {
+                        effect_type: effect_type.clone(),
+                        transition: transition.clone(),
+                        start_value: *start_value,
+                        end_value: *end_value,
+                    },
+                    _ => unimplemented!(),
+                }
+            }).collect(),
             _ => unimplemented!(),
         }
     }

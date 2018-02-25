@@ -104,6 +104,27 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Opti
                 cont(Some(Color(colorbtn.get_rgba())), &tracker.clone())
             });
             colorbtn.dynamic_cast().unwrap()
+        },
+        &EffectInfo(ref eff_type, ref transition, ref start_value, ref end_value) => {
+            let label = gtk::Label::new(format!("{} -- {:?} --> {}", start_value, eff_type, end_value).as_str());
+            label.dynamic_cast().unwrap()
+        },
+        &Array(ref arr) => {
+            let expander = gtk::Expander::new(format!("effects: {}", arr.len()).as_str());
+            expander.set_margin_top(5);
+            expander.set_margin_bottom(5);
+
+            let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+
+            for (i,eff) in arr.iter().enumerate() {
+                let mut tracker = tracker.clone();
+                tracker.push(i as i32);
+                vbox.pack_start(&edit_type_to_widget(&eff, tracker, cont.clone()), true, true, 5);
+            }
+
+            vbox.set_margin_left(20);
+            expander.add(&vbox);
+            expander.dynamic_cast().unwrap()
         }
     }
 }

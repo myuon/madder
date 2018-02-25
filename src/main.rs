@@ -187,6 +187,7 @@ impl App {
                     entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
                     layer_index: 0,
                     coordinate: (0,0),
+                    effect: vec![],
                 });
 
                 self__.borrow().queue_draw();
@@ -212,6 +213,7 @@ impl App {
                     entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
                     layer_index: 0,
                     coordinate: (0,0),
+                    effect: vec![],
                 });
 
                 self__.borrow().queue_draw();
@@ -227,6 +229,7 @@ impl App {
                     entity: "dummy entity".to_string(),
                     layer_index: 0,
                     coordinate: (50,50),
+                    effect: vec![],
                 });
                 self__.borrow().queue_draw();
             });
@@ -393,6 +396,7 @@ fn main() {
                         entity: "[ここにテキストを挿入]".to_string(),
                         layer_index: 0,
                         coordinate: (50,50),
+                        effect: vec![],
                     }
                 ]),
             }
