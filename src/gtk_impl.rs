@@ -106,8 +106,62 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Opti
             colorbtn.dynamic_cast().unwrap()
         },
         &EffectInfo(ref eff_type, ref transition, ref start_value, ref end_value) => {
-            let label = gtk::Label::new(format!("{} -- {:?} --> {}", start_value, eff_type, end_value).as_str());
-            label.dynamic_cast().unwrap()
+            let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+            vbox.pack_start(&gtk::Label::new(format!("{:?}", eff_type).as_str()), true, true, 0);
+
+            let combo = gtk::ComboBoxText::new();
+            combo.append_text(&format!("{:?}", Transition::Linear).as_str());
+            combo.append_text(&format!("{:?}", Transition::Ease).as_str());
+            combo.set_active(if *transition == Transition::Linear { 0 } else { 1 });
+
+            {
+                let eff_type = eff_type.clone();
+                let start_value = start_value.clone();
+                let end_value = end_value.clone();
+                let cont = cont.clone();
+                let tracker = tracker.clone();
+                combo.connect_changed(move |combo| {
+                    let active_id = combo.get_active();
+                    let eff_type = eff_type.clone();
+                    cont(Some(EffectInfo(eff_type, if active_id == 0 { Transition::Linear } else { Transition::Ease }, start_value, end_value)), &tracker.clone())
+                });
+            }
+
+            vbox.pack_start(&combo, true, true, 0);
+
+            let start_entry = gtk::Entry::new();
+            start_entry.set_text(&start_value.to_string());
+            {
+                let eff_type = eff_type.clone();
+                let transition = transition.clone();
+                let end_value = end_value.clone();
+                let cont = cont.clone();
+                let tracker = tracker.clone();
+                start_entry.connect_changed(move |entry| {
+                    let eff_type = eff_type.clone();
+                    let transition = transition.clone();
+                    let end_value = end_value.clone();
+                    cont(entry.get_text().and_then(|x| x.parse().ok()).map(|x| EffectInfo(eff_type, transition, x, end_value)), &tracker.clone())
+                });
+            }
+            vbox.pack_start(&start_entry, true, true, 0);
+
+            let end_entry = gtk::Entry::new();
+            end_entry.set_text(&end_value.to_string());
+            {
+                let eff_type = eff_type.clone();
+                let transition = transition.clone();
+                let start_value = start_value.clone();
+                end_entry.connect_changed(move |entry| {
+                    let eff_type = eff_type.clone();
+                    let transition = transition.clone();
+                    let start_value = start_value.clone();
+                    cont(entry.get_text().and_then(|x| x.parse().ok()).map(|x| EffectInfo(eff_type, transition, start_value, x)), &tracker.clone())
+                });
+            }
+            vbox.pack_start(&end_entry, true, true, 0);
+
+            vbox.dynamic_cast().unwrap()
         },
     }
 }

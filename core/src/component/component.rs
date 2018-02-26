@@ -25,7 +25,7 @@ pub enum EffectType {
     Alpha,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Transition {
     Linear,
     Ease,
