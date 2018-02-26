@@ -183,6 +183,7 @@ pub enum Property {
     Font(String),
     Color(gdk::RGBA),
     ReadOnly(String),
+    Choose(String,i32),
     EffectInfo(EffectType, Transition, f64, f64),
 }
 
@@ -216,6 +217,15 @@ impl Property {
 
         match self {
             &F64(t) => Some(t),
+            _ => None,
+        }
+    }
+
+    pub fn as_choose(&self) -> Option<i32> {
+        use Property::*;
+
+        match self {
+            &Choose(_,t) => Some(t),
             _ => None,
         }
     }
