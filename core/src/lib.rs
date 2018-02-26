@@ -101,7 +101,9 @@ impl Editor {
             if let Some(dest) = elem.peek(self.position) {
                 let mut elem = elem.get_component();
                 for eff in elem.effect.clone() {
-                    elem = eff.make_effect(elem);
+                    let start_time = elem.start_time;
+                    let length = elem.length;
+                    elem = eff.make_effect(elem, (self.position - start_time).mseconds().unwrap() as f64 / length.mseconds().unwrap() as f64);
                 }
 
                 &dest.composite(
