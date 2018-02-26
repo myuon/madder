@@ -17,12 +17,27 @@ pub enum ComponentType {
     Sound,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum EffectType {
-    Coordinate,
+    CoordinateX,
+    CoordinateY,
     Rotate,
     Scale,
     Alpha,
+}
+
+impl EffectType {
+    pub fn types() -> Vec<EffectType> {
+        use EffectType::*;
+
+        vec![
+            CoordinateX,
+            CoordinateY,
+            Rotate,
+            Scale,
+            Alpha
+        ]
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -127,9 +142,14 @@ impl Effect {
         use EffectType::*;
 
         match self.effect_type {
-            Coordinate => {
+            CoordinateX => {
                 let mut comp = component;
                 comp.coordinate.0 += self.value(current) as i32;
+                comp
+            },
+            CoordinateY => {
+                let mut comp = component;
+                comp.coordinate.1 += self.value(current) as i32;
                 comp
             },
             _ => unimplemented!(),

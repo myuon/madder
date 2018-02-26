@@ -12,6 +12,7 @@ use madder_core::*;
 pub enum Tracker {
     X,
     Y,
+    EffectType,
     Transition,
     StartValue,
     EndValue,
@@ -120,24 +121,44 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<Tracker>, cont: Rc<Fn(
             });
             colorbtn.dynamic_cast().unwrap()
         },
-        &Choose(ref name, ref i) if name == "transitions" => {
-            let combo = gtk::ComboBoxText::new();
-            for item in Transition::transitions() {
-                combo.append_text(&format!("{:?}", item));
+        &Choose(ref name, ref i) => {
+            let make_widget = |items: Vec<String>| {
+                let combo = gtk::ComboBoxText::new();
+                for item in items {
+                    combo.append_text(item.as_str());
+                }
+                combo.set_active(i.clone() as i32);
+
+                let name = name.to_string();
+                combo.connect_changed(move |combo| {
+                    cont(Some(Choose(name.clone(), combo.get_active())), &tracker.clone());
+                });
+
+                combo.dynamic_cast().unwrap()
+            };
+
+            match name {
+                _ if name == &format!("{:?}", Tracker::EffectType) => make_widget(EffectType::types().iter().map(|x| format!("{:?}", x)).collect()),
+                _ if name == &format!("{:?}", Tracker::Transition) => make_widget(Transition::transitions().iter().map(|x| format!("{:?}", x)).collect()),
+                _ => unimplemented!(),
             }
-            combo.set_active(i.clone() as i32);
-
-            let name = name.to_string();
-            combo.connect_changed(move |combo| {
-                cont(Some(Choose(name.clone(), combo.get_active())), &tracker.clone());
-            });
-
-            combo.dynamic_cast().unwrap()
         },
-        &Choose(_,_) => unimplemented!(),
         &EffectInfo(ref eff_type, ref transition, ref start_value, ref end_value) => {
             let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
             vbox.pack_start(&gtk::Label::new(format!("{:?}", eff_type).as_str()), true, true, 0);
+
+            {
+                let mut tracker = tracker.clone();
+                tracker.push(Tracker::EffectType);
+                vbox.pack_start(
+                    &edit_type_to_widget(
+                        &Choose(
+                            format!("{:?}", Tracker::EffectType),
+                            EffectType::types().iter().position(|i| i == eff_type).unwrap() as i32,
+                        ),
+                        tracker, cont.clone()),
+                    true, true, 0);
+            }
 
             {
                 let mut tracker = tracker.clone();
@@ -145,7 +166,7 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<Tracker>, cont: Rc<Fn(
                 vbox.pack_start(
                     &edit_type_to_widget(
                         &Choose(
-                            "transitions".to_string(),
+                            format!("{:?}", Tracker::Transition),
                             Transition::transitions().iter().position(|i| i == transition).unwrap() as i32,
                         ),
                         tracker, cont.clone()),
@@ -186,6 +207,21 @@ pub fn recover_property(dynamic_type: Property, tracker: &[Tracker], value: Prop
                 _ => unimplemented!(),
             }
         },
+        &[Tracker::EffectType, ref tracker..] => {
+            match dynamic_type {
+                EffectInfo(effect_type, transition, start_value, end_value) =>
+                    EffectInfo(
+                        EffectType::types()[recover_property(
+                            Choose(
+                                format!("{:?}", Tracker::EffectType),
+                                EffectType::types().iter().position(|i| i == &effect_type).unwrap() as i32,
+                            ),
+                            &tracker, value
+                        ).as_choose().unwrap() as usize].clone(),
+                        transition, start_value, end_value),
+                _ => unimplemented!(),
+            }
+        },
         &[Tracker::Transition, ref tracker..] => {
             match dynamic_type {
                 EffectInfo(effect_type, transition, start_value, end_value) =>
@@ -193,7 +229,7 @@ pub fn recover_property(dynamic_type: Property, tracker: &[Tracker], value: Prop
                         effect_type,
                         Transition::transitions()[recover_property(
                             Choose(
-                                "transitions".to_string(),
+                                format!("{:?}", Tracker::Transition),
                                 Transition::transitions().iter().position(|i| i == &transition).unwrap() as i32,
                             ),
                             &tracker, value
