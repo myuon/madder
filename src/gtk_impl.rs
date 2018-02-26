@@ -110,7 +110,9 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Opti
             vbox.pack_start(&gtk::Label::new(format!("{:?}", eff_type).as_str()), true, true, 0);
 
             let combo = gtk::ComboBoxText::new();
-            combo.append_text(&format!("{:?}", Transition::Linear).as_str());
+            for trans in Transition::iter_variants() {
+                combo.append_text(&format!("{:?}", trans).as_str());
+            }
             combo.append_text(&format!("{:?}", Transition::Ease).as_str());
             combo.set_active(if *transition == Transition::Linear { 0 } else { 1 });
 

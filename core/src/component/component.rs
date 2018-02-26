@@ -29,6 +29,9 @@ pub enum EffectType {
 pub enum Transition {
     Linear,
     Ease,
+    EaseIn,
+    EaseOut,
+    EaseInOut,
 }
 
 impl Transition {
@@ -38,6 +41,9 @@ impl Transition {
         match self {
             &Linear => x,
             &Ease => Transition::cubic_bezier(0.25, 0.1, 0.25, 1.0, x),
+            &EaseIn => Transition::cubic_bezier(0.42, 0.0, 1.0, 1.0, x),
+            &EaseOut => Transition::cubic_bezier(0.0, 0.0, 0.58, 1.0, x),
+            &EaseInOut => Transition::cubic_bezier(0.42, 0.0, 0.58, 1.0, x),
         }
     }
 
@@ -171,6 +177,13 @@ pub enum Property {
 pub enum PropertyGroupTab {
     ComponentProperty,
     EffectProperty,
+}
+
+IterVariants! {
+    (PropertyGroupTabVariants) pub enum PropertyGroupTab {
+        ComponentProperty,
+        EffectProperty,
+    }
 }
 
 impl Property {
