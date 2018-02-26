@@ -35,6 +35,18 @@ pub enum Transition {
 }
 
 impl Transition {
+    pub fn transitions() -> Vec<Transition> {
+        use Transition::*;
+
+        vec![
+            Linear,
+            Ease,
+            EaseIn,
+            EaseOut,
+            EaseInOut,
+        ]
+    }
+
     fn get_in_interval(&self, x: f64) -> f64 {
         use Transition::*;
 
@@ -177,13 +189,6 @@ pub enum Property {
 pub enum PropertyGroupTab {
     ComponentProperty,
     EffectProperty,
-}
-
-IterVariants! {
-    (PropertyGroupTabVariants) pub enum PropertyGroupTab {
-        ComponentProperty,
-        EffectProperty,
-    }
 }
 
 impl Property {

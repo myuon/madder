@@ -110,11 +110,10 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Opti
             vbox.pack_start(&gtk::Label::new(format!("{:?}", eff_type).as_str()), true, true, 0);
 
             let combo = gtk::ComboBoxText::new();
-            for trans in Transition::iter_variants() {
+            for trans in Transition::transitions() {
                 combo.append_text(&format!("{:?}", trans).as_str());
             }
-            combo.append_text(&format!("{:?}", Transition::Ease).as_str());
-            combo.set_active(if *transition == Transition::Linear { 0 } else { 1 });
+            combo.set_active(Transition::transitions().iter().position(|t| t == transition).unwrap() as i32);
 
             {
                 let eff_type = eff_type.clone();
@@ -125,7 +124,7 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Opti
                 combo.connect_changed(move |combo| {
                     let active_id = combo.get_active();
                     let eff_type = eff_type.clone();
-                    cont(Some(EffectInfo(eff_type, if active_id == 0 { Transition::Linear } else { Transition::Ease }, start_value, end_value)), &tracker.clone())
+                    cont(Some(EffectInfo(eff_type, Transition::transitions()[active_id as usize].clone(), start_value, end_value)), &tracker.clone())
                 });
             }
 
