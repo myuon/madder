@@ -174,6 +174,7 @@ fn gst_clocktime_deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) 
 #[derive(Debug, Clone)]
 pub enum Property {
     I32(i32),
+    F64(f64),
     Usize(usize),
     Time(gst::ClockTime),
     Pair(Box<Property>, Box<Property>),
@@ -197,6 +198,24 @@ impl Property {
 
         match self {
             &Time(t) => Some(t),
+            _ => None,
+        }
+    }
+
+    pub fn as_i32(&self) -> Option<i32> {
+        use Property::*;
+
+        match self {
+            &I32(t) => Some(t),
+            _ => None,
+        }
+    }
+
+    pub fn as_f64(&self) -> Option<f64> {
+        use Property::*;
+
+        match self {
+            &F64(t) => Some(t),
             _ => None,
         }
     }

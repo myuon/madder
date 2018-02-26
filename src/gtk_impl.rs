@@ -8,7 +8,16 @@ use gdk::prelude::*;
 use gtk::prelude::*;
 use madder_core::*;
 
-pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Option<Property>, &[i32]) + 'static>) -> gtk::Widget {
+#[derive(Clone, Debug)]
+pub enum Tracker {
+    X,
+    Y,
+    Transition,
+    StartValue,
+    EndValue,
+}
+
+pub fn edit_type_to_widget(self_: &Property, tracker: Vec<Tracker>, cont: Rc<Fn(Option<Property>, &Vec<Tracker>) + 'static>) -> gtk::Widget {
     use Property::*;
 
     match self_ {
@@ -23,6 +32,12 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Opti
             let entry = gtk::Entry::new();
             entry.set_text(&i.to_string());
             entry.connect_changed(move |entry| cont(entry.get_text().and_then(|x| x.parse().ok()).map(I32), &tracker.clone()));
+            entry.dynamic_cast().unwrap()
+        },
+        &F64(ref i) => {
+            let entry = gtk::Entry::new();
+            entry.set_text(&i.to_string());
+            entry.connect_changed(move |entry| cont(entry.get_text().and_then(|x| x.parse().ok()).map(F64), &tracker.clone()));
             entry.dynamic_cast().unwrap()
         },
         &Usize(ref i) => {
@@ -51,12 +66,12 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Opti
 
             {
                 let mut tracker = tracker.clone();
-                tracker.push(0);
+                tracker.push(Tracker::X);
                 vbox.pack_start(&edit_type_to_widget(&wx, tracker, cont.clone()), true, true, 5);
             }
             {
                 let mut tracker = tracker.clone();
-                tracker.push(1);
+                tracker.push(Tracker::Y);
                 vbox.pack_start(&edit_type_to_widget(&wy, tracker, cont.clone()), true, true, 5);
             }
 
@@ -115,72 +130,52 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<i32>, cont: Rc<Fn(Opti
             }
             combo.set_active(Transition::transitions().iter().position(|t| t == transition).unwrap() as i32);
 
-            {
-                let eff_type = eff_type.clone();
-                let start_value = start_value.clone();
-                let end_value = end_value.clone();
-                let cont = cont.clone();
-                let tracker = tracker.clone();
-                combo.connect_changed(move |combo| {
-                    let active_id = combo.get_active();
-                    let eff_type = eff_type.clone();
-                    cont(Some(EffectInfo(eff_type, Transition::transitions()[active_id as usize].clone(), start_value, end_value)), &tracker.clone())
-                });
-            }
-
             vbox.pack_start(&combo, true, true, 0);
 
-            let start_entry = gtk::Entry::new();
-            start_entry.set_text(&start_value.to_string());
             {
-                let eff_type = eff_type.clone();
-                let transition = transition.clone();
-                let end_value = end_value.clone();
-                let cont = cont.clone();
-                let tracker = tracker.clone();
-                start_entry.connect_changed(move |entry| {
-                    let eff_type = eff_type.clone();
-                    let transition = transition.clone();
-                    let end_value = end_value.clone();
-                    cont(entry.get_text().and_then(|x| x.parse().ok()).map(|x| EffectInfo(eff_type, transition, x, end_value)), &tracker.clone())
-                });
+                let mut tracker = tracker.clone();
+                tracker.push(Tracker::StartValue);
+                vbox.pack_start(&edit_type_to_widget(&F64(*start_value), tracker, cont.clone()), true, true, 0);
             }
-            vbox.pack_start(&start_entry, true, true, 0);
 
-            let end_entry = gtk::Entry::new();
-            end_entry.set_text(&end_value.to_string());
             {
-                let eff_type = eff_type.clone();
-                let transition = transition.clone();
-                let start_value = start_value.clone();
-                end_entry.connect_changed(move |entry| {
-                    let eff_type = eff_type.clone();
-                    let transition = transition.clone();
-                    let start_value = start_value.clone();
-                    cont(entry.get_text().and_then(|x| x.parse().ok()).map(|x| EffectInfo(eff_type, transition, start_value, x)), &tracker.clone())
-                });
+                let mut tracker = tracker.clone();
+                tracker.push(Tracker::EndValue);
+                vbox.pack_start(&edit_type_to_widget(&F64(*end_value), tracker, cont.clone()), true, true, 0);
             }
-            vbox.pack_start(&end_entry, true, true, 0);
 
             vbox.dynamic_cast().unwrap()
         },
     }
 }
 
-pub fn recover_property(dynamic_type: Property, tracker: &[i32], value: Property) -> Property {
+pub fn recover_property(dynamic_type: Property, tracker: &[Tracker], value: Property) -> Property {
     use Property::*;
+    use self::Tracker::*;
 
     match tracker {
         &[] => value,
-        &[0,ref tracker..] => {
+        &[X, ref tracker..] => {
             match dynamic_type {
                 Pair(box x,y) => Pair(Box::new(recover_property(x, &tracker, value)),y),
                 _ => unimplemented!(),
             }
         },
-        &[1,ref tracker..] => {
+        &[Y, ref tracker..] => {
             match dynamic_type {
                 Pair(x,box y) => Pair(x, Box::new(recover_property(y, &tracker, value))),
+                _ => unimplemented!(),
+            }
+        },
+        &[StartValue, ref tracker..] => {
+            match dynamic_type {
+                EffectInfo(effect_type, transition, start_value, end_value) => EffectInfo(effect_type, transition, recover_property(F64(start_value), &tracker, value).as_f64().unwrap(), end_value),
+                _ => unimplemented!(),
+            }
+        },
+        &[EndValue, ref tracker..] => {
+            match dynamic_type {
+                EffectInfo(effect_type, transition, start_value, end_value) => EffectInfo(effect_type, transition, start_value, recover_property(F64(end_value), &tracker, value).as_f64().unwrap()),
                 _ => unimplemented!(),
             }
         },
