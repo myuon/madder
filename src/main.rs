@@ -43,7 +43,7 @@ impl App {
             editor: Editor::new(width, height),
             timeline: TimelineWidget::new(width + prop_width),
             canvas: gtk::DrawingArea::new(),
-            property: PropertyViewerWidget::new(prop_width, &["プロパティ"]),
+            property: PropertyViewerWidget::new(prop_width, &[format!("{:?}", PropertyGroupTab::ComponentProperty), format!("{:?}", PropertyGroupTab::EffectProperty)]),
             selected_component_index: None,
             window: gtk::Window::new(gtk::WindowType::Toplevel),
         }
@@ -86,13 +86,13 @@ impl App {
         let self__ = self_.clone();
 
         self_.borrow().property.set_properties(
-            "プロパティ",
             self_.borrow().editor.request_component_property(index),
             Box::new(move |prop_name, prop| {
                 let prop_name = Rc::new(prop_name);
                 let self__ = self__.clone();
 
-                gtk_impl::edit_type_to_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
+                (format!("{:?}", prop.get_group_tab()),
+                 gtk_impl::edit_type_to_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
                     // request the property again, since in this callback the value of property might have been changed
                     let prop = self__.borrow().editor.request_component_property(index)[prop_name.as_str()].clone();
                     if let Some(new_prop) = new_prop {
@@ -100,7 +100,7 @@ impl App {
                     }
 
                     self__.borrow().queue_draw();
-                }))
+                })))
             }),
         );
 

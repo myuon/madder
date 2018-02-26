@@ -12,13 +12,13 @@ pub struct PropertyViewerWidget {
 }
 
 impl PropertyViewerWidget {
-    pub fn new(width: i32, labels: &[&str]) -> PropertyViewerWidget {
+    pub fn new(width: i32, labels: &[String]) -> PropertyViewerWidget {
         let mut view = HashMap::new();
         for label in labels {
             let grid = gtk::Grid::new();
             grid.set_column_spacing(10);
             grid.set_row_spacing(10);
-            view.insert(label.to_string(), grid);
+            view.insert(label.clone(), grid);
         }
 
         let scrolled = gtk::ScrolledWindow::new(&gtk::Adjustment::new(0.0, 0.0, width as f64, 1.0, 1.0, width as f64), None);
@@ -60,7 +60,7 @@ impl PropertyViewerWidget {
         }
     }
 
-    pub fn set_properties<T: Clone>(&self, tab: &str, props: HashMap<String,T>, renderer: Box<Fn(String,T) -> gtk::Widget>) {
+    pub fn set_properties<T: Clone>(&self, props: HashMap<String,T>, renderer: Box<Fn(String,T) -> (String, gtk::Widget)>) {
         self.clear();
 
         let new_label = |label: &str, align: gtk::Align| {
@@ -71,9 +71,10 @@ impl PropertyViewerWidget {
 
         let mut props = props.iter().collect::<Vec<_>>();
         props.sort_by_key(|&(x,_)| x);
-        for (i, &(ref k,ref v)) in props.iter().enumerate() {
-            self.view[tab].attach(&new_label(k.as_str(), gtk::Align::End), 0, i as i32, 1, 1);
-            self.view[tab].attach(&renderer(k.to_string(),v.clone().clone()), 1, i as i32, 1, 1);
+        for (i, &(ref k, ref v)) in props.iter().enumerate() {
+            let (tab, widget) = renderer(k.to_string(),v.clone().clone());
+            self.view[&tab].attach(&new_label(k.as_str(), gtk::Align::End), 0, i as i32, 1, 1);
+            self.view[&tab].attach(&widget, 1, i as i32, 1, 1);
         }
 
         for (_, view) in &self.view {

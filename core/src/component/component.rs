@@ -165,7 +165,12 @@ pub enum Property {
     Color(gdk::RGBA),
     ReadOnly(String),
     EffectInfo(EffectType, Transition, f64, f64),
-    Array(Vec<Property>),
+}
+
+#[derive(Debug, Clone)]
+pub enum PropertyGroupTab {
+    ComponentProperty,
+    EffectProperty,
 }
 
 impl Property {
@@ -175,6 +180,16 @@ impl Property {
         match self {
             &Time(t) => Some(t),
             _ => None,
+        }
+    }
+
+    pub fn get_group_tab(&self) -> PropertyGroupTab {
+        use Property::*;
+        use PropertyGroupTab::*;
+
+        match self {
+            &EffectInfo(_,_,_,_) => EffectProperty,
+            _ => ComponentProperty,
         }
     }
 }
@@ -195,15 +210,20 @@ impl ComponentWrapper for Component {
     fn get_properties(&self) -> Properties {
         use Property::*;
 
-        [
+        let mut props: Properties = [
             ("component_type".to_string(), ReadOnly(format!("{:?}", self.component_type))),
             ("start_time".to_string(), Time(self.start_time)),
             ("length".to_string(), Time(self.length)),
             ("coordinate".to_string(), Pair(box I32(self.coordinate.0), box I32(self.coordinate.1))),
             ("entity".to_string(), ReadOnly(self.entity.clone())),
             ("layer_index".to_string(), Usize(self.layer_index)),
-            ("effect".to_string(), Array(self.effect.iter().map(|eff| EffectInfo(eff.effect_type.clone(), eff.transition.clone(), eff.start_value, eff.end_value)).collect()))
-        ].iter().cloned().collect()
+        ].iter().cloned().collect();
+
+        self.effect.iter().enumerate().for_each(|(i,eff)| {
+            props.insert(i.to_string(), EffectInfo(eff.effect_type.clone(), eff.transition.clone(), eff.start_value, eff.end_value));
+        });
+
+        props
     }
 
     fn set_property(&mut self, name: String, prop: Property) {
@@ -214,17 +234,13 @@ impl ComponentWrapper for Component {
             ("length", Time(v)) => self.length = v,
             ("coordinate", Pair(box I32(x), box I32(y))) => self.coordinate = (x,y),
             ("layer_index", Usize(v)) => self.layer_index = v,
-            ("effect", Array(arr)) => self.effect = arr.iter().map(|eff| {
-                match eff {
-                    &EffectInfo(ref effect_type, ref transition, ref start_value, ref end_value) => Effect {
-                        effect_type: effect_type.clone(),
-                        transition: transition.clone(),
-                        start_value: *start_value,
-                        end_value: *end_value,
-                    },
-                    _ => unimplemented!(),
-                }
-            }).collect(),
+            (i, EffectInfo(effect_type, transition, start_value, end_value)) =>
+                self.effect[i.parse::<usize>().unwrap()] = Effect {
+                    effect_type: effect_type.clone(),
+                    transition: transition.clone(),
+                    start_value: start_value,
+                    end_value: end_value,
+                },
             _ => unimplemented!(),
         }
     }
