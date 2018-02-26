@@ -43,7 +43,7 @@ impl App {
             editor: Editor::new(width, height),
             timeline: TimelineWidget::new(width + prop_width),
             canvas: gtk::DrawingArea::new(),
-            property: PropertyViewerWidget::new(prop_width),
+            property: PropertyViewerWidget::new(prop_width, &["プロパティ"]),
             selected_component_index: None,
             window: gtk::Window::new(gtk::WindowType::Toplevel),
         }
@@ -86,6 +86,7 @@ impl App {
         let self__ = self_.clone();
 
         self_.borrow().property.set_properties(
+            "プロパティ",
             self_.borrow().editor.request_component_property(index),
             Box::new(move |prop_name, prop| {
                 let prop_name = Rc::new(prop_name);
