@@ -40,6 +40,25 @@ pub struct Effect {
     pub end_value: f64,
 }
 
+impl Effect {
+    pub fn make_effect(&self, component: Component) -> Component {
+        use EffectType::*;
+
+        match self.effect_type {
+            Coordinate => {
+                let mut comp = component;
+                comp.coordinate.0 += self.value() as i32;
+                comp
+            },
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn value(&self) -> f64 {
+        self.start_value
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Component {
     pub component_type: ComponentType,

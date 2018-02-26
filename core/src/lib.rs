@@ -99,7 +99,10 @@ impl Editor {
 
         for elem in elems.iter().rev() {
             if let Some(dest) = elem.peek(self.position) {
-                let elem = elem.get_component();
+                let mut elem = elem.get_component();
+                for eff in elem.effect.clone() {
+                    elem = eff.make_effect(elem);
+                }
 
                 &dest.composite(
                     &pixbuf, elem.coordinate.0, elem.coordinate.1,
