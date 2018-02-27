@@ -100,6 +100,8 @@ impl Editor {
         for elem in elems.iter().rev() {
             if let Some(mut dest) = elem.peek(self.position) {
                 let mut elem = elem.get_component();
+                dest = Effect::get_rotated_pixbuf(dest, elem.rotate);
+
                 for eff in elem.effect.clone() {
                     let start_time = elem.start_time;
                     let length = elem.length;
@@ -113,7 +115,7 @@ impl Editor {
                     &pixbuf, elem.coordinate.0, elem.coordinate.1,
                     cmp::min(dest.get_width(), self.width - elem.coordinate.0),
                     cmp::min(dest.get_height(), self.height - elem.coordinate.1),
-                    elem.coordinate.0.into(), elem.coordinate.1.into(), 1f64, 1f64, 0, 255);
+                    elem.coordinate.0.into(), elem.coordinate.1.into(), 1f64, 1f64, GdkInterpType::Nearest.to_i32(), elem.alpha);
             }
         }
 

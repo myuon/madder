@@ -175,44 +175,48 @@ impl Effect {
         )
     }
 
+    pub fn get_rotated_pixbuf(pixbuf: gdk_pixbuf::Pixbuf, arg: f64) -> gdk_pixbuf::Pixbuf {
+        if arg == 0.0 { return pixbuf; }
+        let arg = arg * PI / 180.0;
+
+        let new_width = (pixbuf.get_width() as f64 * arg.cos().abs() + pixbuf.get_height() as f64 * arg.sin().abs()) as i32;
+        let new_height = (pixbuf.get_width() as f64 * arg.sin().abs() + pixbuf.get_height() as f64 * arg.cos().abs()) as i32;
+        let new_pixbuf = unsafe { gdk_pixbuf::Pixbuf::new(
+            pixbuf.get_colorspace(),
+            true,
+            pixbuf.get_bits_per_sample(),
+            new_width,
+            new_height,
+        ).unwrap() };
+
+        let width = pixbuf.get_width();
+        let height = pixbuf.get_height();
+
+        for iy in 0..new_height {
+            for ix in 0..new_width {
+                let (ix_prev, iy_prev) = {
+                    let (x,y) = Effect::rotate(-arg, ix - new_width / 2, iy - new_height / 2);
+                    (x + width / 2, y + height / 2)
+                };
+                if 0 <= ix_prev && ix_prev < width &&
+                    0 <= iy_prev && iy_prev < height {
+                        let (r,g,b,a) = Effect::get_pixel(&pixbuf, ix_prev, iy_prev);
+                        new_pixbuf.put_pixel(ix, iy, r, g, b, a);
+                    }
+                else {
+                    new_pixbuf.put_pixel(ix, iy, 0, 0, 0, 255);
+                }
+            }
+        }
+
+        new_pixbuf
+    }
+
     pub fn effect_on_pixbuf(&self, pixbuf: gdk_pixbuf::Pixbuf, current: f64) -> gdk_pixbuf::Pixbuf {
         use EffectType::*;
 
         match self.effect_type {
-            Rotate => {
-                let arg = self.value(current * 360.0 / PI);
-                let new_width = (pixbuf.get_width() as f64 * arg.cos().abs() + pixbuf.get_height() as f64 * arg.sin().abs()) as i32;
-                let new_height = (pixbuf.get_width() as f64 * arg.sin().abs() + pixbuf.get_height() as f64 * arg.cos().abs()) as i32;
-                let new_pixbuf = unsafe { gdk_pixbuf::Pixbuf::new(
-                    pixbuf.get_colorspace(),
-                    true,
-                    pixbuf.get_bits_per_sample(),
-                    new_width,
-                    new_height,
-                ).unwrap() };
-
-                let width = pixbuf.get_width();
-                let height = pixbuf.get_height();
-
-                for iy in 0..new_height {
-                    for ix in 0..new_width {
-                        let (ix_prev, iy_prev) = {
-                            let (x,y) = Effect::rotate(-arg, ix - new_width / 2, iy - new_height / 2);
-                            (x + width / 2, y + height / 2)
-                        };
-                        if 0 <= ix_prev && ix_prev < width &&
-                            0 <= iy_prev && iy_prev < height {
-                                let (r,g,b,a) = Effect::get_pixel(&pixbuf, ix_prev, iy_prev);
-                                new_pixbuf.put_pixel(ix, iy, r, g, b, a);
-                            }
-                        else {
-                            new_pixbuf.put_pixel(ix, iy, 0, 0, 0, 255);
-                        }
-                    }
-                }
-
-                new_pixbuf
-            },
+            Rotate => Effect::get_rotated_pixbuf(pixbuf, self.value(current)),
             _ => pixbuf,
         }
     }
@@ -234,15 +238,26 @@ pub struct Component {
     #[serde(deserialize_with = "gst_clocktime_deserialize")]
     pub length: gst::ClockTime,
 
+    #[serde(default = "coordinate_default")]
     pub coordinate: (i32,i32),
 
     pub layer_index: usize,
+
+    #[serde(default = "rotate_default")]
+    pub rotate: f64,
+
+    #[serde(default = "alpha_default")]
+    pub alpha: i32,
 
     pub entity: String,
 
     #[serde(default = "Vec::new")]
     pub effect: Vec<Effect>,
 }
+
+fn coordinate_default() -> (i32, i32) { (0,0) }
+fn rotate_default() -> f64 { 0.0 }
+fn alpha_default() -> i32 { 255 }
 
 fn gst_clocktime_serialize<S: serde::Serializer>(g: &gst::ClockTime, serializer: S) -> Result<S::Ok, S::Error> {
     serializer.serialize_u64(g.mseconds().unwrap())
@@ -345,6 +360,8 @@ impl ComponentWrapper for Component {
             ("coordinate".to_string(), Pair(box I32(self.coordinate.0), box I32(self.coordinate.1))),
             ("entity".to_string(), ReadOnly(self.entity.clone())),
             ("layer_index".to_string(), Usize(self.layer_index)),
+            ("rotate".to_string(), F64(self.rotate)),
+            ("alpha".to_string(), I32(self.alpha)),
         ].iter().cloned().collect();
 
         self.effect.iter().enumerate().for_each(|(i,eff)| {
@@ -362,6 +379,8 @@ impl ComponentWrapper for Component {
             ("length", Time(v)) => self.length = v,
             ("coordinate", Pair(box I32(x), box I32(y))) => self.coordinate = (x,y),
             ("layer_index", Usize(v)) => self.layer_index = v,
+            ("rotate", F64(v)) => self.rotate = v,
+            ("alpha", I32(v)) => self.alpha = v,
             (i, EffectInfo(effect_type, transition, start_value, end_value)) =>
                 self.effect[i.parse::<usize>().unwrap()] = Effect {
                     effect_type: effect_type.clone(),
@@ -390,4 +409,24 @@ impl<T: ComponentWrapper> ComponentWrapper for Box<T> {
 
 pub trait ComponentLike: ComponentWrapper + Peekable {}
 impl<T: ComponentWrapper + Peekable> ComponentLike for T {}
+
+pub enum GdkInterpType {
+    Nearest,
+    Tiles,
+    Bilinear,
+    Hyper
+}
+
+impl GdkInterpType {
+    pub fn to_i32(&self) -> i32 {
+        use GdkInterpType::*;
+
+        match self {
+            &Nearest => 0,
+            &Tiles => 1,
+            &Bilinear => 2,
+            &Hyper => 3,
+        }
+    }
+}
 
