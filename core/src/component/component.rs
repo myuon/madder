@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::f64::consts::PI;
+
 extern crate gdk;
 extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
@@ -138,7 +140,7 @@ pub struct Effect {
 }
 
 impl Effect {
-    pub fn make_effect(&self, component: Component, current: f64) -> Component {
+    pub fn effect_on_component(&self, component: Component, current: f64) -> Component {
         use EffectType::*;
 
         match self.effect_type {
@@ -152,7 +154,66 @@ impl Effect {
                 comp.coordinate.1 += self.value(current) as i32;
                 comp
             },
-            _ => unimplemented!(),
+            _ => component,
+        }
+    }
+
+    pub fn rotate(arg: f64, x: i32, y: i32) -> (i32, i32) {
+        ((x as f64 * arg.cos() + y as f64 * arg.sin()) as i32,
+         (x as f64 * -arg.sin() + y as f64 * arg.cos()) as i32,
+        )
+    }
+
+    pub fn get_pixel(pixbuf: &gdk_pixbuf::Pixbuf, x: i32, y: i32) -> (u8,u8,u8,u8) {
+        let pos = (y * pixbuf.get_rowstride() + x * pixbuf.get_n_channels()) as usize;
+        let pixels = unsafe { pixbuf.get_pixels() };
+
+        (pixels[pos],
+         pixels[pos + 1],
+         pixels[pos + 2],
+         if pixbuf.get_has_alpha() { pixels[pos + 3] } else { 0 },
+        )
+    }
+
+    pub fn effect_on_pixbuf(&self, pixbuf: gdk_pixbuf::Pixbuf, current: f64) -> gdk_pixbuf::Pixbuf {
+        use EffectType::*;
+
+        match self.effect_type {
+            Rotate => {
+                let arg = self.value(current * 360.0 / PI);
+                let new_width = (pixbuf.get_width() as f64 * arg.cos().abs() + pixbuf.get_height() as f64 * arg.sin().abs()) as i32;
+                let new_height = (pixbuf.get_width() as f64 * arg.sin().abs() + pixbuf.get_height() as f64 * arg.cos().abs()) as i32;
+                let new_pixbuf = unsafe { gdk_pixbuf::Pixbuf::new(
+                    pixbuf.get_colorspace(),
+                    true,
+                    pixbuf.get_bits_per_sample(),
+                    new_width,
+                    new_height,
+                ).unwrap() };
+
+                let width = pixbuf.get_width();
+                let height = pixbuf.get_height();
+
+                for iy in 0..new_height {
+                    for ix in 0..new_width {
+                        let (ix_prev, iy_prev) = {
+                            let (x,y) = Effect::rotate(-arg, ix - new_width / 2, iy - new_height / 2);
+                            (x + width / 2, y + height / 2)
+                        };
+                        if 0 <= ix_prev && ix_prev < width &&
+                            0 <= iy_prev && iy_prev < height {
+                                let (r,g,b,a) = Effect::get_pixel(&pixbuf, ix_prev, iy_prev);
+                                new_pixbuf.put_pixel(ix, iy, r, g, b, a);
+                            }
+                        else {
+                            new_pixbuf.put_pixel(ix, iy, 0, 0, 0, 255);
+                        }
+                    }
+                }
+
+                new_pixbuf
+            },
+            _ => pixbuf,
         }
     }
 

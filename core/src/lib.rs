@@ -98,12 +98,15 @@ impl Editor {
         elems.sort_by_key(|elem| elem.get_component().layer_index);
 
         for elem in elems.iter().rev() {
-            if let Some(dest) = elem.peek(self.position) {
+            if let Some(mut dest) = elem.peek(self.position) {
                 let mut elem = elem.get_component();
                 for eff in elem.effect.clone() {
                     let start_time = elem.start_time;
                     let length = elem.length;
-                    elem = eff.make_effect(elem, (self.position - start_time).mseconds().unwrap() as f64 / length.mseconds().unwrap() as f64);
+                    let position = (self.position - start_time).mseconds().unwrap() as f64 / length.mseconds().unwrap() as f64;
+
+                    elem = eff.effect_on_component(elem, position);
+                    dest = eff.effect_on_pixbuf(dest, position);
                 }
 
                 &dest.composite(
