@@ -267,7 +267,7 @@ pub struct Component {
 fn coordinate_default() -> (i32, i32) { (0,0) }
 fn rotate_default() -> f64 { 0.0 }
 fn alpha_default() -> i32 { 255 }
-fn scale_default() -> (f64, f64) { (0.0,0.0) }
+fn scale_default() -> (f64, f64) { (1.0,1.0) }
 
 fn gst_clocktime_serialize<S: serde::Serializer>(g: &gst::ClockTime, serializer: S) -> Result<S::Ok, S::Error> {
     serializer.serialize_u64(g.mseconds().unwrap())

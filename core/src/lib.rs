@@ -117,7 +117,8 @@ impl Editor {
                     &pixbuf, elem.coordinate.0, elem.coordinate.1,
                     cmp::min(dest.get_width(), self.width - elem.coordinate.0),
                     cmp::min(dest.get_height(), self.height - elem.coordinate.1),
-                    elem.coordinate.0.into(), elem.coordinate.1.into(), 1f64, 1f64, GdkInterpType::Nearest.to_i32(), elem.alpha);
+                    elem.coordinate.0.into(), elem.coordinate.1.into(), elem.scale.0, elem.scale.1,
+                    GdkInterpType::Nearest.to_i32(), elem.alpha);
             }
         }
 
