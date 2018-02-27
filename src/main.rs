@@ -181,17 +181,15 @@ impl App {
                 }
                 dialog.run();
 
-                App::register_from_json(self__.clone(), &Component {
-                    component_type: ComponentType::Video,
-                    start_time: 0 * gst::MSECOND,
-                    length: 100 * gst::MSECOND,
-                    entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
-                    layer_index: 0,
-                    coordinate: (0,0),
-                    rotate: 0.0,
-                    alpha: 0,
-                    effect: vec![],
-                });
+                App::register_from_json(
+                    self__.clone(),
+                    &ComponentBuilder::default()
+                        .component_type(ComponentType::Video)
+                        .start_time(0 * gst::MSECOND)
+                        .length(100 * gst::MSECOND)
+                        .entity(dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string())
+                        .layer_index(0)
+                        .build().unwrap());
 
                 self__.borrow().queue_draw();
                 dialog.destroy();
@@ -209,17 +207,15 @@ impl App {
                 }
                 dialog.run();
 
-                App::register_from_json(self__.clone(), &Component {
-                    component_type: ComponentType::Image,
-                    start_time: 0 * gst::MSECOND,
-                    length: 100 * gst::MSECOND,
-                    entity: dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
-                    layer_index: 0,
-                    coordinate: (0,0),
-                    rotate: 0.0,
-                    alpha: 0,
-                    effect: vec![],
-                });
+                App::register_from_json(
+                    self__.clone(),
+                    &ComponentBuilder::default()
+                        .component_type(ComponentType::Image)
+                        .start_time(0 * gst::MSECOND)
+                        .length(100 * gst::MSECOND)
+                        .entity(dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string())
+                        .layer_index(0)
+                        .build().unwrap());
 
                 self__.borrow().queue_draw();
                 dialog.destroy();
@@ -227,17 +223,17 @@ impl App {
 
             let self__ = self_.clone();
             text_item.connect_activate(move |_| {
-                App::register_from_json(self__.clone(), &Component {
-                    component_type: ComponentType::Text,
-                    start_time: 0 * gst::MSECOND,
-                    length: 100 * gst::MSECOND,
-                    entity: "dummy entity".to_string(),
-                    layer_index: 0,
-                    coordinate: (50,50),
-                    rotate: 0.0,
-                    alpha: 0,
-                    effect: vec![],
-                });
+                App::register_from_json(
+                    self__.clone(),
+                    &ComponentBuilder::default()
+                        .component_type(ComponentType::Text)
+                        .start_time(0 * gst::MSECOND)
+                        .length(100 * gst::MSECOND)
+                        .entity("dummy entity".to_string())
+                        .layer_index(0)
+                        .coordinate((50,50))
+                        .build().unwrap());
+
                 self__.borrow().queue_draw();
             });
 
@@ -396,17 +392,14 @@ fn main() {
                 width: 640,
                 height: 480,
                 components: Box::new([
-                    Component {
-                        component_type: ComponentType::Text,
-                        start_time: 0 * gst::MSECOND,
-                        length: 100 * gst::MSECOND,
-                        entity: "[ここにテキストを挿入]".to_string(),
-                        layer_index: 0,
-                        coordinate: (50,50),
-                        rotate: 0.0,
-                        alpha: 0,
-                        effect: vec![],
-                    }
+                    ComponentBuilder::default()
+                        .component_type(ComponentType::Text)
+                        .start_time(0 * gst::MSECOND)
+                        .length(100 * gst::MSECOND)
+                        .entity("[ここにテキストを挿入]".to_string())
+                        .layer_index(0)
+                        .coordinate((50,50))
+                        .build().unwrap()
                 ]),
             }
         };

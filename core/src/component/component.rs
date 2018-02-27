@@ -226,7 +226,8 @@ impl Effect {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Builder)]
+#[builder(public)]
 pub struct Component {
     pub component_type: ComponentType,
 
@@ -239,25 +240,34 @@ pub struct Component {
     pub length: gst::ClockTime,
 
     #[serde(default = "coordinate_default")]
+    #[builder(default = "coordinate_default()")]
     pub coordinate: (i32,i32),
 
     pub layer_index: usize,
 
     #[serde(default = "rotate_default")]
+    #[builder(default = "rotate_default()")]
     pub rotate: f64,
 
     #[serde(default = "alpha_default")]
+    #[builder(default = "alpha_default()")]
     pub alpha: i32,
 
     pub entity: String,
 
+    #[serde(default = "scale_default")]
+    #[builder(default = "scale_default()")]
+    pub scale: (f64, f64),
+
     #[serde(default = "Vec::new")]
+    #[builder(default = "Vec::new()")]
     pub effect: Vec<Effect>,
 }
 
 fn coordinate_default() -> (i32, i32) { (0,0) }
 fn rotate_default() -> f64 { 0.0 }
 fn alpha_default() -> i32 { 255 }
+fn scale_default() -> (f64, f64) { (0.0,0.0) }
 
 fn gst_clocktime_serialize<S: serde::Serializer>(g: &gst::ClockTime, serializer: S) -> Result<S::Ok, S::Error> {
     serializer.serialize_u64(g.mseconds().unwrap())
@@ -362,6 +372,7 @@ impl ComponentWrapper for Component {
             ("layer_index".to_string(), Usize(self.layer_index)),
             ("rotate".to_string(), F64(self.rotate)),
             ("alpha".to_string(), I32(self.alpha)),
+            ("scale".to_string(), Pair(box F64(self.scale.0), box F64(self.scale.1))),
         ].iter().cloned().collect();
 
         self.effect.iter().enumerate().for_each(|(i,eff)| {
@@ -381,6 +392,7 @@ impl ComponentWrapper for Component {
             ("layer_index", Usize(v)) => self.layer_index = v,
             ("rotate", F64(v)) => self.rotate = v,
             ("alpha", I32(v)) => self.alpha = v,
+            ("scale", Pair(box F64(x), box F64(y))) => self.scale = (x,y),
             (i, EffectInfo(effect_type, transition, start_value, end_value)) =>
                 self.effect[i.parse::<usize>().unwrap()] = Effect {
                     effect_type: effect_type.clone(),

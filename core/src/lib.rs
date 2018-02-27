@@ -17,6 +17,8 @@ use avi_renderer::AviRenderer;
 #[macro_use] extern crate serde_derive;
 extern crate serde_json;
 
+#[macro_use] extern crate derive_builder;
+
 pub mod component;
 pub use self::component::*;
 
