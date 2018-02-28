@@ -145,7 +145,6 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<Tracker>, cont: Rc<Fn(
         },
         &EffectInfo(ref eff_type, ref transition, ref start_value, ref end_value) => {
             let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-            vbox.pack_start(&gtk::Label::new(format!("{:?}", eff_type).as_str()), true, true, 0);
 
             {
                 let mut tracker = tracker.clone();
