@@ -24,7 +24,8 @@ pub enum EffectType {
     CoordinateX,
     CoordinateY,
     Rotate,
-    Scale,
+    ScaleX,
+    ScaleY,
     Alpha,
 }
 
@@ -36,7 +37,8 @@ impl EffectType {
             CoordinateX,
             CoordinateY,
             Rotate,
-            Scale,
+            ScaleX,
+            ScaleY,
             Alpha
         ]
     }
@@ -152,6 +154,21 @@ impl Effect {
             CoordinateY => {
                 let mut comp = component;
                 comp.coordinate.1 += self.value(current) as i32;
+                comp
+            },
+            ScaleX => {
+                let mut comp = component;
+                comp.scale.0 *= self.value(current);
+                comp
+            },
+            ScaleY => {
+                let mut comp = component;
+                comp.scale.1 *= self.value(current);
+                comp
+            },
+            Alpha => {
+                let mut comp = component;
+                comp.alpha = (comp.alpha as f64 * self.value(current) / 255.0) as i32;
                 comp
             },
             _ => component,
