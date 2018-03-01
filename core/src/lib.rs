@@ -94,6 +94,10 @@ impl Editor {
         self.elements[index].set_effect_property(i, prop);
     }
 
+    pub fn add_effect_property(&mut self, index: usize, prop: Property) {
+        self.elements[index].add_effect_property(prop);
+    }
+
     pub fn set_component_property(&mut self, index: usize, name: String, prop: Property) {
         self.elements[index].set_property(name, prop);
     }

@@ -372,6 +372,7 @@ pub trait ComponentWrapper {
     fn set_property(&mut self, name: String, prop: Property);
     fn get_effect_properties(&self) -> Vec<Property>;
     fn set_effect_property(&mut self, i: usize, value: Property);
+    fn add_effect_property(&mut self, prop: Property);
 }
 
 impl ComponentWrapper for Component {
@@ -418,10 +419,10 @@ impl ComponentWrapper for Component {
         }).collect()
     }
 
-    fn set_effect_property(&mut self, i: usize, value: Property) {
+    fn set_effect_property(&mut self, i: usize, prop: Property) {
         use Property::*;
 
-        match value {
+        match prop {
             EffectInfo(effect_type, transition, start_value, end_value) =>
                 self.effect[i] = Effect {
                     effect_type: effect_type.clone(),
@@ -431,6 +432,23 @@ impl ComponentWrapper for Component {
                 },
             _ => unimplemented!(),
         }
+    }
+
+    fn add_effect_property(&mut self, prop: Property) {
+        use Property::*;
+
+        self.effect.push(
+            match prop {
+                EffectInfo(effect_type, transition, start_value, end_value) =>
+                    Effect {
+                        effect_type: effect_type.clone(),
+                        transition: transition.clone(),
+                        start_value: start_value,
+                        end_value: end_value,
+                    },
+                _ => unimplemented!(),
+            }
+        );
     }
 }
 
@@ -451,8 +469,12 @@ impl<T: ComponentWrapper> ComponentWrapper for Box<T> {
         self.as_ref().get_effect_properties()
     }
 
-    fn set_effect_property(&mut self, i: usize, value: Property) {
-        self.as_mut().set_effect_property(i, value);
+    fn set_effect_property(&mut self, i: usize, prop: Property) {
+        self.as_mut().set_effect_property(i, prop);
+    }
+
+    fn add_effect_property(&mut self, prop: Property) {
+        self.as_mut().add_effect_property(prop);
     }
 }
 

@@ -106,6 +106,7 @@ impl App {
         );
 
         let self__ = self_.clone();
+        let self___ = self_.clone();
         self_.borrow().property.add_box_properties(
             "effect".to_string(),
             self_.borrow().editor.request_effect_property(index),
@@ -122,6 +123,11 @@ impl App {
 
                     self__.borrow().queue_draw();
                 }))
+            }),
+            Box::new(move || {
+                self___.borrow_mut().editor.add_effect_property(index, Property::EffectInfo(EffectType::CoordinateX, Transition::Linear, 0.0, 0.0));
+                App::select_component(self___.clone(), index);
+                Inhibit(false)
             }),
         );
 

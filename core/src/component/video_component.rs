@@ -73,6 +73,10 @@ impl ComponentWrapper for VideoTestComponent {
     fn set_effect_property(&mut self, i: usize, value: Property) {
         self.component.set_effect_property(i, value);
     }
+
+    fn add_effect_property(&mut self, prop: Property) {
+        self.component.add_effect_property(prop);
+    }
 }
 
 pub struct VideoFileComponent {
@@ -153,8 +157,12 @@ impl ComponentWrapper for VideoFileComponent {
         self.component.get_effect_properties()
     }
 
-    fn set_effect_property(&mut self, i: usize, value: Property) {
-        self.component.set_effect_property(i, value);
+    fn set_effect_property(&mut self, i: usize, prop: Property) {
+        self.component.set_effect_property(i, prop);
+    }
+
+    fn add_effect_property(&mut self, prop: Property) {
+        self.component.add_effect_property(prop);
     }
 }
 

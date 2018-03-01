@@ -74,5 +74,9 @@ impl ComponentWrapper for ImageComponent {
     fn set_effect_property(&mut self, i: usize, value: Property) {
         self.component.set_effect_property(i, value);
     }
+
+    fn add_effect_property(&mut self, prop: Property) {
+        self.component.add_effect_property(prop);
+    }
 }
 

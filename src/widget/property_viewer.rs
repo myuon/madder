@@ -61,13 +61,20 @@ impl PropertyViewerWidget {
         self.notebook.show_all();
     }
 
-    pub fn add_box_properties<T: Clone>(&self, tab_name: String, props: Vec<T>, renderer: Box<Fn(usize, T) -> gtk::Widget>) {
+    pub fn add_box_properties<T: Clone>(&self, tab_name: String, props: Vec<T>, renderer: Box<Fn(usize, T) -> gtk::Widget>, add_button_cont: Box<Fn() -> gtk::Inhibit>) {
         let scroll = gtk::ScrolledWindow::new(&gtk::Adjustment::new(0.0, 0.0, self.width as f64, 1.0, 1.0, self.width as f64), None);
         let vbox = gtk::Box::new(gtk::Orientation::Vertical, 10);
         scroll.add(&vbox);
 
+        let add_button = gtk::Button::new();
+        add_button.set_label("Add");
+        add_button.connect_clicked(move |_| {
+            add_button_cont();
+        });
+        vbox.pack_start(&add_button, false, false, 0);
+
         for (i,v) in props.iter().enumerate() {
-            vbox.pack_start(&renderer(i, v.clone()), false, false, 5);
+            vbox.pack_start(&renderer(i, v.clone()), false, false, 0);
         }
 
         self.notebook.append_page(&scroll, Some(&gtk::Label::new(tab_name.as_str())));
