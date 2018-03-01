@@ -7,6 +7,8 @@ extern crate gstreamer as gst;
 extern crate gstreamer_video as gstv;
 extern crate gstreamer_app as gsta;
 
+use gst::prelude::*;
+
 extern crate gtk;
 extern crate glib;
 extern crate gdk;
@@ -48,6 +50,92 @@ impl App {
             window: gtk::Window::new(gtk::WindowType::Toplevel),
         }
     }
+
+    pub fn start_instant_preview(self_: Rc<RefCell<App>>, vbox: &gtk::Box, parent: &gtk::Box) {
+        let pipeline = gst::Pipeline::new(None);
+        let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
+        let appsrc = gst::ElementFactory::make("appsrc", None).unwrap();
+        appsrc.set_property("emit-signals", &glib::Value::from(&true)).unwrap();
+
+        let (sink, widget) = if let Some(gtkglsink) = gst::ElementFactory::make("gtkglsink", None) {
+            let glsinkbin = gst::ElementFactory::make("glsinkbin", None).unwrap();
+            glsinkbin.set_property("sink", &gtkglsink.to_value()).unwrap();
+
+            let widget = gtkglsink.get_property("widget").unwrap();
+            (glsinkbin, widget.get::<gtk::Widget>().unwrap())
+        } else { panic!(); };
+
+        widget.set_size_request(self_.borrow().editor.width, self_.borrow().editor.height);
+        parent.pack_start(&widget, false, false, 0);
+        self_.borrow().canvas.hide();
+        widget.show();
+
+        pipeline.add_many(&[&appsrc, &videoconvert, &sink]).unwrap();
+        gst::Element::link_many(&[&appsrc, &videoconvert, &sink]).unwrap();
+
+        let appsrc = appsrc.clone().dynamic_cast::<gsta::AppSrc>().unwrap();
+        let info = gstv::VideoInfo::new(gstv::VideoFormat::Rgb, self_.borrow().editor.width as u32 / 2, self_.borrow().editor.height as u32 / 2).fps(gst::Fraction::new(20,1)).build().unwrap();
+        appsrc.set_caps(&info.to_caps().unwrap());
+        appsrc.set_property_format(gst::Format::Time);
+        appsrc.set_max_bytes(1);
+        appsrc.set_property_block(true);
+
+        let bus = pipeline.get_bus().unwrap();
+
+        {
+            let pipeline = pipeline.clone();
+            bus.add_watch(move |_,msg| {
+                use gst::MessageView;
+
+                match msg.view() {
+                    MessageView::Eos(..) => {
+                        pipeline.set_state(gst::State::Null).into_result().unwrap();
+                        glib::Continue(false)
+                    },
+                    MessageView::Error(err) => {
+                        println!(
+                            "Error from {:?}: {:?}",
+                            err.get_error(),
+                            err.get_debug(),
+                        );
+                        pipeline.set_state(gst::State::Null).into_result().unwrap();
+                        glib::Continue(false)
+                    }
+                    _ => glib::Continue(true),
+                }
+            });
+        }
+
+        pipeline.set_state(gst::State::Playing).into_result().unwrap();
+
+        let mut pos = 0;
+        let self__ = self_.clone();
+        gtk::idle_add(move || {
+            let mut buffer = gst::Buffer::with_size((self__.borrow().editor.width*self__.borrow().editor.height*3/4) as usize).unwrap();
+            {
+                let buffer = buffer.get_mut().unwrap();
+
+                buffer.set_pts(pos * 500 * gst::MSECOND);
+                let position = self__.borrow().editor.position;
+                self__.borrow_mut().editor.seek_to(position + 500 * gst::MSECOND);
+
+                let mut data = buffer.map_writable().unwrap();
+                let mut data = data.as_mut_slice();
+
+                let pixbuf = self__.borrow().editor.get_current_pixbuf();
+                let pixbuf = pixbuf.scale_simple(self__.borrow().editor.width / 2, self__.borrow().editor.height / 2, GdkInterpType::Nearest.to_i32()).unwrap();
+                let pixels = unsafe { pixbuf.get_pixels() };
+
+                use std::io::Write;
+                data.write_all(pixels).unwrap();
+            }
+            appsrc.push_buffer(buffer).into_result().unwrap();
+            pos += 1;
+
+            Continue(true)
+        });
+    }
+
 
     pub fn new_from_json(json: &EditorStructure) -> Rc<RefCell<App>> {
         let app = Rc::new(RefCell::new(App::new(json.width, json.height)));
@@ -388,7 +476,7 @@ impl App {
 
         let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         hbox.pack_start(&app.canvas, true, true, 0);
-        hbox.pack_start(app.property.to_widget(), true, true, 0);
+        hbox.pack_end(app.property.to_widget(), true, true, 0);
         app.property.create_ui();
 
         let self__ = self_.clone();
@@ -398,6 +486,16 @@ impl App {
 
         vbox.pack_start(&hbox, true, true, 0);
         vbox.pack_start(app.timeline.borrow().to_widget(), true, true, 5);
+
+        let self__ = self_.clone();
+        let vbox_ = vbox.clone();
+        let hbox_ = hbox.clone();
+        let btn = gtk::Button::new();
+        btn.set_label("start preview");
+        btn.connect_clicked(move |_| {
+            App::start_instant_preview(self__.clone(), &vbox_, &hbox_);
+        });
+        vbox.pack_start(&btn, false, false, 0);
 
         app.window.add(&vbox);
         app.window.show_all();
