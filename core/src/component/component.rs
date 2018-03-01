@@ -310,12 +310,6 @@ pub enum Property {
     EffectInfo(EffectType, Transition, f64, f64),
 }
 
-#[derive(Debug, Clone)]
-pub enum PropertyGroupTab {
-    ComponentProperty,
-    EffectProperty,
-}
-
 impl Property {
     pub fn as_time(&self) -> Option<gst::ClockTime> {
         use Property::*;
@@ -364,16 +358,6 @@ impl Property {
                 end_value: *end,
             }),
             _ => None,
-        }
-    }
-
-    pub fn get_group_tab(&self) -> PropertyGroupTab {
-        use Property::*;
-        use PropertyGroupTab::*;
-
-        match self {
-            &EffectInfo(_,_,_,_) => EffectProperty,
-            _ => ComponentProperty,
         }
     }
 }
