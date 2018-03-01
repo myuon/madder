@@ -353,6 +353,20 @@ impl Property {
         }
     }
 
+    pub fn as_effect(&self) -> Option<Effect> {
+        use Property::*;
+
+        match self {
+            &EffectInfo(ref typ, ref trans, ref start, ref end) => Some(Effect {
+                effect_type: typ.clone(),
+                transition: trans.clone(),
+                start_value: *start,
+                end_value: *end,
+            }),
+            _ => None,
+        }
+    }
+
     pub fn get_group_tab(&self) -> PropertyGroupTab {
         use Property::*;
         use PropertyGroupTab::*;
@@ -420,35 +434,11 @@ impl ComponentWrapper for Component {
     }
 
     fn set_effect_property(&mut self, i: usize, prop: Property) {
-        use Property::*;
-
-        match prop {
-            EffectInfo(effect_type, transition, start_value, end_value) =>
-                self.effect[i] = Effect {
-                    effect_type: effect_type.clone(),
-                    transition: transition.clone(),
-                    start_value: start_value,
-                    end_value: end_value,
-                },
-            _ => unimplemented!(),
-        }
+        self.effect[i] = prop.as_effect().unwrap();
     }
 
     fn add_effect_property(&mut self, prop: Property) {
-        use Property::*;
-
-        self.effect.push(
-            match prop {
-                EffectInfo(effect_type, transition, start_value, end_value) =>
-                    Effect {
-                        effect_type: effect_type.clone(),
-                        transition: transition.clone(),
-                        start_value: start_value,
-                        end_value: end_value,
-                    },
-                _ => unimplemented!(),
-            }
-        );
+        self.effect.push(prop.as_effect().unwrap());
     }
 }
 
