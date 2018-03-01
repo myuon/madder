@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -456,6 +456,12 @@ impl Deref for ComponentLike {
 
     fn deref(&self) -> &Component {
         self.as_ref()
+    }
+}
+
+impl DerefMut for ComponentLike {
+    fn deref_mut(&mut self) -> &mut Component {
+        self.as_mut()
     }
 }
 

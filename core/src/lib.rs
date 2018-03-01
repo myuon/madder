@@ -98,6 +98,10 @@ impl Editor {
         self.elements[index].add_effect_property(prop);
     }
 
+    pub fn remove_effect_property(&mut self, index: usize, i: usize) {
+        self.elements[index].as_mut().effect.remove(i);
+    }
+
     pub fn set_component_property(&mut self, index: usize, name: String, prop: Property) {
         self.elements[index].set_property(name, prop);
     }

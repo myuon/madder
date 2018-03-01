@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 extern crate gtk;
 extern crate gdk;
 use gtk::prelude::*;
@@ -61,7 +63,7 @@ impl PropertyViewerWidget {
         self.notebook.show_all();
     }
 
-    pub fn add_box_properties<T: Clone>(&self, tab_name: String, props: Vec<T>, renderer: Box<Fn(usize, T) -> gtk::Widget>, add_button_cont: Box<Fn() -> gtk::Inhibit>) {
+    pub fn add_box_properties<T: Clone>(&self, tab_name: String, props: Vec<T>, renderer: Box<Fn(usize, T) -> gtk::Widget>, add_button_cont: Box<Fn()>, remove_button_cont: Box<Fn(usize)>) {
         let scroll = gtk::ScrolledWindow::new(&gtk::Adjustment::new(0.0, 0.0, self.width as f64, 1.0, 1.0, self.width as f64), None);
         let vbox = gtk::Box::new(gtk::Orientation::Vertical, 10);
         scroll.add(&vbox);
@@ -73,8 +75,31 @@ impl PropertyViewerWidget {
         });
         vbox.pack_start(&add_button, false, false, 0);
 
+        let remove_button_cont = Rc::new(remove_button_cont);
         for (i,v) in props.iter().enumerate() {
-            vbox.pack_start(&renderer(i, v.clone()), false, false, 0);
+            let widget = renderer(i, v.clone());
+            let remove_button_cont = remove_button_cont.clone();
+
+            widget.set_events(gdk::EventMask::ALL_EVENTS_MASK.bits() as i32);
+            widget.connect_button_press_event(move |_,event| {
+                if event.get_state().contains(gdk::ModifierType::BUTTON2_MASK) {
+                    let menu = gtk::Menu::new();
+                    let remove_item = gtk::MenuItem::new_with_label("remove");
+                    let remove_button_cont = remove_button_cont.clone();
+                    remove_item.connect_activate(move |_| {
+                        remove_button_cont(i);
+                    });
+
+                    menu.append(&remove_item);
+
+                    menu.popup_easy(0, gtk::get_current_event_time());
+                    menu.show_all();
+                }
+
+                Inhibit(false)
+            });
+
+            vbox.pack_start(&widget, false, false, 0);
         }
 
         self.notebook.append_page(&scroll, Some(&gtk::Label::new(tab_name.as_str())));
