@@ -83,14 +83,29 @@ impl PropertyViewerWidget {
 
             click_area_label.set_label("open menu");
             click_area_label.connect_clicked(move |_| {
-                let menu = gtk::Menu::new();
-                let remove_item = gtk::MenuItem::new_with_label("remove");
                 let remove_button_cont = remove_button_cont.clone();
-                remove_item.connect_activate(move |_| {
-                    remove_button_cont(i);
-                });
+
+                let menu = gtk::Menu::new();
+                let remove_item = {
+                    let remove_item = gtk::MenuItem::new_with_label("remove");
+                    remove_item.connect_activate(move |_| {
+                        remove_button_cont(i);
+                    });
+
+                    remove_item
+                };
+                let move_up_item = {
+                    let item = gtk::MenuItem::new_with_label("move up");
+                    item
+                };
+                let move_down_item = {
+                    let item = gtk::MenuItem::new_with_label("move down");
+                    item
+                };
 
                 menu.append(&remove_item);
+                menu.append(&move_up_item);
+                menu.append(&move_down_item);
 
                 menu.popup_easy(0, gtk::get_current_event_time());
                 menu.show_all();
