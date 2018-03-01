@@ -339,12 +339,12 @@ impl App {
         app.timeline.borrow().connect_request_objects(Box::new(move || {
             self__.borrow().editor.elements.iter().enumerate().map(|(i,component)| {
                 BoxObject::new(
-                    component.get_component().start_time.mseconds().unwrap() as i32,
-                    component.get_component().length.mseconds().unwrap() as i32,
+                    component.start_time.mseconds().unwrap() as i32,
+                    component.length.mseconds().unwrap() as i32,
                     i
-                ).label(component.get_component().entity)
+                ).label(component.entity.clone())
                     .selected(Some(i) == self__.borrow().selected_component_index)
-                    .layer_index(component.get_component().layer_index)
+                    .layer_index(component.layer_index)
             }).collect()
         }));
 

@@ -112,14 +112,14 @@ impl Editor {
         }
 
         let mut elems = self.elements.iter().filter(|&elem| {
-            elem.get_component().start_time <= self.position
-            && self.position <= elem.get_component().start_time + elem.get_component().length
+            elem.as_ref().start_time <= self.position
+            && self.position <= elem.start_time + elem.length
         }).collect::<Vec<_>>();
-        elems.sort_by_key(|elem| elem.get_component().layer_index);
+        elems.sort_by_key(|elem| elem.layer_index);
 
         for elem in elems.iter().rev() {
             if let Some(mut dest) = elem.peek(self.position) {
-                let mut elem = elem.get_component();
+                let mut elem = elem.as_ref().as_ref().clone();
                 dest = Effect::get_rotated_pixbuf(dest, elem.rotate);
 
                 for eff in elem.effect.clone() {

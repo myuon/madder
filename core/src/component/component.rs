@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -364,20 +365,41 @@ impl Property {
 
 pub type Properties = HashMap<String, Property>;
 
-pub trait ComponentWrapper {
-    fn get_component(&self) -> Component;
-    fn get_properties(&self) -> Properties;
-    fn set_property(&mut self, name: String, prop: Property);
-    fn get_effect_properties(&self) -> Vec<Property>;
-    fn set_effect_property(&mut self, i: usize, value: Property);
-    fn add_effect_property(&mut self, prop: Property);
+pub trait ComponentWrapper : AsRef<Component> + AsMut<Component> {
+    fn get_properties(&self) -> Properties {
+        self.as_ref().get_properties()
+    }
+
+    fn set_property(&mut self, name: String, prop: Property) {
+        self.as_mut().set_property(name, prop);
+    }
+
+    fn get_effect_properties(&self) -> Vec<Property> {
+        self.as_ref().get_effect_properties()
+    }
+
+    fn set_effect_property(&mut self, i: usize, prop: Property) {
+        self.as_mut().set_effect_property(i, prop);
+    }
+
+    fn add_effect_property(&mut self, prop: Property) {
+        self.as_mut().add_effect_property(prop);
+    }
+}
+
+impl AsRef<Component> for Component {
+    fn as_ref(&self) -> &Component {
+        self
+    }
+}
+
+impl AsMut<Component> for Component {
+    fn as_mut(&mut self) -> &mut Component {
+        self
+    }
 }
 
 impl ComponentWrapper for Component {
-    fn get_component(&self) -> Component {
-        self.clone()
-    }
-
     fn get_properties(&self) -> Properties {
         use Property::*;
 
@@ -426,34 +448,16 @@ impl ComponentWrapper for Component {
     }
 }
 
-impl<T: ComponentWrapper> ComponentWrapper for Box<T> {
-    fn get_component(&self) -> Component {
-        self.as_ref().get_component()
-    }
-
-    fn get_properties(&self) -> Properties {
-        self.as_ref().get_properties()
-    }
-
-    fn set_property(&mut self, name: String, prop: Property) {
-        self.as_mut().set_property(name, prop);
-    }
-
-    fn get_effect_properties(&self) -> Vec<Property> {
-        self.as_ref().get_effect_properties()
-    }
-
-    fn set_effect_property(&mut self, i: usize, prop: Property) {
-        self.as_mut().set_effect_property(i, prop);
-    }
-
-    fn add_effect_property(&mut self, prop: Property) {
-        self.as_mut().add_effect_property(prop);
-    }
-}
-
 pub trait ComponentLike: ComponentWrapper + Peekable {}
 impl<T: ComponentWrapper + Peekable> ComponentLike for T {}
+
+impl Deref for ComponentLike {
+    type Target = Component;
+
+    fn deref(&self) -> &Component {
+        self.as_ref()
+    }
+}
 
 pub enum GdkInterpType {
     Nearest,

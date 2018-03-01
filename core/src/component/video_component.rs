@@ -53,35 +53,33 @@ impl Peekable for VideoTestComponent {
     }
 }
 
-impl ComponentWrapper for VideoTestComponent {
-    fn get_component(&self) -> Component {
-        self.component.get_component()
+impl AsRef<Component> for VideoTestComponent {
+    fn as_ref(&self) -> &Component {
+        &self.component
     }
+}
 
-    fn get_properties(&self) -> Properties {
-        self.component.get_properties()
-    }
-
-    fn set_property(&mut self, name: String, prop: Property) {
-        self.component.set_property(name, prop);
-    }
-
-    fn get_effect_properties(&self) -> Vec<Property> {
-        self.component.get_effect_properties()
-    }
-
-    fn set_effect_property(&mut self, i: usize, value: Property) {
-        self.component.set_effect_property(i, value);
-    }
-
-    fn add_effect_property(&mut self, prop: Property) {
-        self.component.add_effect_property(prop);
+impl AsMut<Component> for VideoTestComponent {
+    fn as_mut(&mut self) -> &mut Component {
+        &mut self.component
     }
 }
 
 pub struct VideoFileComponent {
     component: Component,
     data: gst::Element,
+}
+
+impl AsRef<Component> for VideoFileComponent {
+    fn as_ref(&self) -> &Component {
+        &self.component
+    }
+}
+
+impl AsMut<Component> for VideoFileComponent {
+    fn as_mut(&mut self) -> &mut Component {
+        &mut self.component
+    }
 }
 
 impl VideoFileComponent {
@@ -132,10 +130,6 @@ impl Peekable for VideoFileComponent {
 }
 
 impl ComponentWrapper for VideoFileComponent {
-    fn get_component(&self) -> Component {
-        self.component.get_component()
-    }
-
     fn get_properties(&self) -> Properties {
         use Property::*;
 
@@ -151,18 +145,6 @@ impl ComponentWrapper for VideoFileComponent {
             ("entity", FilePath(uri)) => self.reload(uri.as_str()),
             (x,y) => self.component.set_property(x.to_string(), y),
         }
-    }
-
-    fn get_effect_properties(&self) -> Vec<Property> {
-        self.component.get_effect_properties()
-    }
-
-    fn set_effect_property(&mut self, i: usize, prop: Property) {
-        self.component.set_effect_property(i, prop);
-    }
-
-    fn add_effect_property(&mut self, prop: Property) {
-        self.component.add_effect_property(prop);
     }
 }
 

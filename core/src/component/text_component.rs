@@ -56,11 +56,19 @@ impl Peekable for TextComponent {
     }
 }
 
-impl ComponentWrapper for TextComponent {
-    fn get_component(&self) -> Component {
-        self.component.get_component()
+impl AsRef<Component> for TextComponent {
+    fn as_ref(&self) -> &Component {
+        &self.component
     }
+}
 
+impl AsMut<Component> for TextComponent {
+    fn as_mut(&mut self) -> &mut Component {
+        &mut self.component
+    }
+}
+
+impl ComponentWrapper for TextComponent {
     fn get_properties(&self) -> Properties {
         use Property::*;
 
@@ -89,18 +97,6 @@ impl ComponentWrapper for TextComponent {
             },
             (x,y) => self.component.set_property(x.to_string(), y),
         }
-    }
-
-    fn get_effect_properties(&self) -> Vec<Property> {
-        self.component.get_effect_properties()
-    }
-
-    fn set_effect_property(&mut self, i: usize, value: Property) {
-        self.component.set_effect_property(i, value);
-    }
-
-    fn add_effect_property(&mut self, prop: Property) {
-        self.component.add_effect_property(prop);
     }
 }
 
