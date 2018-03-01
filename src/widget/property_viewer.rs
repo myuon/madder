@@ -5,7 +5,8 @@ use gtk::prelude::*;
 use widget::WidgetWrapper;
 
 pub struct PropertyViewerWidget {
-    view: gtk::Notebook,
+    view: gtk::Box,
+    notebook: gtk::Notebook,
     remove_button: gtk::Button,
     width: i32,
 }
@@ -13,14 +14,19 @@ pub struct PropertyViewerWidget {
 impl PropertyViewerWidget {
     pub fn new(width: i32) -> PropertyViewerWidget {
         PropertyViewerWidget {
-            view: gtk::Notebook::new(),
+            view: gtk::Box::new(gtk::Orientation::Vertical, 0),
+            notebook: gtk::Notebook::new(),
             remove_button: gtk::Button::new(),
             width: width,
         }
     }
 
     pub fn create_ui(&self) {
-        self.view.set_size_request(self.width, 100);
+        self.notebook.set_size_request(self.width, 100);
+        self.remove_button.set_label("Remove");
+
+        self.view.pack_start(&self.notebook, true, true, 0);
+        self.view.pack_start(&self.remove_button, false, false, 5);
     }
 
     pub fn connect_remove(&self, cont: Box<Fn()>) {
@@ -28,8 +34,8 @@ impl PropertyViewerWidget {
     }
 
     pub fn clear(&self) {
-        for widget in self.view.get_children() {
-            self.view.remove(&widget);
+        for widget in self.notebook.get_children() {
+            self.notebook.remove(&widget);
         }
     }
 
@@ -51,8 +57,8 @@ impl PropertyViewerWidget {
             grid.attach(&renderer(k.to_string(), v.clone().clone()), 1, i as i32, 1, 1);
         }
 
-        self.view.append_page(&scroll, Some(&gtk::Label::new(tab_name.as_str())));
-        self.view.show_all();
+        self.notebook.append_page(&scroll, Some(&gtk::Label::new(tab_name.as_str())));
+        self.notebook.show_all();
     }
 
     pub fn add_box_properties<T: Clone>(&self, tab_name: String, props: Vec<T>, renderer: Box<Fn(usize, T) -> gtk::Widget>) {
@@ -64,13 +70,13 @@ impl PropertyViewerWidget {
             vbox.pack_start(&renderer(i, v.clone()), false, false, 5);
         }
 
-        self.view.append_page(&scroll, Some(&gtk::Label::new(tab_name.as_str())));
-        self.view.show_all();
+        self.notebook.append_page(&scroll, Some(&gtk::Label::new(tab_name.as_str())));
+        self.notebook.show_all();
     }
 }
 
 impl WidgetWrapper for PropertyViewerWidget {
-    type T = gtk::Notebook;
+    type T = gtk::Box;
 
     fn to_widget(&self) -> &Self::T {
         &self.view
