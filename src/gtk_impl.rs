@@ -144,7 +144,10 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<Tracker>, cont: Rc<Fn(
             }
         },
         &EffectInfo(ref eff_type, ref transition, ref start_value, ref end_value) => {
+            let expander = gtk::Expander::new(format!("{:?}", eff_type).as_str());
             let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+            expander.add(&vbox);
+            vbox.set_margin_left(10);
 
             {
                 let mut tracker = tracker.clone();
@@ -184,7 +187,7 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<Tracker>, cont: Rc<Fn(
                 vbox.pack_start(&edit_type_to_widget(&F64(*end_value), tracker, cont.clone()), true, true, 0);
             }
 
-            vbox.dynamic_cast().unwrap()
+            expander.dynamic_cast().unwrap()
         },
     }
 }
