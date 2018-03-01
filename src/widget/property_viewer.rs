@@ -78,27 +78,25 @@ impl PropertyViewerWidget {
         let remove_button_cont = Rc::new(remove_button_cont);
         for (i,v) in props.iter().enumerate() {
             let widget = renderer(i, v.clone());
+            let click_area_label = gtk::Button::new();
             let remove_button_cont = remove_button_cont.clone();
 
-            widget.set_events(gdk::EventMask::ALL_EVENTS_MASK.bits() as i32);
-            widget.connect_button_press_event(move |_,event| {
-                if event.get_state().contains(gdk::ModifierType::BUTTON2_MASK) {
-                    let menu = gtk::Menu::new();
-                    let remove_item = gtk::MenuItem::new_with_label("remove");
-                    let remove_button_cont = remove_button_cont.clone();
-                    remove_item.connect_activate(move |_| {
-                        remove_button_cont(i);
-                    });
+            click_area_label.set_label("open menu");
+            click_area_label.connect_clicked(move |_| {
+                let menu = gtk::Menu::new();
+                let remove_item = gtk::MenuItem::new_with_label("remove");
+                let remove_button_cont = remove_button_cont.clone();
+                remove_item.connect_activate(move |_| {
+                    remove_button_cont(i);
+                });
 
-                    menu.append(&remove_item);
+                menu.append(&remove_item);
 
-                    menu.popup_easy(0, gtk::get_current_event_time());
-                    menu.show_all();
-                }
-
-                Inhibit(false)
+                menu.popup_easy(0, gtk::get_current_event_time());
+                menu.show_all();
             });
 
+            vbox.pack_start(&click_area_label, false, false, 10);
             vbox.pack_start(&widget, false, false, 0);
         }
 
