@@ -66,5 +66,13 @@ impl ComponentWrapper for ImageComponent {
             (x,y) => self.component.set_property(x.to_string(), y),
         }
     }
+
+    fn get_effect_properties(&self) -> Vec<Property> {
+        self.component.get_effect_properties()
+    }
+
+    fn set_effect_property(&mut self, i: usize, value: Property) {
+        self.component.set_effect_property(i, value);
+    }
 }
 

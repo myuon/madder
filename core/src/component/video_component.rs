@@ -65,6 +65,14 @@ impl ComponentWrapper for VideoTestComponent {
     fn set_property(&mut self, name: String, prop: Property) {
         self.component.set_property(name, prop);
     }
+
+    fn get_effect_properties(&self) -> Vec<Property> {
+        self.component.get_effect_properties()
+    }
+
+    fn set_effect_property(&mut self, i: usize, value: Property) {
+        self.component.set_effect_property(i, value);
+    }
 }
 
 pub struct VideoFileComponent {
@@ -139,6 +147,14 @@ impl ComponentWrapper for VideoFileComponent {
             ("entity", FilePath(uri)) => self.reload(uri.as_str()),
             (x,y) => self.component.set_property(x.to_string(), y),
         }
+    }
+
+    fn get_effect_properties(&self) -> Vec<Property> {
+        self.component.get_effect_properties()
+    }
+
+    fn set_effect_property(&mut self, i: usize, value: Property) {
+        self.component.set_effect_property(i, value);
     }
 }
 

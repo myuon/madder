@@ -83,13 +83,12 @@ impl App {
     }
 
     fn select_component(self_: Rc<RefCell<App>>, index: usize) {
-        let self__ = self_.clone();
-
         self_.borrow().property.clear();
 
-        self_.borrow().property.add_tab_properties(
+        let self__ = self_.clone();
+        self_.borrow().property.add_grid_properties(
             "component".to_string(),
-            self_.borrow().editor.request_component_property(index),
+            self_.borrow().editor.request_component_property_vec(index),
             Box::new(move |prop_name, prop| {
                 let prop_name = Rc::new(prop_name);
                 let self__ = self__.clone();
@@ -99,6 +98,26 @@ impl App {
                     let prop = self__.borrow().editor.request_component_property(index)[prop_name.as_str()].clone();
                     if let Some(new_prop) = new_prop {
                         self__.borrow_mut().editor.set_component_property(index, prop_name.as_ref().clone(), gtk_impl::recover_property(prop, tracker, new_prop));
+                    }
+
+                    self__.borrow().queue_draw();
+                }))
+            }),
+        );
+
+        let self__ = self_.clone();
+        self_.borrow().property.add_box_properties(
+            "effect".to_string(),
+            self_.borrow().editor.request_effect_property(index),
+            Box::new(move |prop_index,prop| {
+                let prop_index = Rc::new(prop_index);
+                let self__ = self__.clone();
+
+                gtk_impl::edit_type_to_widget(&prop, vec![], Rc::new(move |new_prop,tracker| {
+                    // request the property again, since in this callback the value of property might have been changed
+                    let prop = self__.borrow().editor.request_effect_property(index)[*prop_index].clone();
+                    if let Some(new_prop) = new_prop {
+                        self__.borrow_mut().editor.set_effect_property(index, *prop_index, gtk_impl::recover_property(prop, tracker, new_prop));
                     }
 
                     self__.borrow().queue_draw();

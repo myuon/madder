@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 extern crate gtk;
 extern crate gdk;
 use gtk::prelude::*;
@@ -34,22 +33,35 @@ impl PropertyViewerWidget {
         }
     }
 
-    pub fn add_tab_properties<T: Clone>(&self, tab_name: String, props: HashMap<String,T>, renderer: Box<Fn(String,T) -> gtk::Widget>) {
+    pub fn add_grid_properties<T: Clone>(&self, tab_name: String, props: Vec<(String,T)>, renderer: Box<Fn(String,T) -> gtk::Widget>) {
+        let scroll = gtk::ScrolledWindow::new(&gtk::Adjustment::new(0.0, 0.0, self.width as f64, 1.0, 1.0, self.width as f64), None);
+        let grid = gtk::Grid::new();
+        grid.set_column_spacing(10);
+        grid.set_row_spacing(5);
+        scroll.add(&grid);
+
         let new_label = |label: &str, align: gtk::Align| {
             let w = gtk::Label::new(label);
             w.set_halign(align);
             w
         };
 
-        let scroll = gtk::ScrolledWindow::new(&gtk::Adjustment::new(0.0, 0.0, self.width as f64, 1.0, 1.0, self.width as f64), None);
-        let grid = gtk::Grid::new();
-        scroll.add(&grid);
-
-        let mut props = props.iter().collect::<Vec<_>>();
-        props.sort_by_key(|&x| x.0);
         for (i, &(ref k, ref v)) in props.iter().enumerate() {
-            grid.attach(&new_label(k.as_str(), gtk::Align::End), 0, i as i32, 1, 1);
-            grid.attach(&renderer(k.to_string(),v.clone().clone()), 1, i as i32, 1, 1);
+            grid.attach(&new_label(k, gtk::Align::End), 0, i as i32, 1, 1);
+            grid.attach(&renderer(k.to_string(), v.clone().clone()), 1, i as i32, 1, 1);
+        }
+
+        self.view.append_page(&scroll, Some(&gtk::Label::new(tab_name.as_str())));
+        self.view.show_all();
+    }
+
+    pub fn add_box_properties<T: Clone>(&self, tab_name: String, props: Vec<T>, renderer: Box<Fn(usize, T) -> gtk::Widget>) {
+        let scroll = gtk::ScrolledWindow::new(&gtk::Adjustment::new(0.0, 0.0, self.width as f64, 1.0, 1.0, self.width as f64), None);
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 10);
+        scroll.add(&vbox);
+
+        for (i,v) in props.iter().enumerate() {
+            vbox.pack_start(&renderer(i, v.clone()), false, false, 5);
         }
 
         self.view.append_page(&scroll, Some(&gtk::Label::new(tab_name.as_str())));

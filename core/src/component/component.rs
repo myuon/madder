@@ -370,6 +370,8 @@ pub trait ComponentWrapper {
     fn get_component(&self) -> Component;
     fn get_properties(&self) -> Properties;
     fn set_property(&mut self, name: String, prop: Property);
+    fn get_effect_properties(&self) -> Vec<Property>;
+    fn set_effect_property(&mut self, i: usize, value: Property);
 }
 
 impl ComponentWrapper for Component {
@@ -380,7 +382,7 @@ impl ComponentWrapper for Component {
     fn get_properties(&self) -> Properties {
         use Property::*;
 
-        let mut props: Properties = [
+        [
             ("component_type".to_string(), ReadOnly(format!("{:?}", self.component_type))),
             ("start_time".to_string(), Time(self.start_time)),
             ("length".to_string(), Time(self.length)),
@@ -390,13 +392,7 @@ impl ComponentWrapper for Component {
             ("rotate".to_string(), F64(self.rotate)),
             ("alpha".to_string(), I32(self.alpha)),
             ("scale".to_string(), Pair(box F64(self.scale.0), box F64(self.scale.1))),
-        ].iter().cloned().collect();
-
-        self.effect.iter().enumerate().for_each(|(i,eff)| {
-            props.insert(i.to_string(), EffectInfo(eff.effect_type.clone(), eff.transition.clone(), eff.start_value, eff.end_value));
-        });
-
-        props
+        ].iter().cloned().collect()
     }
 
     fn set_property(&mut self, name: String, prop: Property) {
@@ -410,8 +406,24 @@ impl ComponentWrapper for Component {
             ("rotate", F64(v)) => self.rotate = v,
             ("alpha", I32(v)) => self.alpha = v,
             ("scale", Pair(box F64(x), box F64(y))) => self.scale = (x,y),
-            (i, EffectInfo(effect_type, transition, start_value, end_value)) =>
-                self.effect[i.parse::<usize>().unwrap()] = Effect {
+            _ => unimplemented!(),
+        }
+    }
+
+    fn get_effect_properties(&self) -> Vec<Property> {
+        use Property::*;
+
+        self.effect.iter().map(|eff| {
+            EffectInfo(eff.effect_type.clone(), eff.transition.clone(), eff.start_value, eff.end_value)
+        }).collect()
+    }
+
+    fn set_effect_property(&mut self, i: usize, value: Property) {
+        use Property::*;
+
+        match value {
+            EffectInfo(effect_type, transition, start_value, end_value) =>
+                self.effect[i] = Effect {
                     effect_type: effect_type.clone(),
                     transition: transition.clone(),
                     start_value: start_value,
@@ -433,6 +445,14 @@ impl<T: ComponentWrapper> ComponentWrapper for Box<T> {
 
     fn set_property(&mut self, name: String, prop: Property) {
         self.as_mut().set_property(name, prop);
+    }
+
+    fn get_effect_properties(&self) -> Vec<Property> {
+        self.as_ref().get_effect_properties()
+    }
+
+    fn set_effect_property(&mut self, i: usize, value: Property) {
+        self.as_mut().set_effect_property(i, value);
     }
 }
 
