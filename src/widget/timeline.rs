@@ -63,6 +63,14 @@ impl TimelineWidget {
         BoxViewerWidget::create_ui(self.timeline.clone());
     }
 
+    pub fn create_menu(&self, menu: &gtk::Menu) {
+        let menu = menu.clone();
+        BoxViewerWidget::connect_click_no_box(self.timeline.clone(), Box::new(move || {
+            menu.popup_easy(0, gtk::get_current_event_time());
+            menu.show_all();
+        }));
+    }
+
     pub fn connect_request_objects(&self, cont: Box<Fn() -> Vec<BoxObject>>) {
         self.timeline.borrow_mut().connect_request_objects(cont);
     }

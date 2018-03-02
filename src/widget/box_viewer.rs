@@ -84,6 +84,7 @@ pub struct BoxViewerWidget {
     offset: i32,
     selecting_box_index: Option<usize>,
     flag_resize: bool,
+    callback_click_no_box: Box<Fn()>,
 }
 
 impl BoxViewerWidget {
@@ -98,6 +99,7 @@ impl BoxViewerWidget {
             offset: 0,
             selecting_box_index: None,
             flag_resize: false,
+            callback_click_no_box: Box::new(|| {}),
         }))
     }
 
@@ -140,9 +142,16 @@ impl BoxViewerWidget {
                 self__.borrow_mut().offset = x;
                 self__.borrow_mut().selecting_box_index = Some(object.index);
                 cont(object.index);
+            } else {
+                (self__.borrow().callback_click_no_box)();
             }
+
             Inhibit(false)
         });
+    }
+
+    pub fn connect_click_no_box(self_: Rc<RefCell<BoxViewerWidget>>, cont: Box<Fn()>) {
+        self_.borrow_mut().callback_click_no_box = cont;
     }
 
     pub fn connect_drag_box(self_: Rc<RefCell<BoxViewerWidget>>, cont_move: Box<Fn(usize, i32, usize)>, cont_resize: Box<Fn(usize, i32)>) {

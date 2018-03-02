@@ -291,6 +291,9 @@ impl App {
             let editor_menu = gtk::Menu::new();
             editor_item.set_submenu(&editor_menu);
 
+            let app = self_.borrow();
+            app.timeline.borrow().create_menu(&editor_menu);
+
             let video_item = gtk::MenuItem::new_with_label("動画");
             let image_item = gtk::MenuItem::new_with_label("画像");
             let text_item = gtk::MenuItem::new_with_label("テキスト");
