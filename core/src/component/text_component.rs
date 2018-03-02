@@ -98,5 +98,9 @@ impl ComponentWrapper for TextComponent {
             (x,y) => self.component.set_property(x.to_string(), y),
         }
     }
+
+    fn get_info(&self) -> String {
+        format!("text")
+    }
 }
 

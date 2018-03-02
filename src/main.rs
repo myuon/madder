@@ -51,7 +51,7 @@ impl App {
         }
     }
 
-    pub fn start_instant_preview(self_: Rc<RefCell<App>>, vbox: &gtk::Box, parent: &gtk::Box) {
+    pub fn start_instant_preview(self_: Rc<RefCell<App>>, parent: &gtk::Box) {
         let pipeline = gst::Pipeline::new(None);
         let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
         let appsrc = gst::ElementFactory::make("appsrc", None).unwrap();
@@ -221,6 +221,16 @@ impl App {
                 self____.borrow_mut().editor.remove_effect_property(index, i);
                 App::select_component(self____.clone(), index);
             }),
+        );
+
+        self_.borrow().property.add_box_properties(
+            "info".to_string(),
+            vec![self_.borrow().editor.elements[index].get_info()],
+            Box::new(move |_,t| {
+                gtk::Label::new(t.as_str()).dynamic_cast().unwrap()
+            }),
+            Box::new(|| {}),
+            Box::new(|_| {}),
         );
 
         self_.borrow_mut().selected_component_index = Some(index);
@@ -488,12 +498,11 @@ impl App {
         vbox.pack_start(app.timeline.borrow().to_widget(), true, true, 5);
 
         let self__ = self_.clone();
-        let vbox_ = vbox.clone();
         let hbox_ = hbox.clone();
         let btn = gtk::Button::new();
         btn.set_label("start preview");
         btn.connect_clicked(move |_| {
-            App::start_instant_preview(self__.clone(), &vbox_, &hbox_);
+            App::start_instant_preview(self__.clone(), &hbox_);
         });
         vbox.pack_start(&btn, false, false, 0);
 

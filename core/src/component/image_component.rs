@@ -74,5 +74,11 @@ impl ComponentWrapper for ImageComponent {
             (x,y) => self.component.set_property(x.to_string(), y),
         }
     }
+
+    fn get_info(&self) -> String {
+        let mut w = 0;
+        let mut h = 0;
+        format!("image {:?}", gdk_pixbuf::Pixbuf::get_file_info(&self.component.entity, &mut w, &mut h).unwrap().get_description())
+    }
 }
 

@@ -146,5 +146,12 @@ impl ComponentWrapper for VideoFileComponent {
             (x,y) => self.component.set_property(x.to_string(), y),
         }
     }
+
+    fn get_info(&self) -> String {
+        format!("video\ndata_uri:\t{}\nclock:\t{:?}\n",
+                self.component.entity,
+                self.data.get_clock()
+        )
+    }
 }
 

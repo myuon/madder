@@ -385,6 +385,8 @@ pub trait ComponentWrapper : AsRef<Component> + AsMut<Component> {
     fn add_effect_property(&mut self, prop: Property) {
         self.as_mut().add_effect_property(prop);
     }
+
+    fn get_info(&self) -> String;
 }
 
 impl AsRef<Component> for Component {
@@ -445,6 +447,10 @@ impl ComponentWrapper for Component {
 
     fn add_effect_property(&mut self, prop: Property) {
         self.effect.push(prop.as_effect().unwrap());
+    }
+
+    fn get_info(&self) -> String {
+        format!("Component")
     }
 }
 
