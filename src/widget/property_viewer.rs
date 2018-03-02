@@ -116,15 +116,17 @@ pub struct PropertyViewerWidget {
 
 impl PropertyViewerWidget {
     pub fn new(width: i32) -> PropertyViewerWidget {
-        PropertyViewerWidget {
+        let self_ = PropertyViewerWidget {
             view: gtk::Box::new(gtk::Orientation::Vertical, 0),
             notebook: gtk::Notebook::new(),
             remove_button: gtk::Button::new(),
             width: width,
-        }
+        };
+        self_.create_ui();
+        self_
     }
 
-    pub fn create_ui(&self) {
+    fn create_ui(&self) {
         self.notebook.set_size_request(self.width, 100);
         self.remove_button.set_label("Remove");
 

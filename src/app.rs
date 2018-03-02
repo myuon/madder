@@ -379,8 +379,6 @@ impl App {
     pub fn create_ui(self_: Rc<RefCell<App>>) {
         let app = self_.borrow();
 
-        app.timeline.borrow_mut().create_ui();
-
         let self__ = self_.clone();
         app.timeline.borrow().connect_select_component(Box::new(move |index| {
             App::select_component(self__.clone(), index);
@@ -488,7 +486,6 @@ impl App {
         let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         hbox.pack_start(&app.canvas, true, true, 0);
         hbox.pack_end(app.property.as_widget(), true, true, 0);
-        app.property.create_ui();
 
         let self__ = self_.clone();
         app.property.connect_remove(Box::new(move || {

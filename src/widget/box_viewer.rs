@@ -92,7 +92,7 @@ impl BoxViewerWidget {
         let canvas = gtk::DrawingArea::new();
         canvas.set_size_request(width, height);
 
-        Rc::new(RefCell::new(BoxViewerWidget {
+        let self_ = Rc::new(RefCell::new(BoxViewerWidget {
             canvas: canvas,
             objects: vec![],
             requester: Box::new(|| vec![]),
@@ -100,7 +100,10 @@ impl BoxViewerWidget {
             selecting_box_index: None,
             flag_resize: false,
             callback_click_no_box: Box::new(|| {}),
-        }))
+        }));
+        BoxViewerWidget::create_ui(self_.clone());
+
+        self_
     }
 
     pub fn set_model(&mut self, objects: Vec<BoxObject>) {
@@ -111,7 +114,7 @@ impl BoxViewerWidget {
         self.requester = cont;
     }
 
-    pub fn create_ui(self_: Rc<RefCell<BoxViewerWidget>>) {
+    fn create_ui(self_: Rc<RefCell<BoxViewerWidget>>) {
         let self__ = self_.clone();
 
         self_.borrow().canvas.connect_draw(move |_,cr| {

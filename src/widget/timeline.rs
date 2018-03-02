@@ -59,10 +59,6 @@ impl TimelineWidget {
         }))
     }
 
-    pub fn create_ui(&self) {
-        BoxViewerWidget::create_ui(self.timeline.clone());
-    }
-
     pub fn create_menu(&self, menu: &gtk::Menu) {
         let menu = menu.clone();
         BoxViewerWidget::connect_click_no_box(self.timeline.clone(), Box::new(move || {
