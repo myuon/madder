@@ -4,7 +4,7 @@ extern crate gtk;
 extern crate gdk;
 use gtk::prelude::*;
 
-use widget::WidgetWrapper;
+use widget::AsWidget;
 
 pub struct GridPage(gtk::ScrolledWindow);
 
@@ -31,10 +31,10 @@ impl GridPage {
     }
 }
 
-impl WidgetWrapper for GridPage {
+impl AsWidget for GridPage {
     type T = gtk::ScrolledWindow;
 
-    fn to_widget(&self) -> &Self::T {
+    fn as_widget(&self) -> &Self::T {
         &self.0
     }
 }
@@ -99,10 +99,10 @@ impl BoxPage {
     }
 }
 
-impl WidgetWrapper for BoxPage {
+impl AsWidget for BoxPage {
     type T = gtk::ScrolledWindow;
 
-    fn to_widget(&self) -> &Self::T {
+    fn as_widget(&self) -> &Self::T {
         &self.0
     }
 }
@@ -142,16 +142,16 @@ impl PropertyViewerWidget {
         }
     }
 
-    pub fn append_page<T: WidgetWrapper>(&self, tab_name: &str, page: T) {
-        self.notebook.append_page(page.to_widget(), Some(&gtk::Label::new(tab_name)));
+    pub fn append_page<T: AsWidget>(&self, tab_name: &str, page: T) {
+        self.notebook.append_page(page.as_widget(), Some(&gtk::Label::new(tab_name)));
         self.notebook.show_all();
     }
 }
 
-impl WidgetWrapper for PropertyViewerWidget {
+impl AsWidget for PropertyViewerWidget {
     type T = gtk::Box;
 
-    fn to_widget(&self) -> &Self::T {
+    fn as_widget(&self) -> &Self::T {
         &self.view
     }
 }

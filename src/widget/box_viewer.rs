@@ -7,7 +7,7 @@ extern crate cairo;
 use gtk::prelude::*;
 use gdk::prelude::*;
 
-use widget::WidgetWrapper;
+use widget::AsWidget;
 
 #[derive(Clone, Debug)]
 pub struct BoxObject {
@@ -194,10 +194,10 @@ impl BoxViewerWidget {
     }
 }
 
-impl WidgetWrapper for BoxViewerWidget {
+impl AsWidget for BoxViewerWidget {
     type T = gtk::DrawingArea;
 
-    fn to_widget(&self) -> &Self::T {
+    fn as_widget(&self) -> &Self::T {
         &self.canvas
     }
 }

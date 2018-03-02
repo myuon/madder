@@ -1,5 +1,5 @@
 mod wrapper;
-pub use self::wrapper::WidgetWrapper;
+pub use self::wrapper::AsWidget;
 
 mod ruler;
 pub use self::ruler::RulerWidget;

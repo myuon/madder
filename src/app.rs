@@ -179,7 +179,7 @@ impl App {
                 let prop_name = Rc::new(prop_name);
                 let self__ = self__.clone();
 
-                gtk_impl::edit_type_to_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
+                gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
                     // request the property again, since in this callback the value of property might have been changed
                     let prop = self__.borrow().editor.request_component_property(index)[prop_name.as_str()].clone();
                     if let Some(new_prop) = new_prop {
@@ -201,7 +201,7 @@ impl App {
                 let prop_index = Rc::new(prop_index);
                 let self__ = self__.clone();
 
-                gtk_impl::edit_type_to_widget(&prop, vec![], Rc::new(move |new_prop,tracker| {
+                gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop,tracker| {
                     // request the property again, since in this callback the value of property might have been changed
                     let prop = self__.borrow().editor.request_effect_property(index)[*prop_index].clone();
                     if let Some(new_prop) = new_prop {
@@ -487,7 +487,7 @@ impl App {
 
         let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         hbox.pack_start(&app.canvas, true, true, 0);
-        hbox.pack_end(app.property.to_widget(), true, true, 0);
+        hbox.pack_end(app.property.as_widget(), true, true, 0);
         app.property.create_ui();
 
         let self__ = self_.clone();
@@ -496,7 +496,7 @@ impl App {
         }));
 
         vbox.pack_start(&hbox, true, true, 0);
-        vbox.pack_start(app.timeline.borrow().to_widget(), true, true, 5);
+        vbox.pack_start(app.timeline.borrow().as_widget(), true, true, 5);
 
         let self__ = self_.clone();
         let hbox_ = hbox.clone();

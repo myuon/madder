@@ -10,7 +10,7 @@ use gdk::prelude::*;
 extern crate cairo;
 extern crate pango;
 
-use widget::WidgetWrapper;
+use widget::AsWidget;
 use widget::RulerWidget;
 use widget::BoxViewerWidget;
 use widget::BoxObject;
@@ -35,10 +35,10 @@ impl TimelineWidget {
             overlay.add(&vbox);
 
             let ruler = RulerWidget::new(width);
-            ruler_box.add(ruler.to_widget());
+            ruler_box.add(ruler.as_widget());
             vbox.pack_start(&ruler_box, true, true, 10);
 
-            vbox.pack_start(timeline.borrow().to_widget(), true, true, 0);
+            vbox.pack_start(timeline.borrow().as_widget(), true, true, 0);
         }
 
         let tracker = gtk::DrawingArea::new();
@@ -100,10 +100,10 @@ impl TimelineWidget {
     }
 }
 
-impl WidgetWrapper for TimelineWidget {
+impl AsWidget for TimelineWidget {
     type T = gtk::Overlay;
 
-    fn to_widget(&self) -> &Self::T {
+    fn as_widget(&self) -> &Self::T {
         &self.container
     }
 }

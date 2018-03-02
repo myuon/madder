@@ -1,7 +1,7 @@
 extern crate gtk;
 use gtk::prelude::*;
 
-use widget::WidgetWrapper;
+use widget::AsWidget;
 
 pub struct RulerWidget(gtk::DrawingArea);
 
@@ -40,10 +40,10 @@ impl RulerWidget {
     }
 }
 
-impl WidgetWrapper for RulerWidget {
+impl AsWidget for RulerWidget {
     type T = gtk::DrawingArea;
 
-    fn to_widget(&self) -> &gtk::DrawingArea {
+    fn as_widget(&self) -> &gtk::DrawingArea {
         &self.0
     }
 }

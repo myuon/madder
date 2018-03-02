@@ -17,7 +17,7 @@ pub enum Tracker {
     EndValue,
 }
 
-pub fn edit_type_to_widget(self_: &Property, tracker: Vec<Tracker>, cont: Rc<Fn(Option<Property>, &Vec<Tracker>) + 'static>) -> gtk::Widget {
+pub fn edit_type_as_widget(self_: &Property, tracker: Vec<Tracker>, cont: Rc<Fn(Option<Property>, &Vec<Tracker>) + 'static>) -> gtk::Widget {
     use Property::*;
 
     match self_ {
@@ -67,12 +67,12 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<Tracker>, cont: Rc<Fn(
             {
                 let mut tracker = tracker.clone();
                 tracker.push(Tracker::X);
-                vbox.pack_start(&edit_type_to_widget(&wx, tracker, cont.clone()), true, true, 5);
+                vbox.pack_start(&edit_type_as_widget(&wx, tracker, cont.clone()), true, true, 5);
             }
             {
                 let mut tracker = tracker.clone();
                 tracker.push(Tracker::Y);
-                vbox.pack_start(&edit_type_to_widget(&wy, tracker, cont.clone()), true, true, 5);
+                vbox.pack_start(&edit_type_as_widget(&wy, tracker, cont.clone()), true, true, 5);
             }
 
             vbox.set_margin_left(20);
@@ -152,7 +152,7 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<Tracker>, cont: Rc<Fn(
                 let mut tracker = tracker.clone();
                 tracker.push(Tracker::EffectType);
                 vbox.pack_start(
-                    &edit_type_to_widget(
+                    &edit_type_as_widget(
                         &Choose(
                             format!("{:?}", Tracker::EffectType),
                             EffectType::types().iter().position(|i| i == eff_type).unwrap() as i32,
@@ -165,7 +165,7 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<Tracker>, cont: Rc<Fn(
                 let mut tracker = tracker.clone();
                 tracker.push(Tracker::Transition);
                 vbox.pack_start(
-                    &edit_type_to_widget(
+                    &edit_type_as_widget(
                         &Choose(
                             format!("{:?}", Tracker::Transition),
                             Transition::transitions().iter().position(|i| i == transition).unwrap() as i32,
@@ -177,13 +177,13 @@ pub fn edit_type_to_widget(self_: &Property, tracker: Vec<Tracker>, cont: Rc<Fn(
             {
                 let mut tracker = tracker.clone();
                 tracker.push(Tracker::StartValue);
-                vbox.pack_start(&edit_type_to_widget(&F64(*start_value), tracker, cont.clone()), true, true, 0);
+                vbox.pack_start(&edit_type_as_widget(&F64(*start_value), tracker, cont.clone()), true, true, 0);
             }
 
             {
                 let mut tracker = tracker.clone();
                 tracker.push(Tracker::EndValue);
-                vbox.pack_start(&edit_type_to_widget(&F64(*end_value), tracker, cont.clone()), true, true, 0);
+                vbox.pack_start(&edit_type_as_widget(&F64(*end_value), tracker, cont.clone()), true, true, 0);
             }
 
             expander.dynamic_cast().unwrap()
