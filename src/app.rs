@@ -172,8 +172,8 @@ impl App {
         self_.borrow().property.clear();
 
         let self__ = self_.clone();
-        self_.borrow().property.add_grid_properties(
-            "component".to_string(),
+        self_.borrow().property.append_page("component", GridPage::new(
+            self_.borrow().property.width,
             self_.borrow().editor.request_component_property_vec(index),
             Box::new(move |prop_name, prop| {
                 let prop_name = Rc::new(prop_name);
@@ -189,13 +189,13 @@ impl App {
                     self__.borrow().queue_draw();
                 }))
             }),
-        );
+        ));
 
         let self__ = self_.clone();
         let self___ = self_.clone();
         let self____ = self_.clone();
-        self_.borrow().property.add_box_properties(
-            "effect".to_string(),
+        self_.borrow().property.append_page("effect", BoxPage::new(
+            self_.borrow().property.width,
             self_.borrow().editor.request_effect_property(index),
             Box::new(move |prop_index,prop| {
                 let prop_index = Rc::new(prop_index);
@@ -219,17 +219,17 @@ impl App {
                 self____.borrow_mut().editor.remove_effect_property(index, i);
                 App::select_component(self____.clone(), index);
             }),
-        );
+        ));
 
-        self_.borrow().property.add_box_properties(
-            "info".to_string(),
+        self_.borrow().property.append_page("info", BoxPage::new(
+            self_.borrow().property.width,
             vec![self_.borrow().editor.elements[index].get_info()],
             Box::new(move |_,t| {
                 gtk::Label::new(t.as_str()).dynamic_cast().unwrap()
             }),
             Box::new(|| {}),
             Box::new(|_| {}),
-        );
+        ));
 
         self_.borrow_mut().selected_component_index = Some(index);
         self_.borrow().queue_draw();

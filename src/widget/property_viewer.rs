@@ -6,43 +6,11 @@ use gtk::prelude::*;
 
 use widget::WidgetWrapper;
 
-pub struct PropertyViewerWidget {
-    view: gtk::Box,
-    notebook: gtk::Notebook,
-    remove_button: gtk::Button,
-    width: i32,
-}
+pub struct GridPage(gtk::ScrolledWindow);
 
-impl PropertyViewerWidget {
-    pub fn new(width: i32) -> PropertyViewerWidget {
-        PropertyViewerWidget {
-            view: gtk::Box::new(gtk::Orientation::Vertical, 0),
-            notebook: gtk::Notebook::new(),
-            remove_button: gtk::Button::new(),
-            width: width,
-        }
-    }
-
-    pub fn create_ui(&self) {
-        self.notebook.set_size_request(self.width, 100);
-        self.remove_button.set_label("Remove");
-
-        self.view.pack_start(&self.notebook, true, true, 0);
-        self.view.pack_start(&self.remove_button, false, false, 5);
-    }
-
-    pub fn connect_remove(&self, cont: Box<Fn()>) {
-        self.remove_button.connect_clicked(move |_| cont());
-    }
-
-    pub fn clear(&self) {
-        for widget in self.notebook.get_children() {
-            self.notebook.remove(&widget);
-        }
-    }
-
-    pub fn add_grid_properties<T: Clone>(&self, tab_name: String, props: Vec<(String,T)>, renderer: Box<Fn(String,T) -> gtk::Widget>) {
-        let scroll = gtk::ScrolledWindow::new(&gtk::Adjustment::new(0.0, 0.0, self.width as f64, 1.0, 1.0, self.width as f64), None);
+impl GridPage {
+    pub fn new<T: Clone>(width: i32, props: Vec<(String, T)>, renderer: Box<Fn(String, T) -> gtk::Widget>) -> GridPage {
+        let scroll = gtk::ScrolledWindow::new(&gtk::Adjustment::new(0.0, 0.0, width as f64, 1.0, 1.0, width as f64), None);
         let grid = gtk::Grid::new();
         grid.set_column_spacing(10);
         grid.set_row_spacing(5);
@@ -59,12 +27,23 @@ impl PropertyViewerWidget {
             grid.attach(&renderer(k.to_string(), v.clone().clone()), 1, i as i32, 1, 1);
         }
 
-        self.notebook.append_page(&scroll, Some(&gtk::Label::new(tab_name.as_str())));
-        self.notebook.show_all();
+        GridPage(scroll)
     }
+}
 
-    pub fn add_box_properties<T: Clone>(&self, tab_name: String, props: Vec<T>, renderer: Box<Fn(usize, T) -> gtk::Widget>, add_button_cont: Box<Fn()>, remove_button_cont: Box<Fn(usize)>) {
-        let scroll = gtk::ScrolledWindow::new(&gtk::Adjustment::new(0.0, 0.0, self.width as f64, 1.0, 1.0, self.width as f64), None);
+impl WidgetWrapper for GridPage {
+    type T = gtk::ScrolledWindow;
+
+    fn to_widget(&self) -> &Self::T {
+        &self.0
+    }
+}
+
+pub struct BoxPage(gtk::ScrolledWindow);
+
+impl BoxPage {
+    pub fn new<T: Clone>(width: i32, props: Vec<T>, renderer: Box<Fn(usize, T) -> gtk::Widget>, add_button_cont: Box<Fn()>, remove_button_cont: Box<Fn(usize)>) -> BoxPage {
+        let scroll = gtk::ScrolledWindow::new(&gtk::Adjustment::new(0.0, 0.0, width as f64, 1.0, 1.0, width as f64), None);
         let vbox = gtk::Box::new(gtk::Orientation::Vertical, 10);
         scroll.add(&vbox);
 
@@ -116,7 +95,55 @@ impl PropertyViewerWidget {
             vbox.pack_start(&widget, false, false, 0);
         }
 
-        self.notebook.append_page(&scroll, Some(&gtk::Label::new(tab_name.as_str())));
+        BoxPage(scroll)
+    }
+}
+
+impl WidgetWrapper for BoxPage {
+    type T = gtk::ScrolledWindow;
+
+    fn to_widget(&self) -> &Self::T {
+        &self.0
+    }
+}
+
+pub struct PropertyViewerWidget {
+    view: gtk::Box,
+    notebook: gtk::Notebook,
+    remove_button: gtk::Button,
+    pub width: i32,
+}
+
+impl PropertyViewerWidget {
+    pub fn new(width: i32) -> PropertyViewerWidget {
+        PropertyViewerWidget {
+            view: gtk::Box::new(gtk::Orientation::Vertical, 0),
+            notebook: gtk::Notebook::new(),
+            remove_button: gtk::Button::new(),
+            width: width,
+        }
+    }
+
+    pub fn create_ui(&self) {
+        self.notebook.set_size_request(self.width, 100);
+        self.remove_button.set_label("Remove");
+
+        self.view.pack_start(&self.notebook, true, true, 0);
+        self.view.pack_start(&self.remove_button, false, false, 5);
+    }
+
+    pub fn connect_remove(&self, cont: Box<Fn()>) {
+        self.remove_button.connect_clicked(move |_| cont());
+    }
+
+    pub fn clear(&self) {
+        for widget in self.notebook.get_children() {
+            self.notebook.remove(&widget);
+        }
+    }
+
+    pub fn append_page<T: WidgetWrapper>(&self, tab_name: &str, page: T) {
+        self.notebook.append_page(page.to_widget(), Some(&gtk::Label::new(tab_name)));
         self.notebook.show_all();
     }
 }

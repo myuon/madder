@@ -11,5 +11,5 @@ mod timeline;
 pub use self::timeline::TimelineWidget;
 
 mod property_viewer;
-pub use self::property_viewer::PropertyViewerWidget;
+pub use self::property_viewer::*;
 
