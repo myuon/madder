@@ -3,7 +3,6 @@ use std::rc::Rc;
 extern crate gstreamer as gst;
 extern crate gtk;
 extern crate gdk;
-use gdk::prelude::*;
 
 use gtk::prelude::*;
 use madder_core::*;
