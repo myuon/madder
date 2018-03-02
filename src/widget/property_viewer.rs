@@ -78,40 +78,41 @@ impl PropertyViewerWidget {
         let remove_button_cont = Rc::new(remove_button_cont);
         for (i,v) in props.iter().enumerate() {
             let widget = renderer(i, v.clone());
-            let click_area_label = gtk::Button::new();
             let remove_button_cont = remove_button_cont.clone();
 
-            click_area_label.set_label("open menu");
-            click_area_label.connect_clicked(move |_| {
-                let remove_button_cont = remove_button_cont.clone();
+            widget.connect_button_press_event(move |_, event| {
+                if event.get_button() == 3 {
+                    let remove_button_cont = remove_button_cont.clone();
 
-                let menu = gtk::Menu::new();
-                let remove_item = {
-                    let remove_item = gtk::MenuItem::new_with_label("remove");
-                    remove_item.connect_activate(move |_| {
-                        remove_button_cont(i);
-                    });
+                    let menu = gtk::Menu::new();
+                    let remove_item = {
+                        let remove_item = gtk::MenuItem::new_with_label("remove");
+                        remove_item.connect_activate(move |_| {
+                            remove_button_cont(i);
+                        });
 
-                    remove_item
-                };
-                let move_up_item = {
-                    let item = gtk::MenuItem::new_with_label("move up");
-                    item
-                };
-                let move_down_item = {
-                    let item = gtk::MenuItem::new_with_label("move down");
-                    item
-                };
+                        remove_item
+                    };
+                    let move_up_item = {
+                        let item = gtk::MenuItem::new_with_label("move up");
+                        item
+                    };
+                    let move_down_item = {
+                        let item = gtk::MenuItem::new_with_label("move down");
+                        item
+                    };
 
-                menu.append(&remove_item);
-                menu.append(&move_up_item);
-                menu.append(&move_down_item);
+                    menu.append(&remove_item);
+                    menu.append(&move_up_item);
+                    menu.append(&move_down_item);
 
-                menu.popup_easy(0, gtk::get_current_event_time());
-                menu.show_all();
+                    menu.popup_easy(0, gtk::get_current_event_time());
+                    menu.show_all();
+                }
+
+                Inhibit(false)
             });
 
-            vbox.pack_start(&click_area_label, false, false, 10);
             vbox.pack_start(&widget, false, false, 0);
         }
 
