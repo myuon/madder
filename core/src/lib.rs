@@ -22,6 +22,8 @@ extern crate serde_json;
 pub mod component;
 pub use self::component::*;
 
+pub mod json_patch;
+
 #[derive(Serialize, Deserialize)]
 pub struct EditorStructure {
     pub components: Box<[Component]>,
