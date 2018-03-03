@@ -1,5 +1,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(slice_patterns)]
+#![feature(macro_at_most_once_rep)]
 use std::cmp;
 use std::fs::File;
 use std::io::BufReader;
@@ -16,6 +18,7 @@ use avi_renderer::AviRenderer;
 
 #[macro_use] extern crate serde_derive;
 extern crate serde_json;
+use serde_json::Value;
 
 #[macro_use] extern crate derive_builder;
 
@@ -23,6 +26,7 @@ pub mod component;
 pub use self::component::*;
 
 pub mod json_patch;
+pub use self::json_patch::*;
 
 #[derive(Serialize, Deserialize)]
 pub struct EditorStructure {
@@ -167,6 +171,64 @@ impl Editor {
             self.renderer.as_ref().unwrap().render_finish();
             (false, 1.0)
         }
+    }
+}
+
+// API for JSON Patch
+impl Editor {
+    fn add_components(&mut self, value: Value) {
+        self.register(Component::new_from_structure(&serde_json::from_value(value).unwrap()));
+    }
+
+    fn add_components_n(&mut self, index: IndexRange, value: Value) {
+        use IndexRange::*;
+        let component = Component::new_from_structure(&serde_json::from_value(value).unwrap());
+
+        match index {
+            Index(i) => self.elements.insert(i, component),
+            ReverseIndex(i) => {
+                let n = self.elements.len();
+                self.elements.insert(n-i, component);
+            },
+            _ => unreachable!(),
+        }
+    }
+
+    fn add_components_n_effect(&mut self, index: IndexRange, value: Value) {
+        use IndexRange::*;
+        let effect = serde_json::from_value::<Effect>(value).unwrap();
+
+        match index {
+            Index(i) => self.elements[i].effect.push(effect),
+            ReverseIndex(i) => {
+                let n = self.elements.len();
+                self.elements[n-i].effect.push(effect);
+            },
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl Patch for Editor {
+    fn patch_once(&mut self, op: Operation) -> Result<(), PatchError> {
+        use Operation::*;
+
+        match op {
+            Add(path, v) => {
+                match path.as_slice() {
+                    &[] => panic!("add"),
+                    &[ref c] if c == "width" => panic!("update_width"),
+                    &[ref c] if c == "height" => panic!("update_height"),
+                    &[ref c] if c == "components" => self.add_components(v),
+                    &[ref c, ref n] if c == "components" => self.add_components_n(IndexRange::from_str(n).unwrap(),v),
+                    &[ref c, ref n, ref e] if c == "components" && e == "effect" => self.add_components_n_effect(IndexRange::from_str(n).unwrap(),v),
+                    _ => unimplemented!(),
+                }
+            },
+            _ => unimplemented!(),
+        }
+
+        Ok(())
     }
 }
 

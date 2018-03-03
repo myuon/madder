@@ -5,6 +5,8 @@ extern crate gtk;
 extern crate glib;
 extern crate gdk;
 
+#[macro_use] extern crate serde_json;
+
 extern crate madder_core;
 use madder_core::*;
 

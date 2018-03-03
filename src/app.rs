@@ -19,6 +19,8 @@ extern crate pango;
 use gtk::prelude::*;
 use gdk::prelude::*;
 
+extern crate serde_json;
+
 extern crate madder_core;
 use madder_core::*;
 
@@ -311,15 +313,17 @@ impl App {
                 }
                 dialog.run();
 
-                App::register_from_json(
-                    self__.clone(),
-                    &ComponentBuilder::default()
-                        .component_type(ComponentType::Video)
-                        .start_time(0 * gst::MSECOND)
-                        .length(100 * gst::MSECOND)
-                        .entity(dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string())
-                        .layer_index(0)
-                        .build().unwrap());
+                self__.borrow_mut().editor.patch_once(Operation::new_from_json(json!({
+                    "op": "add",
+                    "path": "/components",
+                    "value": {
+                        "component_type": "Video",
+                        "start_time": 0,
+                        "length": 100,
+                        "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                        "layer_index": 0,
+                    }
+                })).unwrap()).unwrap();
 
                 self__.borrow().queue_draw();
                 dialog.destroy();
