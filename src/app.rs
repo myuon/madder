@@ -142,7 +142,9 @@ impl App {
 
         {
             let app = app.clone();
-            json.components.iter().for_each(move |item| App::register(app.clone(), Component::new_from_structure(item)));
+            json.components.iter().for_each(move |item| {
+                app.borrow_mut().editor.register(Component::new_from_structure(item));
+            });
         }
         app
     }
@@ -152,10 +154,6 @@ impl App {
 
         let timeline: &TimelineWidget = &self.timeline.borrow();
         timeline.queue_draw();
-    }
-
-    fn register(self_: Rc<RefCell<App>>, component: Box<ComponentLike>) {
-        self_.borrow_mut().editor.register(component);
     }
 
     fn remove_selected(self_: Rc<RefCell<App>>) {
