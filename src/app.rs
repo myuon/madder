@@ -158,10 +158,6 @@ impl App {
         self_.borrow_mut().editor.register(component);
     }
 
-    fn register_from_json(self_: Rc<RefCell<App>>, json: &Component) {
-        App::register(self_, Component::new_from_structure(json))
-    }
-
     fn remove_selected(self_: Rc<RefCell<App>>) {
         let index = self_.borrow().selected_component_index.unwrap();
         self_.borrow_mut().editor.elements.remove(index);
@@ -341,15 +337,17 @@ impl App {
                 }
                 dialog.run();
 
-                App::register_from_json(
-                    self__.clone(),
-                    &ComponentBuilder::default()
-                        .component_type(ComponentType::Image)
-                        .start_time(0 * gst::MSECOND)
-                        .length(100 * gst::MSECOND)
-                        .entity(dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string())
-                        .layer_index(0)
-                        .build().unwrap());
+                self__.borrow_mut().editor.patch_once(Operation::new_from_json(json!({
+                    "op": "add",
+                    "path": "/components",
+                    "value": {
+                        "component_type": "Image",
+                        "start_time": 0,
+                        "length": 100,
+                        "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                        "layer_index": 0,
+                    }
+                })).unwrap()).unwrap();
 
                 self__.borrow().queue_draw();
                 dialog.destroy();
@@ -357,16 +355,18 @@ impl App {
 
             let self__ = self_.clone();
             text_item.connect_activate(move |_| {
-                App::register_from_json(
-                    self__.clone(),
-                    &ComponentBuilder::default()
-                        .component_type(ComponentType::Text)
-                        .start_time(0 * gst::MSECOND)
-                        .length(100 * gst::MSECOND)
-                        .entity("dummy entity".to_string())
-                        .layer_index(0)
-                        .coordinate((50,50))
-                        .build().unwrap());
+                self__.borrow_mut().editor.patch_once(Operation::new_from_json(json!({
+                    "op": "add",
+                    "path": "/components",
+                    "value": {
+                        "component_type": "Text",
+                        "start_time": 0,
+                        "length": 100,
+                        "entity": "dummy entity",
+                        "layer_index": 0,
+                        "coordinate": [50, 50],
+                    }
+                })).unwrap()).unwrap();
 
                 self__.borrow().queue_draw();
             });
