@@ -143,7 +143,11 @@ impl App {
         {
             let app = app.clone();
             json.components.iter().for_each(move |item| {
-                app.borrow_mut().editor.register(Component::new_from_structure(item));
+                app.borrow_mut().editor.patch_once(Operation::new_from_json(json!({
+                    "op": "add",
+                    "path": "/components",
+                    "value": item,
+                })).unwrap()).unwrap();
             });
         }
         app
