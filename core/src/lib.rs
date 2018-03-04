@@ -20,8 +20,6 @@ use avi_renderer::AviRenderer;
 extern crate serde_json;
 use serde_json::Value;
 
-#[macro_use] extern crate derive_builder;
-
 pub mod component;
 pub use self::component::*;
 

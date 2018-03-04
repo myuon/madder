@@ -60,8 +60,7 @@ pub enum ComponentType {
     Sound,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Builder)]
-#[builder(public)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Component {
     pub component_type: ComponentType,
 
@@ -74,27 +73,22 @@ pub struct Component {
     pub length: gst::ClockTime,
 
     #[serde(default = "coordinate_default")]
-    #[builder(default = "coordinate_default()")]
     pub coordinate: (i32,i32),
 
     pub layer_index: usize,
 
     #[serde(default = "rotate_default")]
-    #[builder(default = "rotate_default()")]
     pub rotate: f64,
 
     #[serde(default = "alpha_default")]
-    #[builder(default = "alpha_default()")]
     pub alpha: i32,
 
     pub entity: String,
 
     #[serde(default = "scale_default")]
-    #[builder(default = "scale_default()")]
     pub scale: (f64, f64),
 
     #[serde(default = "Vec::new")]
-    #[builder(default = "Vec::new()")]
     pub effect: Vec<Effect>,
 }
 

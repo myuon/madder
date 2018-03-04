@@ -30,14 +30,14 @@ fn main() {
                 width: 640,
                 height: 480,
                 components: Box::new([
-                    ComponentBuilder::default()
-                        .component_type(ComponentType::Text)
-                        .start_time(0 * gst::MSECOND)
-                        .length(100 * gst::MSECOND)
-                        .entity("[ここにテキストを挿入]".to_string())
-                        .layer_index(0)
-                        .coordinate((50,50))
-                        .build().unwrap()
+                    serde_json::from_value(json!({
+                        "component_type": "Text",
+                        "start_time": 0,
+                        "length": 100,
+                        "entity": "[ここにテキストを挿入]",
+                        "layer_index": 0,
+                        "coordinate": [50,50],
+                    })).unwrap()
                 ]),
             }
         };
