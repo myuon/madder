@@ -5,6 +5,7 @@ extern crate gdk;
 extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 extern crate serde;
+use self::serde::ser::SerializeTuple;
 
 use component::effect::*;
 
@@ -105,20 +106,46 @@ fn gst_clocktime_deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) 
     serde::Deserialize::deserialize(deserializer).map(gst::ClockTime::from_mseconds)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Property {
     I32(i32),
     F64(f64),
     Usize(usize),
+
+    #[serde(serialize_with = "gst_clocktime_serialize")]
+    #[serde(deserialize_with = "gst_clocktime_deserialize")]
     Time(gst::ClockTime),
+
     Pair(Box<Property>, Box<Property>),
     FilePath(String),
     Document(String),
     Font(String),
+
+    #[serde(serialize_with = "gdk_rgba_serialize")]
+    #[serde(deserialize_with = "gdk_rgba_deserialize")]
     Color(gdk::RGBA),
+
     ReadOnly(String),
     Choose(String,i32),
     EffectInfo(EffectType, Transition, f64, f64),
+}
+
+fn gdk_rgba_serialize<S: serde::Serializer>(self_: &gdk::RGBA, serializer: S) -> Result<S::Ok, S::Error> {
+    let mut tuple = serializer.serialize_tuple(4)?;
+    tuple.serialize_element(&self_.red)?;
+    tuple.serialize_element(&self_.green)?;
+    tuple.serialize_element(&self_.blue)?;
+    tuple.serialize_element(&self_.alpha)?;
+    tuple.end()
+}
+
+fn gdk_rgba_deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<gdk::RGBA, D::Error> {
+    serde::Deserialize::deserialize(deserializer).map(|(x,y,z,w)| gdk::RGBA {
+        red: x,
+        green: y,
+        blue: z,
+        alpha: w,
+    })
 }
 
 impl Property {
