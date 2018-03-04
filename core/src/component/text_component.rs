@@ -79,10 +79,10 @@ impl ComponentWrapper for TextComponent {
         props
     }
 
-    fn set_property(&mut self, name: String, prop: Property) {
+    fn set_property(&mut self, name: &str, prop: Property) {
         use Property::*;
 
-        match (name.as_str(), prop) {
+        match (name, prop) {
             ("entity", Document(doc)) => {
                 self.component.entity = doc;
                 self.reload()
@@ -95,7 +95,7 @@ impl ComponentWrapper for TextComponent {
                 self.text_color = rgba;
                 self.reload();
             },
-            (x,y) => self.component.set_property(x.to_string(), y),
+            (x,y) => self.component.set_property(x, y),
         }
     }
 

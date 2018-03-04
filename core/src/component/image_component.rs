@@ -66,12 +66,12 @@ impl ComponentWrapper for ImageComponent {
         props
     }
 
-    fn set_property(&mut self, name: String, prop: Property) {
+    fn set_property(&mut self, name: &str, prop: Property) {
         use Property::*;
 
-        match (name.as_str(), prop) {
+        match (name, prop) {
             ("entity", FilePath(uri)) => self.reload(uri.as_str()),
-            (x,y) => self.component.set_property(x.to_string(), y),
+            (x,y) => self.component.set_property(x, y),
         }
     }
 

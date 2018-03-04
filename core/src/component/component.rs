@@ -207,7 +207,7 @@ pub trait ComponentWrapper : AsRef<Component> + AsMut<Component> {
         self.as_ref().get_properties()
     }
 
-    fn set_property(&mut self, name: String, prop: Property) {
+    fn set_property(&mut self, name: &str, prop: Property) {
         self.as_mut().set_property(name, prop);
     }
 
@@ -251,10 +251,10 @@ impl ComponentWrapper for Component {
         ].iter().cloned().collect()
     }
 
-    fn set_property(&mut self, name: String, prop: Property) {
+    fn set_property(&mut self, name: &str, prop: Property) {
         use Property::*;
 
-        match (name.as_str(), prop) {
+        match (name, prop) {
             ("start_time", Time(v)) => self.start_time = v,
             ("length", Time(v)) => self.length = v,
             ("coordinate", Pair(box I32(x), box I32(y))) => self.coordinate = (x,y),

@@ -183,7 +183,7 @@ impl App {
                     // request the property again, since in this callback the value of property might have been changed
                     let prop = self__.borrow().editor.request_component_property(index)[prop_name.as_str()].clone();
                     if let Some(new_prop) = new_prop {
-                        self__.borrow_mut().editor.set_component_property(index, prop_name.as_ref().clone(), gtk_impl::recover_property(prop, tracker, new_prop));
+                        self__.borrow_mut().editor.set_component_property(index, prop_name.as_ref(), gtk_impl::recover_property(prop, tracker, new_prop));
                     }
 
                     self__.borrow().queue_draw();
@@ -418,12 +418,12 @@ impl App {
 
                 self__.borrow_mut().editor.set_component_property(
                     index,
-                    "start_time".to_string(),
+                    "start_time",
                     Property::Time(add_time(props["start_time"].as_time().unwrap(), distance as f64)),
                 );
                 self__.borrow_mut().editor.set_component_property(
                     index,
-                    "layer_index".to_string(),
+                    "layer_index",
                     Property::Usize(cmp::max(layer_index, 0)),
                 );
                 self__.borrow().queue_draw();
@@ -444,7 +444,7 @@ impl App {
 
                 self___.borrow_mut().editor.set_component_property(
                     index,
-                    "length".to_string(),
+                    "length",
                     Property::Time(add_time(props["length"].as_time().unwrap(), distance as f64)),
                 );
                 self___.borrow().queue_draw();

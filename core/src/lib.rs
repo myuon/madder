@@ -102,7 +102,7 @@ impl Editor {
         self.elements[index].as_mut().effect.remove(i);
     }
 
-    pub fn set_component_property(&mut self, index: usize, name: String, prop: Property) {
+    pub fn set_component_property(&mut self, index: usize, name: &str, prop: Property) {
         self.elements[index].set_property(name, prop);
     }
 
@@ -197,15 +197,13 @@ impl Editor {
         self.elements.as_index_mut(index).effect.push(effect);
     }
 
-    /*
     fn add_components_n_key(&mut self, n: IndexRange, key: &str, value: Value) {
         self.elements.as_index_mut(n).as_mut().set_property(key, serde_json::from_value(value).unwrap());
     }
 
     fn add_components_n_effect_n_key(&mut self, n: IndexRange, m: IndexRange, key: &str, value: Value) {
-        self.elements.as_index_mut(n).effect.as_index_mut(m).set_effect_property(key, serde_json::from_value(value).unwrap());
+//        self.elements.as_index_mut(n).effect.as_index_mut(m).set_effect_property(key, serde_json::from_value(value).unwrap());
     }
-     */
 }
 
 impl Patch for Editor {
@@ -221,8 +219,8 @@ impl Patch for Editor {
                     &[ref c] if c == "components" => self.add_components(v),
                     &[ref c, ref n] if c == "components" => self.add_components_n(IndexRange::from_str(n).unwrap(),v),
                     &[ref c, ref n, ref e] if c == "components" && e == "effect" => self.add_components_n_effect(IndexRange::from_str(n).unwrap(), v),
-//                    &[ref c, ref n, ref e, ref m, ref key] if c == "components" && e == "effect" => self.add_components_n_effect_n_key(IndexRange::from_str(n).unwrap(), IndexRange::from_str(m).unwrap(), key.as_str(), v),
-//                    &[ref c, ref n, ref key] if c == "components" => self.add_components_n_key(IndexRange::from_str(n).unwrap(), key.as_str(), v),
+                    &[ref c, ref n, ref e, ref m, ref key] if c == "components" && e == "effect" => self.add_components_n_effect_n_key(IndexRange::from_str(n).unwrap(), IndexRange::from_str(m).unwrap(), key.as_str(), v),
+                    &[ref c, ref n, ref key] if c == "components" => self.add_components_n_key(IndexRange::from_str(n).unwrap(), key.as_str(), v),
                     _ => unimplemented!(),
                 }
             },
