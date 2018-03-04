@@ -185,28 +185,40 @@ impl Editor {
         let component = Component::new_from_structure(&serde_json::from_value(value).unwrap());
 
         match index {
-            Index(i) => self.elements.insert(i, component),
+            Index(i) => {
+                self.elements.insert(i, component);
+            },
             ReverseIndex(i) => {
                 let n = self.elements.len();
                 self.elements.insert(n-i, component);
             },
-            _ => unreachable!(),
+            All => {
+                self.elements.push(component);
+            },
         }
     }
 
     fn add_components_n_effect(&mut self, index: IndexRange, value: Value) {
-        use IndexRange::*;
         let effect = serde_json::from_value::<Effect>(value).unwrap();
-
-        match index {
-            Index(i) => self.elements[i].effect.push(effect),
-            ReverseIndex(i) => {
-                let n = self.elements.len();
-                self.elements[n-i].effect.push(effect);
-            },
-            _ => unreachable!(),
-        }
+        self.elements.as_index_mut(index).effect.push(effect);
     }
+
+    fn add_components_n_key(&mut self, n: IndexRange, key: &str, value: Value) {
+        serde_json::to_value(self.elements.as_index_mut(n).as_mut() as &mut Component).unwrap().as_object_mut().unwrap()[key] = value;
+    }
+
+    fn add_components_n_effect_n_key(&mut self, n: IndexRange, m: IndexRange, key: &str, value: Value) {
+        serde_json::to_value(&self.elements.as_index_mut(n).effect.as_index_mut(m)).unwrap().as_object_mut().unwrap()[key] = value;
+    }
+}
+
+macro_rules! match_slice {
+    ( $e:expr, $( [str $c:ident] => $b: expr ),* $(,)? ) => {
+        match $e {
+            $( &[ref $c] if $c == stringify!($c) => $b ),* ,
+            _ => unimplemented!(),
+        }
+    };
 }
 
 impl Patch for Editor {
@@ -215,13 +227,23 @@ impl Patch for Editor {
 
         match op {
             Add(path, v) => {
+                /*
+                match_slice!(
+                    path.as_slice(),
+                    [str width] => panic!("add width"),
+                    [str height] => panic!("add height"),
+                    [str components] => self.add_components(v),
+                );*/
+
                 match path.as_slice() {
                     &[] => panic!("add"),
                     &[ref c] if c == "width" => panic!("update_width"),
                     &[ref c] if c == "height" => panic!("update_height"),
                     &[ref c] if c == "components" => self.add_components(v),
                     &[ref c, ref n] if c == "components" => self.add_components_n(IndexRange::from_str(n).unwrap(),v),
-                    &[ref c, ref n, ref e] if c == "components" && e == "effect" => self.add_components_n_effect(IndexRange::from_str(n).unwrap(),v),
+                    &[ref c, ref n, ref e] if c == "components" && e == "effect" => self.add_components_n_effect(IndexRange::from_str(n).unwrap(), v),
+                    &[ref c, ref n, ref e, ref m, ref key] if c == "components" && e == "effect" => self.add_components_n_effect_n_key(IndexRange::from_str(n).unwrap(), IndexRange::from_str(m).unwrap(), key.as_str(), v),
+                    &[ref c, ref n, ref key] if c == "components" => self.add_components_n_key(IndexRange::from_str(n).unwrap(), key.as_str(), v),
                     _ => unimplemented!(),
                 }
             },

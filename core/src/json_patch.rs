@@ -17,6 +17,42 @@ impl IndexRange {
     }
 }
 
+pub trait AsIndexRange {
+    type Output;
+    fn as_index(&self, index: IndexRange) -> &Self::Output;
+    fn as_index_mut(&mut self, index: IndexRange) -> &mut Self::Output;
+}
+
+impl<T> AsIndexRange for Vec<T> {
+    type Output = T;
+
+    fn as_index(&self, index: IndexRange) -> &Self::Output {
+        use IndexRange::*;
+
+        match index {
+            Index(i) => &self[i],
+            ReverseIndex(i) => {
+                let n = self.len();
+                &self[n-i]
+            },
+            _ => unimplemented!(),
+        }
+    }
+
+    fn as_index_mut(&mut self, index: IndexRange) -> &mut Self::Output {
+        use IndexRange::*;
+
+        match index {
+            Index(i) => &mut self[i],
+            ReverseIndex(i) => {
+                let n = self.len();
+                &mut self[n-i]
+            },
+            _ => unimplemented!(),
+        }
+    }
+}
+
 pub enum PointerElement {
     IndexElement(IndexRange),
     KeyElement(String),
