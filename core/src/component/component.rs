@@ -128,7 +128,6 @@ pub enum Property {
 
     ReadOnly(String),
     Choose(String,i32),
-    EffectInfo(EffectType, Transition, f64, f64),
 }
 
 fn gdk_rgba_serialize<S: serde::Serializer>(self_: &gdk::RGBA, serializer: S) -> Result<S::Ok, S::Error> {
@@ -191,20 +190,6 @@ impl Property {
 
         match self {
             &Choose(_,t) => Some(t),
-            _ => None,
-        }
-    }
-
-    pub fn as_effect(&self) -> Option<Effect> {
-        use Property::*;
-
-        match self {
-            &EffectInfo(ref typ, ref trans, ref start, ref end) => Some(Effect {
-                effect_type: typ.clone(),
-                transition: trans.clone(),
-                start_value: *start,
-                end_value: *end,
-            }),
             _ => None,
         }
     }
@@ -288,8 +273,8 @@ impl Effect {
         use Property::*;
 
         [
-            ("effect_type".to_string(), ReadOnly(serde_json::to_string(&self.effect_type).unwrap())),
-            ("transition".to_string(), ReadOnly(serde_json::to_string(&self.transition).unwrap())),
+            ("effect_type".to_string(), Choose(format!("EffectType"), EffectType::types().iter().position(|p| p == &self.effect_type).unwrap() as i32)),
+            ("transition".to_string(), Choose(format!("Transition"), Transition::transitions().iter().position(|p| p == &self.transition).unwrap() as i32)),
             ("start_value".to_string(), F64(self.start_value)),
             ("end_value".to_string(), F64(self.end_value)),
         ].iter().cloned().collect()
@@ -298,10 +283,10 @@ impl Effect {
     pub fn set_property(&mut self, name: &str, prop: Property) {
         match name {
             "effect_type" => {
-                self.effect_type = serde_json::from_str(&prop.as_readonly().unwrap()).unwrap();
+                self.effect_type = EffectType::types()[prop.as_choose().unwrap() as usize].clone();
             },
             "transition" => {
-                self.transition = serde_json::from_str(&prop.as_readonly().unwrap()).unwrap();
+                self.transition = Transition::transitions()[prop.as_choose().unwrap() as usize].clone();
             },
             "start_value" => {
                 self.start_value = prop.as_f64().unwrap();

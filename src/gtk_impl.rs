@@ -13,8 +13,6 @@ pub enum Tracker {
     Y,
     EffectType,
     Transition,
-    StartValue,
-    EndValue,
 }
 
 pub fn edit_type_as_widget(self_: &Property, tracker: Vec<Tracker>, cont: Rc<Fn(Option<Property>, &Vec<Tracker>) + 'static>) -> gtk::Widget {
@@ -142,52 +140,6 @@ pub fn edit_type_as_widget(self_: &Property, tracker: Vec<Tracker>, cont: Rc<Fn(
                 _ => unimplemented!(),
             }
         },
-        &EffectInfo(ref eff_type, ref transition, ref start_value, ref end_value) => {
-            let expander = gtk::Expander::new(format!("{:?}", eff_type).as_str());
-            let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-            expander.add(&vbox);
-            vbox.set_margin_left(10);
-
-            {
-                let mut tracker = tracker.clone();
-                tracker.push(Tracker::EffectType);
-                vbox.pack_start(
-                    &edit_type_as_widget(
-                        &Choose(
-                            format!("{:?}", Tracker::EffectType),
-                            EffectType::types().iter().position(|i| i == eff_type).unwrap() as i32,
-                        ),
-                        tracker, cont.clone()),
-                    true, true, 0);
-            }
-
-            {
-                let mut tracker = tracker.clone();
-                tracker.push(Tracker::Transition);
-                vbox.pack_start(
-                    &edit_type_as_widget(
-                        &Choose(
-                            format!("{:?}", Tracker::Transition),
-                            Transition::transitions().iter().position(|i| i == transition).unwrap() as i32,
-                        ),
-                        tracker, cont.clone()),
-                    true, true, 0);
-            }
-
-            {
-                let mut tracker = tracker.clone();
-                tracker.push(Tracker::StartValue);
-                vbox.pack_start(&edit_type_as_widget(&F64(*start_value), tracker, cont.clone()), true, true, 0);
-            }
-
-            {
-                let mut tracker = tracker.clone();
-                tracker.push(Tracker::EndValue);
-                vbox.pack_start(&edit_type_as_widget(&F64(*end_value), tracker, cont.clone()), true, true, 0);
-            }
-
-            expander.dynamic_cast().unwrap()
-        },
     }
 }
 
@@ -208,49 +160,9 @@ pub fn recover_property(dynamic_type: Property, tracker: &[Tracker], value: Prop
                 _ => unimplemented!(),
             }
         },
-        &[Tracker::EffectType, ref tracker..] => {
-            match dynamic_type {
-                EffectInfo(effect_type, transition, start_value, end_value) =>
-                    EffectInfo(
-                        EffectType::types()[recover_property(
-                            Choose(
-                                format!("{:?}", Tracker::EffectType),
-                                EffectType::types().iter().position(|i| i == &effect_type).unwrap() as i32,
-                            ),
-                            &tracker, value
-                        ).as_choose().unwrap() as usize].clone(),
-                        transition, start_value, end_value),
-                _ => unimplemented!(),
-            }
-        },
-        &[Tracker::Transition, ref tracker..] => {
-            match dynamic_type {
-                EffectInfo(effect_type, transition, start_value, end_value) =>
-                    EffectInfo(
-                        effect_type,
-                        Transition::transitions()[recover_property(
-                            Choose(
-                                format!("{:?}", Tracker::Transition),
-                                Transition::transitions().iter().position(|i| i == &transition).unwrap() as i32,
-                            ),
-                            &tracker, value
-                        ).as_choose().unwrap() as usize].clone(),
-                        start_value, end_value),
-                _ => unimplemented!(),
-            }
-        },
-        &[Tracker::StartValue, ref tracker..] => {
-            match dynamic_type {
-                EffectInfo(effect_type, transition, start_value, end_value) => EffectInfo(effect_type, transition, recover_property(F64(start_value), &tracker, value).as_f64().unwrap(), end_value),
-                _ => unimplemented!(),
-            }
-        },
-        &[Tracker::EndValue, ref tracker..] => {
-            match dynamic_type {
-                EffectInfo(effect_type, transition, start_value, end_value) => EffectInfo(effect_type, transition, start_value, recover_property(F64(end_value), &tracker, value).as_f64().unwrap()),
-                _ => unimplemented!(),
-            }
-        },
+        &[Tracker::EffectType] => value,
+        &[Tracker::Transition] => value,
+        _ => unimplemented!(),
     }
 }
 
