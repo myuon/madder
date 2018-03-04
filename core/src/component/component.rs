@@ -5,6 +5,7 @@ extern crate gdk;
 extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 extern crate serde;
+extern crate serde_json;
 use self::serde::ser::SerializeTuple;
 
 use component::effect::*;
@@ -149,6 +150,15 @@ fn gdk_rgba_deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Re
 }
 
 impl Property {
+    pub fn as_readonly(&self) -> Option<String> {
+        use Property::*;
+
+        match self {
+            &ReadOnly(ref t) => Some(t.to_string()),
+            _ => None,
+        }
+    }
+
     pub fn as_time(&self) -> Option<gst::ClockTime> {
         use Property::*;
 
@@ -211,12 +221,8 @@ pub trait ComponentWrapper : AsRef<Component> + AsMut<Component> {
         self.as_mut().set_property(name, prop);
     }
 
-    fn get_effect_properties(&self) -> Vec<Property> {
+    fn get_effect_properties(&self) -> Vec<Properties> {
         self.as_ref().get_effect_properties()
-    }
-
-    fn set_effect_property(&mut self, i: usize, prop: Property) {
-        self.as_mut().set_effect_property(i, prop);
     }
 
     fn get_info(&self) -> String;
@@ -266,20 +272,45 @@ impl ComponentWrapper for Component {
         }
     }
 
-    fn get_effect_properties(&self) -> Vec<Property> {
-        use Property::*;
-
+    fn get_effect_properties(&self) -> Vec<Properties> {
         self.effect.iter().map(|eff| {
-            EffectInfo(eff.effect_type.clone(), eff.transition.clone(), eff.start_value, eff.end_value)
+            eff.get_property()
         }).collect()
-    }
-
-    fn set_effect_property(&mut self, i: usize, prop: Property) {
-        self.effect[i] = prop.as_effect().unwrap();
     }
 
     fn get_info(&self) -> String {
         format!("Component")
+    }
+}
+
+impl Effect {
+    pub fn get_property(&self) -> Properties {
+        use Property::*;
+
+        [
+            ("effect_type".to_string(), ReadOnly(serde_json::to_string(&self.effect_type).unwrap())),
+            ("transition".to_string(), ReadOnly(serde_json::to_string(&self.transition).unwrap())),
+            ("start_value".to_string(), F64(self.start_value)),
+            ("end_value".to_string(), F64(self.end_value)),
+        ].iter().cloned().collect()
+    }
+
+    pub fn set_property(&mut self, name: &str, prop: Property) {
+        match name {
+            "effect_type" => {
+                self.effect_type = serde_json::from_str(&prop.as_readonly().unwrap()).unwrap();
+            },
+            "transition" => {
+                self.transition = serde_json::from_str(&prop.as_readonly().unwrap()).unwrap();
+            },
+            "start_value" => {
+                self.start_value = prop.as_f64().unwrap();
+            },
+            "end_value" => {
+                self.end_value = prop.as_f64().unwrap();
+            },
+            _ => unimplemented!(),
+        }
     }
 }
 

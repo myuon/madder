@@ -90,12 +90,18 @@ impl Editor {
         props
     }
 
-    pub fn request_effect_property(&self, index: usize) -> Vec<Property> {
+    pub fn request_effect_property(&self, index: usize) -> Vec<Properties> {
         self.elements[index].get_effect_properties()
     }
 
-    pub fn set_effect_property(&mut self, index: usize, i: usize, prop: Property) {
-        self.elements[index].set_effect_property(i, prop);
+    pub fn request_effect_property_vec(&self, index: usize, index2: usize) -> Vec<(String, Property)> {
+        let mut props: Vec<(String, Property)> = self.request_effect_property(index)[index2].iter().map(|(k,v)| (k.clone(),v.clone())).collect::<Vec<_>>();
+        props.sort_by_key(|&ref x| x.0.clone());
+        props
+    }
+
+    pub fn set_effect_property(&mut self, index: usize, i: usize, name: &str, prop: Property) {
+        self.elements[index].effect[i].set_property(name, prop);
     }
 
     pub fn remove_effect_property(&mut self, index: usize, i: usize) {
@@ -202,7 +208,7 @@ impl Editor {
     }
 
     fn add_components_n_effect_n_key(&mut self, n: IndexRange, m: IndexRange, key: &str, value: Value) {
-//        self.elements.as_index_mut(n).effect.as_index_mut(m).set_effect_property(key, serde_json::from_value(value).unwrap());
+        self.elements.as_index_mut(n).effect.as_index_mut(m).set_property(key, serde_json::from_value(value).unwrap());
     }
 }
 

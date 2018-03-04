@@ -191,26 +191,28 @@ impl App {
             }),
         ));
 
+        /*
         let self__ = self_.clone();
         let self___ = self_.clone();
         let self____ = self_.clone();
-        self_.borrow().property.append_page("effect", BoxPage::new(
+        self_.borrow().property.append_page("effect", GridPage::new(
             self_.borrow().property.width,
-            self_.borrow().editor.request_effect_property(index),
-            Box::new(move |prop_index,prop| {
-                let prop_index = Rc::new(prop_index);
+            self_.borrow().editor.request_effect_property_vec(index),
+            Box::new(move |prop_name,prop| {
+                let prop_index = Rc::new(prop_name);
                 let self__ = self__.clone();
 
                 gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop,tracker| {
                     // request the property again, since in this callback the value of property might have been changed
-                    let prop = self__.borrow().editor.request_effect_property(index)[*prop_index].clone();
+                    let prop = self__.borrow().editor.request_effect_property(index)[prop_name.as_str()].clone();
                     if let Some(new_prop) = new_prop {
-                        self__.borrow_mut().editor.set_effect_property(index, *prop_index, gtk_impl::recover_property(prop, tracker, new_prop));
+                        self__.borrow_mut().editor.set_effect_property(index, prop_name.as_ref(), gtk_impl::recover_property(prop, tracker, new_prop));
                     }
 
                     self__.borrow().queue_draw();
                 }))
             }),
+            /*
             Box::new(move || {
                 self___.borrow_mut().editor.patch_once(Operation::new_from_json(json!({
                     "op": "add",
@@ -228,7 +230,9 @@ impl App {
                 self____.borrow_mut().editor.remove_effect_property(index, i);
                 App::select_component(self____.clone(), index);
             }),
+            */
         ));
+        */
 
         self_.borrow().property.append_page("info", BoxPage::new(
             self_.borrow().property.width,
