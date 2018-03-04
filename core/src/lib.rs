@@ -100,10 +100,6 @@ impl Editor {
         self.elements[index].set_effect_property(i, prop);
     }
 
-    pub fn add_effect_property(&mut self, index: usize, prop: Property) {
-        self.elements[index].add_effect_property(prop);
-    }
-
     pub fn remove_effect_property(&mut self, index: usize, i: usize) {
         self.elements[index].as_mut().effect.remove(i);
     }

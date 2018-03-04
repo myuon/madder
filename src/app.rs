@@ -212,7 +212,16 @@ impl App {
                 }))
             }),
             Box::new(move || {
-                self___.borrow_mut().editor.add_effect_property(index, Property::EffectInfo(EffectType::CoordinateX, Transition::Linear, 0.0, 0.0));
+                self___.borrow_mut().editor.patch_once(Operation::new_from_json(json!({
+                    "op": "add",
+                    "path": format!("/components/{}/effect", index),
+                    "value": {
+                        "effect_type": "CoordinateX",
+                        "transition": "Linear",
+                        "start_value": 0.0,
+                        "end_value": 0.0,
+                    }
+                })).unwrap()).unwrap();
                 App::select_component(self___.clone(), index);
             }),
             Box::new(move |i| {

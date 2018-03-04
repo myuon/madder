@@ -198,10 +198,6 @@ pub trait ComponentWrapper : AsRef<Component> + AsMut<Component> {
         self.as_mut().set_effect_property(i, prop);
     }
 
-    fn add_effect_property(&mut self, prop: Property) {
-        self.as_mut().add_effect_property(prop);
-    }
-
     fn get_info(&self) -> String;
 }
 
@@ -259,10 +255,6 @@ impl ComponentWrapper for Component {
 
     fn set_effect_property(&mut self, i: usize, prop: Property) {
         self.effect[i] = prop.as_effect().unwrap();
-    }
-
-    fn add_effect_property(&mut self, prop: Property) {
-        self.effect.push(prop.as_effect().unwrap());
     }
 
     fn get_info(&self) -> String {
