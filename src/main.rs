@@ -29,6 +29,7 @@ fn main() {
             EditorStructure {
                 width: 640,
                 height: 480,
+                length: 90000,
                 components: Box::new([
                     serde_json::from_value(json!({
                         "component_type": "Text",

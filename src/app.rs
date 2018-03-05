@@ -38,12 +38,12 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(width: i32, height: i32) -> App {
+    pub fn new(width: i32, height: i32, length: gst::ClockTime) -> App {
         let prop_width = 250;
 
         App {
-            editor: Editor::new(width, height),
-            timeline: TimelineWidget::new(width + prop_width),
+            editor: Editor::new(width, height, length),
+            timeline: TimelineWidget::new(cmp::max(width + prop_width, length.mseconds().unwrap() as i32)),
             canvas: gtk::DrawingArea::new(),
             property: PropertyViewerWidget::new(prop_width),
             selected_component_index: None,
@@ -146,7 +146,7 @@ impl App {
 
 
     pub fn new_from_json(json: &EditorStructure) -> Rc<RefCell<App>> {
-        let app = Rc::new(RefCell::new(App::new(json.width, json.height)));
+        let app = Rc::new(RefCell::new(App::new(json.width, json.height, gst::ClockTime::from_mseconds(json.length))));
 
         {
             let app = app.clone();
@@ -532,7 +532,12 @@ impl App {
         }));
 
         vbox.pack_start(&hbox, true, true, 0);
-        vbox.pack_start(app.timeline.borrow().as_widget(), true, true, 5);
+
+        let width = app.editor.get_by_pointer(Pointer::from_str("/width")).as_i64().unwrap();
+        let scroll = gtk::ScrolledWindow::new(None, None);
+        scroll.add(app.timeline.borrow().as_widget());
+        scroll.set_size_request(width as i32, 150);
+        vbox.pack_start(&scroll, true, true, 5);
 
         let self__ = self_.clone();
         let hbox_ = hbox.clone();

@@ -31,6 +31,7 @@ pub struct EditorStructure {
     pub components: Box<[Component]>,
     pub width: i32,
     pub height: i32,
+    pub length: u64,
 }
 
 impl EditorStructure {
@@ -49,22 +50,24 @@ pub struct Editor {
     position: gst::ClockTime,
     width: i32,
     height: i32,
+    length: gst::ClockTime,
     renderer: Option<AviRenderer>,
 }
 
 impl Editor {
-    pub fn new(width: i32, height: i32) -> Editor {
+    pub fn new(width: i32, height: i32, length: gst::ClockTime) -> Editor {
         Editor {
             elements: vec![],
             position: 0 * gst::MSECOND,
             width: width,
             height: height,
+            length: length,
             renderer: None,
         }
     }
 
     pub fn new_from_structure(structure: &EditorStructure) -> Editor {
-        let mut editor = Editor::new(structure.width, structure.height);
+        let mut editor = Editor::new(structure.width, structure.height, gst::ClockTime::from_mseconds(structure.length));
         structure.components.iter().for_each(|item| {
             editor.register(Component::new_from_structure(item));
         });
@@ -222,6 +225,7 @@ impl Patch for Editor {
         match path.0.as_slice() {
             &[ref c] if c == "width" => json!(self.width),
             &[ref c] if c == "height" => json!(self.height),
+            &[ref c] if c == "length" => json!(self.length.mseconds().unwrap()),
             &[ref c] if c == "position" => json!(self.position.mseconds().unwrap()),
             &[ref c] if c == "components" => serde_json::to_value(self.elements.iter().map(|c| c.as_ref().as_ref().clone()).collect::<Vec<Component>>()).unwrap(),
             &[ref c, ref n] if c == "components" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_ref().as_ref()).unwrap(),
