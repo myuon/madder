@@ -10,7 +10,7 @@ pub struct RulerWidget(gtk::DrawingArea);
 impl RulerWidget {
     pub fn new(width: i32) -> RulerWidget {
         let ruler = gtk::DrawingArea::new();
-        let ruler_height = 20f64;
+        let ruler_height = 30f64;
 
         ruler.set_size_request(width, ruler_height as i32);
 
@@ -37,7 +37,7 @@ impl RulerWidget {
                 cr.rel_line_to(0f64, -h as f64);
 
                 if x % interval_large == 0 {
-                    cr.move_to(x as f64 + 2.0, interval_height as f64);
+                    cr.move_to(x as f64 + 2.0, interval_height as f64 - 10.0);
                     cr.show_text(&gst::ClockTime::from_mseconds(x as u64).to_string()[0..10]);
                 }
             }
