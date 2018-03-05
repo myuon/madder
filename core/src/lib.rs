@@ -84,20 +84,8 @@ impl Editor {
         self.elements[index].get_properties()
     }
 
-    pub fn request_component_property_vec(&self, index: usize) -> Vec<(String, Property)> {
-        let mut props: Vec<(String, Property)> = self.request_component_property(index).iter().map(|(k,v)| (k.clone(),v.clone())).collect::<Vec<_>>();
-        props.sort_by_key(|&ref x| x.0.clone());
-        props
-    }
-
     pub fn request_effect_property(&self, index: usize) -> Vec<Properties> {
         self.elements[index].get_effect_properties()
-    }
-
-    pub fn request_effect_property_vec(&self, index: usize) -> Vec<Vec<(String, Property)>> {
-        let mut props: Vec<Vec<(String, Property)>> = self.request_effect_property(index).iter().map(|vec| vec.iter().map(|(k,v)| (k.clone(),v.clone())).collect::<Vec<_>>()).collect();
-        props.iter_mut().for_each(|v| v.sort_by_key(|&ref x| x.0.clone()));
-        props
     }
 
     pub fn set_effect_property(&mut self, index: usize, i: usize, name: &str, prop: Property) {

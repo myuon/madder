@@ -1,5 +1,4 @@
 use std::ops::{Deref, DerefMut};
-use std::collections::HashMap;
 
 extern crate gdk;
 extern crate gdk_pixbuf;
@@ -195,7 +194,7 @@ impl Property {
     }
 }
 
-pub type Properties = HashMap<String, Property>;
+pub type Properties = Vec<(String, Property)>;
 
 pub trait ComponentWrapper : AsRef<Component> + AsMut<Component> {
     fn get_properties(&self) -> Properties {

@@ -134,7 +134,7 @@ impl ComponentWrapper for VideoFileComponent {
         use Property::*;
 
         let mut props = self.component.get_properties();
-        props.insert("entity".to_string(), FilePath(self.component.entity.clone()));
+        props.push(("entity".to_string(), FilePath(self.component.entity.clone())));
         props
     }
 

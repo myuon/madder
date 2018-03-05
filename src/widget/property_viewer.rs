@@ -9,7 +9,7 @@ use widget::AsWidget;
 pub struct GridPage(gtk::ScrolledWindow);
 
 impl GridPage {
-    pub fn new<T: Clone>(width: i32, props: Vec<(String, T)>, renderer: Box<Fn(String, T) -> gtk::Widget>) -> GridPage {
+    pub fn new<T: Clone>(width: i32, props: Vec<(String, T)>, renderer: Box<Fn(usize, &str, T) -> gtk::Widget>) -> GridPage {
         let scroll = gtk::ScrolledWindow::new(&gtk::Adjustment::new(0.0, 0.0, width as f64, 1.0, 1.0, width as f64), None);
         let grid = gtk::Grid::new();
         grid.set_column_spacing(10);
@@ -24,7 +24,7 @@ impl GridPage {
 
         for (i, &(ref k, ref v)) in props.iter().enumerate() {
             grid.attach(&new_label(k, gtk::Align::End), 0, i as i32, 1, 1);
-            grid.attach(&renderer(k.to_string(), v.clone().clone()), 1, i as i32, 1, 1);
+            grid.attach(&renderer(i, k, v.clone().clone()), 1, i as i32, 1, 1);
         }
 
         GridPage(scroll)

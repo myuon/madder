@@ -174,16 +174,17 @@ impl App {
         let self__ = self_.clone();
         self_.borrow().property.append_page("component", GridPage::new(
             self_.borrow().property.width,
-            self_.borrow().editor.request_component_property_vec(index),
-            Box::new(move |prop_name, prop| {
-                let prop_name = Rc::new(prop_name);
+            self_.borrow().editor.request_component_property(index),
+            Box::new(move |prop_index, prop_name, prop| {
+                let prop_index = Rc::new(prop_index);
+                let prop_name = Rc::new(prop_name.to_string());
                 let self__ = self__.clone();
 
                 gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
                     // request the property again, since in this callback the value of property might have been changed
-                    let prop = self__.borrow().editor.request_component_property(index)[prop_name.as_str()].clone();
+                    let prop = self__.borrow().editor.request_component_property(index)[*prop_index].1.clone();
                     if let Some(new_prop) = new_prop {
-                        self__.borrow_mut().editor.set_component_property(index, prop_name.as_ref(), gtk_impl::recover_property(prop, tracker, new_prop));
+                        self__.borrow_mut().editor.set_component_property(index, &prop_name.as_str(), gtk_impl::recover_property(prop, tracker, new_prop));
                     }
 
                     self__.borrow().queue_draw();
@@ -196,7 +197,7 @@ impl App {
         let self____ = self_.clone();
         self_.borrow().property.append_page("effect", BoxPage::new(
             self_.borrow().property.width,
-            self_.borrow().editor.request_effect_property_vec(index),
+            self_.borrow().editor.request_effect_property(index),
             Box::new(move |prop_index, prop_vec| {
                 let prop_index = Rc::new(prop_index);
                 let self__ = self__.clone();
@@ -206,13 +207,13 @@ impl App {
                 expander.add(&vbox);
                 vbox.set_margin_left(10);
 
-                for (prop_name, prop) in prop_vec {
+                for (i, (prop_name, prop)) in prop_vec.into_iter().enumerate() {
                     let prop_index = prop_index.clone();
                     let self__ = self__.clone();
 
                     vbox.pack_start(&gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop,tracker| {
                         // request the property again, since in this callback the value of property might have been changed
-                        let prop = self__.borrow().editor.request_effect_property(index)[*prop_index][&prop_name].clone();
+                        let prop = self__.borrow().editor.request_effect_property(index)[*prop_index][i].1.clone();
                         if let Some(new_prop) = new_prop {
                             self__.borrow_mut().editor.set_effect_property(index, *prop_index, prop_name.as_ref(), gtk_impl::recover_property(prop, tracker, new_prop));
                         }
@@ -415,7 +416,7 @@ impl App {
         let self___ = self_.clone();
         app.timeline.borrow().connect_drag_component(
             Box::new(move |index,distance,layer_index| {
-                let props = self__.borrow().editor.request_component_property(index);
+                let props = self__.borrow().editor.elements[index].clone();
                 let add_time = |a: gst::ClockTime, b: f64| {
                     if b < 0.0 {
                         if a < b.abs() as u64 * gst::MSECOND {
@@ -431,7 +432,7 @@ impl App {
                 self__.borrow_mut().editor.set_component_property(
                     index,
                     "start_time",
-                    Property::Time(add_time(props["start_time"].as_time().unwrap(), distance as f64)),
+                    Property::Time(add_time(props.start_time, distance as f64)),
                 );
                 self__.borrow_mut().editor.set_component_property(
                     index,
@@ -441,7 +442,7 @@ impl App {
                 self__.borrow().queue_draw();
             }),
             Box::new(move |index,distance| {
-                let props = self___.borrow().editor.request_component_property(index);
+                let props = self___.borrow().editor.elements[index].clone();
                 let add_time = |a: gst::ClockTime, b: f64| {
                     if b < 0.0 {
                         if a < b.abs() as u64 * gst::MSECOND {
@@ -457,7 +458,7 @@ impl App {
                 self___.borrow_mut().editor.set_component_property(
                     index,
                     "length",
-                    Property::Time(add_time(props["length"].as_time().unwrap(), distance as f64)),
+                    Property::Time(add_time(props.length, distance as f64)),
                 );
                 self___.borrow().queue_draw();
             }),

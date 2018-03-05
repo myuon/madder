@@ -73,9 +73,9 @@ impl ComponentWrapper for TextComponent {
         use Property::*;
 
         let mut props = self.component.get_properties();
-        props.insert("entity".to_string(), Document(self.component.entity.clone()));
-        props.insert("text_font".to_string(), Font(self.text_font.clone()));
-        props.insert("text_color".to_string(), Color(self.text_color.clone()));
+        props.push(("entity".to_string(), Document(self.component.entity.clone())));
+        props.push(("text_font".to_string(), Font(self.text_font.clone())));
+        props.push(("text_color".to_string(), Color(self.text_color.clone())));
         props
     }
 
