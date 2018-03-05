@@ -11,8 +11,6 @@ use widget::AsWidget;
 pub struct RulerWidget {
     canvas: gtk::DrawingArea,
     scaler: f64,
-    width: i32,
-    height: i32,
 }
 
 impl RulerWidget {
@@ -23,8 +21,6 @@ impl RulerWidget {
         let w = Rc::new(RefCell::new(RulerWidget {
             canvas: ruler,
             scaler: 1.0,
-            width: width,
-            height: height,
         }));
         RulerWidget::create_ui(w.clone(), width, height);
 
@@ -68,8 +64,6 @@ impl RulerWidget {
 
     pub fn change_scale(self_: Rc<RefCell<RulerWidget>>, value: f64) {
         self_.borrow_mut().scaler = value;
-        self_.borrow().canvas.set_size_request((self_.borrow().width as f64 / value) as i32, self_.borrow().height);
-        self_.borrow().as_widget().queue_draw();
     }
 }
 
