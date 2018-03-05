@@ -1,4 +1,6 @@
+extern crate gstreamer as gst;
 extern crate gtk;
+extern crate cairo;
 use gtk::prelude::*;
 
 use widget::AsWidget;
@@ -19,6 +21,9 @@ impl RulerWidget {
             cr.move_to(0f64, ruler_height as f64);
             cr.line_to(width as f64, ruler_height);
 
+            cr.select_font_face("Serif", cairo::FontSlant::Normal, cairo::FontWeight::Bold);
+            cr.set_font_size(10 as f64);
+
             let interval_large = 100;
             let interval_large_height = ruler_height;
 
@@ -30,6 +35,11 @@ impl RulerWidget {
 
                 let h = if x % interval_large == 0 { interval_large_height } else { interval_height };
                 cr.rel_line_to(0f64, -h as f64);
+
+                if x % interval_large == 0 {
+                    cr.move_to(x as f64 + 2.0, interval_height as f64);
+                    cr.show_text(&gst::ClockTime::from_mseconds(x as u64).to_string()[0..10]);
+                }
             }
 
             cr.stroke();
