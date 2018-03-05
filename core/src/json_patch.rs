@@ -58,7 +58,7 @@ pub enum PointerElement {
     KeyElement(String),
 }
 
-type Pointer = Vec<String>;
+pub type Pointer = Vec<String>;
 
 pub enum Operation {
     Add(Pointer, Value),
@@ -128,5 +128,7 @@ pub trait Patch {
 
         Ok(())
     }
+
+    fn get_by_pointer(&self, path: Pointer) -> Value;
 }
 
