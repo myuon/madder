@@ -128,6 +128,7 @@ impl TimelineWidget {
 
     pub fn queue_draw(&self) {
         self.as_widget().queue_draw();
+        self.box_viewer.borrow().as_widget().queue_draw();
     }
 }
 
