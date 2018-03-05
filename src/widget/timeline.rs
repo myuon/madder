@@ -17,9 +17,11 @@ use widget::BoxObject;
 
 pub struct TimelineWidget {
     timeline: Rc<RefCell<BoxViewerWidget>>,
+    ruler: Rc<RefCell<RulerWidget>>,
     ruler_box: gtk::EventBox,
     tracker: gtk::DrawingArea,
-    container: gtk::Overlay,
+    container: gtk::Grid,
+    scaler: gtk::Scale,
 }
 
 // workaround for sharing a variable within callbacks
@@ -29,17 +31,19 @@ impl TimelineWidget {
 
         let ruler_box = gtk::EventBox::new();
 
+        let grid = gtk::Grid::new();
+        grid.set_column_spacing(4);
+
         let overlay = gtk::Overlay::new();
-        {
-            let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-            overlay.add(&vbox);
 
-            let ruler = RulerWidget::new(width);
-            ruler_box.add(ruler.as_widget());
-            vbox.pack_start(&ruler_box, true, true, 10);
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        overlay.add(&vbox);
 
-            vbox.pack_start(timeline.borrow().as_widget(), true, true, 0);
-        }
+        let ruler = RulerWidget::new(width, 30);
+        ruler_box.add(ruler.borrow().as_widget());
+        vbox.pack_start(&ruler_box, true, true, 10);
+
+        vbox.pack_start(timeline.borrow().as_widget(), true, true, 0);
 
         let tracker = gtk::DrawingArea::new();
         overlay.add_overlay(&tracker);
@@ -51,12 +55,29 @@ impl TimelineWidget {
             window.set_pass_through(true);
         });
 
-        Rc::new(RefCell::new(TimelineWidget {
+        let scaler = gtk::Scale::new_with_range(gtk::Orientation::Horizontal, 1.0, 10.0, 0.1);
+
+        grid.attach(&scaler, 0, 0, 1, 1);
+        grid.attach(&overlay, 1, 0, 1, 2);
+
+        let w = Rc::new(RefCell::new(TimelineWidget {
             timeline: timeline,
+            ruler: ruler,
             ruler_box: ruler_box,
-            container: overlay,
+            container: grid,
             tracker: tracker,
-        }))
+            scaler: scaler,
+        }));
+        TimelineWidget::create_ui(w.clone());
+
+        w
+    }
+
+    fn create_ui(self_: Rc<RefCell<TimelineWidget>>) {
+        let self__ = self_.clone();
+        self_.borrow().scaler.connect_value_changed(move |scaler| {
+            RulerWidget::change_scale(self__.borrow().ruler.clone(), scaler.get_value());
+        });
     }
 
     pub fn create_menu(&self, menu: &gtk::Menu) {
@@ -97,7 +118,7 @@ impl TimelineWidget {
 }
 
 impl AsWidget for TimelineWidget {
-    type T = gtk::Overlay;
+    type T = gtk::Grid;
 
     fn as_widget(&self) -> &Self::T {
         &self.container
