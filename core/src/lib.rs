@@ -45,7 +45,7 @@ impl EditorStructure {
 }
 
 pub struct Editor {
-    pub elements: Vec<Box<ComponentLike>>,
+    elements: Vec<Box<ComponentLike>>,
     position: gst::ClockTime,
     width: i32,
     height: i32,
@@ -198,6 +198,23 @@ impl Editor {
     fn add_components_n_effect_n_key(&mut self, n: IndexRange, m: IndexRange, key: &str, value: Value) {
         self.elements.as_index_mut(n).effect.as_index_mut(m).set_property(key, serde_json::from_value(value).unwrap());
     }
+
+    fn remove_components_n(&mut self, index: IndexRange) {
+        use IndexRange::*;
+
+        match index {
+            Index(i) => {
+                self.elements.remove(i);
+            },
+            ReverseIndex(i) => {
+                let n = self.elements.len();
+                self.elements.remove(n-i);
+            },
+            All => {
+                self.elements.clear();
+            },
+        }
+    }
 }
 
 impl Patch for Editor {
@@ -211,6 +228,7 @@ impl Patch for Editor {
             &[ref c, ref n, ref e] if c == "components" && e == "effect" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.clone()).unwrap(),
             &[ref c, ref n, ref e, ref m] if c == "components" && e == "effect" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap())).unwrap(),
             &[ref c, ref n, ref e, ref m, ref key] if c == "components" && e == "effect" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap())).unwrap().as_object().unwrap()[key].clone(),
+            &[ref c, ref n, ref e] if c == "components" && e == "info" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_info()).unwrap(),
             &[ref c, ref n, ref key] if c == "components" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_ref().as_ref()).unwrap().as_object().unwrap()[key].clone(),
             _ => unimplemented!(),
         }
@@ -233,6 +251,12 @@ impl Patch for Editor {
                     _ => unimplemented!(),
                 }
             },
+            Remove(path) => {
+                match path.0.as_slice() {
+                    &[ref c, ref n] if c == "components" => self.remove_components_n(IndexRange::from_str(n).unwrap()),
+                    _ => unimplemented!(),
+                }
+            }
             _ => unimplemented!(),
         }
 

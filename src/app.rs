@@ -170,7 +170,10 @@ impl App {
 
     fn remove_selected(self_: Rc<RefCell<App>>) {
         let index = self_.borrow().selected_component_index.unwrap();
-        self_.borrow_mut().editor.elements.remove(index);
+        self_.borrow_mut().editor.patch_once(Operation::new_from_json(json!({
+            "op": "remove",
+            "path": format!("/components/{}", index),
+        })).unwrap()).unwrap();
         self_.borrow_mut().selected_component_index = None;
         self_.borrow().property.clear();
         self_.borrow().queue_draw();
@@ -253,7 +256,7 @@ impl App {
 
         self_.borrow().property.append_page("info", BoxPage::new(
             self_.borrow().property.width,
-            vec![self_.borrow().editor.elements[index].get_info()],
+            vec![self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/info", index)))],
             Box::new(move |_,t| {
                 gtk::Label::new(t.as_str()).dynamic_cast().unwrap()
             }),
@@ -424,7 +427,7 @@ impl App {
         let self___ = self_.clone();
         app.timeline.borrow().connect_drag_component(
             Box::new(move |index,distance,layer_index| {
-                let props = self__.borrow().editor.elements[index].clone();
+                let props = serde_json::from_value::<Component>(self__.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
                 let add_time = |a: gst::ClockTime, b: f64| {
                     if b < 0.0 {
                         if a < b.abs() as u64 * gst::MSECOND {
@@ -450,7 +453,7 @@ impl App {
                 self__.borrow().queue_draw();
             }),
             Box::new(move |index,distance| {
-                let props = self___.borrow().editor.elements[index].clone();
+                let props = serde_json::from_value::<Component>(self___.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
                 let add_time = |a: gst::ClockTime, b: f64| {
                     if b < 0.0 {
                         if a < b.abs() as u64 * gst::MSECOND {
@@ -474,7 +477,7 @@ impl App {
 
         let self__ = self_.clone();
         app.timeline.borrow().connect_request_objects(Box::new(move || {
-            self__.borrow().editor.elements.iter().enumerate().map(|(i,component)| {
+            serde_json::from_value::<Vec<Component>>(self__.borrow().editor.get_by_pointer(Pointer::from_str("/components"))).unwrap().iter().enumerate().map(|(i,component)| {
                 BoxObject::new(
                     component.start_time.mseconds().unwrap() as i32,
                     component.length.mseconds().unwrap() as i32,
