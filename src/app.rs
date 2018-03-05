@@ -65,7 +65,9 @@ impl App {
             (glsinkbin, widget.get::<gtk::Widget>().unwrap())
         } else { panic!(); };
 
-        widget.set_size_request(self_.borrow().editor.width, self_.borrow().editor.height);
+        let width = self_.borrow().editor.get_by_pointer(Pointer::from_str("/width")).as_i64().unwrap() as i32;
+        let height = self_.borrow().editor.get_by_pointer(Pointer::from_str("/height")).as_i64().unwrap() as i32;
+        widget.set_size_request(width, height);
         parent.pack_start(&widget, false, false, 0);
         self_.borrow().canvas.hide();
         widget.show();
@@ -74,7 +76,11 @@ impl App {
         gst::Element::link_many(&[&appsrc, &videoconvert, &sink]).unwrap();
 
         let appsrc = appsrc.clone().dynamic_cast::<gsta::AppSrc>().unwrap();
-        let info = gstv::VideoInfo::new(gstv::VideoFormat::Rgb, self_.borrow().editor.width as u32 / 2, self_.borrow().editor.height as u32 / 2).fps(gst::Fraction::new(20,1)).build().unwrap();
+        let info = gstv::VideoInfo::new(
+            gstv::VideoFormat::Rgb,
+            self_.borrow().editor.get_by_pointer(Pointer::from_str("/width")).as_i64().unwrap() as u32 / 2,
+            self_.borrow().editor.get_by_pointer(Pointer::from_str("/height")).as_i64().unwrap() as u32 / 2,
+        ).fps(gst::Fraction::new(20,1)).build().unwrap();
         appsrc.set_caps(&info.to_caps().unwrap());
         appsrc.set_property_format(gst::Format::Time);
         appsrc.set_max_bytes(1);
@@ -111,7 +117,9 @@ impl App {
         let mut pos = 0;
         let self__ = self_.clone();
         gtk::idle_add(move || {
-            let mut buffer = gst::Buffer::with_size((self__.borrow().editor.width*self__.borrow().editor.height*3/4) as usize).unwrap();
+            let width = self_.borrow().editor.get_by_pointer(Pointer::from_str("/width")).as_i64().unwrap() as i32;
+            let height = self_.borrow().editor.get_by_pointer(Pointer::from_str("/height")).as_i64().unwrap() as i32;
+            let mut buffer = gst::Buffer::with_size((width*height*3/4) as usize).unwrap();
             {
                 let buffer = buffer.get_mut().unwrap();
 
@@ -123,7 +131,7 @@ impl App {
                 let mut data = data.as_mut_slice();
 
                 let pixbuf = self__.borrow().editor.get_current_pixbuf();
-                let pixbuf = pixbuf.scale_simple(self__.borrow().editor.width / 2, self__.borrow().editor.height / 2, GdkInterpType::Nearest.to_i32()).unwrap();
+                let pixbuf = pixbuf.scale_simple(width / 2, height / 2, GdkInterpType::Nearest.to_i32()).unwrap();
                 let pixels = unsafe { pixbuf.get_pixels() };
 
                 use std::io::Write;
@@ -504,8 +512,8 @@ impl App {
             Inhibit(false)
         });
 
-        app.canvas.set_size_request(app.editor.width, app.editor.height);
-        app.window.set_default_size(app.editor.width, app.editor.height + 200);
+        app.canvas.set_size_request(app.editor.get_by_pointer(Pointer::from_str("/width")).as_i64().unwrap() as i32, app.editor.get_by_pointer(Pointer::from_str("/height")).as_i64().unwrap() as i32);
+        app.window.set_size_request(app.editor.get_by_pointer(Pointer::from_str("/height")).as_i64().unwrap() as i32, app.editor.get_by_pointer(Pointer::from_str("/height")).as_i64().unwrap() as i32 + 200);
         app.window.set_title("madder");
 
         let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);

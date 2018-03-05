@@ -58,7 +58,14 @@ pub enum PointerElement {
     KeyElement(String),
 }
 
-pub type Pointer = Vec<String>;
+#[derive(Clone)]
+pub struct Pointer(pub Vec<String>);
+
+impl Pointer {
+    pub fn from_str(path: &str) -> Pointer {
+        Pointer(path.split('/').skip(1).map(|x| x.replace("~1", "/").replace("~0", "~")).collect::<Vec<_>>())
+    }
+}
 
 pub enum Operation {
     Add(Pointer, Value),
@@ -75,13 +82,9 @@ impl Operation {
 
         match json {
             Value::Object(hmap) => {
-                let parse_path = |path: &str| {
-                    path.split('/').skip(1).map(|x| x.replace("~1", "/").replace("~0", "~")).collect::<Vec<_>>()
-                };
-
                 let op = hmap["op"].as_str();
-                let path = hmap.get("path").and_then(|ref v| v.as_str()).map(&parse_path);
-                let from = hmap.get("from").and_then(|ref v| v.as_str()).map(&parse_path);
+                let path = hmap.get("path").and_then(|ref v| v.as_str()).map(&Pointer::from_str);
+                let from = hmap.get("from").and_then(|ref v| v.as_str()).map(&Pointer::from_str);
                 let value = hmap.get("value").cloned();
 
                 match op.unwrap() {

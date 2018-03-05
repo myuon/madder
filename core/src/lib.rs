@@ -47,8 +47,8 @@ impl EditorStructure {
 pub struct Editor {
     pub elements: Vec<Box<ComponentLike>>,
     pub position: gst::ClockTime,
-    pub width: i32,
-    pub height: i32,
+    width: i32,
+    height: i32,
     renderer: Option<AviRenderer>,
 }
 
@@ -202,7 +202,7 @@ impl Editor {
 
 impl Patch for Editor {
     fn get_by_pointer(&self, path: Pointer) -> Value {
-        match path.as_slice() {
+        match path.0.as_slice() {
             &[ref c] if c == "width" => json!(self.width),
             &[ref c] if c == "height" => json!(self.height),
             &[ref c] if c == "components" => serde_json::to_value(self.elements.iter().map(|c| c.as_ref().as_ref().clone()).collect::<Vec<Component>>()).unwrap(),
@@ -220,7 +220,7 @@ impl Patch for Editor {
 
         match op {
             Add(path, v) => {
-                match path.as_slice() {
+                match path.0.as_slice() {
                     &[] => panic!("add"),
                     &[ref c] if c == "width" => panic!("update_width"),
                     &[ref c] if c == "height" => panic!("update_height"),
