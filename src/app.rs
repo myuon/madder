@@ -124,8 +124,8 @@ impl App {
                 let buffer = buffer.get_mut().unwrap();
 
                 buffer.set_pts(pos * 500 * gst::MSECOND);
-                let position = self__.borrow().editor.position;
-                self__.borrow_mut().editor.seek_to(position + 500 * gst::MSECOND);
+                let position = self__.borrow().editor.get_by_pointer(Pointer::from_str("/position")).as_u64().unwrap();
+                self__.borrow_mut().editor.seek_to((position + 500) * gst::MSECOND);
 
                 let mut data = buffer.map_writable().unwrap();
                 let mut data = data.as_mut_slice();
@@ -498,7 +498,7 @@ impl App {
         app.timeline.borrow().tracker_connect_draw(move |cr| {
             cr.set_source_rgb(200f64, 0f64, 0f64);
 
-            cr.move_to(self__.borrow().editor.position.mseconds().unwrap() as f64, 0f64);
+            cr.move_to(self__.borrow().editor.get_by_pointer(Pointer::from_str("/position")).as_u64().unwrap() as f64, 0f64);
             cr.rel_line_to(0f64, 100f64);
             cr.stroke();
 

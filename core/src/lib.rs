@@ -46,7 +46,7 @@ impl EditorStructure {
 
 pub struct Editor {
     pub elements: Vec<Box<ComponentLike>>,
-    pub position: gst::ClockTime,
+    position: gst::ClockTime,
     width: i32,
     height: i32,
     renderer: Option<AviRenderer>,
@@ -205,6 +205,7 @@ impl Patch for Editor {
         match path.0.as_slice() {
             &[ref c] if c == "width" => json!(self.width),
             &[ref c] if c == "height" => json!(self.height),
+            &[ref c] if c == "position" => json!(self.position.mseconds().unwrap()),
             &[ref c] if c == "components" => serde_json::to_value(self.elements.iter().map(|c| c.as_ref().as_ref().clone()).collect::<Vec<Component>>()).unwrap(),
             &[ref c, ref n] if c == "components" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_ref().as_ref()).unwrap(),
             &[ref c, ref n, ref e] if c == "components" && e == "effect" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.clone()).unwrap(),
