@@ -41,24 +41,24 @@ impl BoxObject {
     fn coordinate(&self) -> (i32,i32) { (self.x, self.layer_index as i32 * BoxObject::HEIGHT) }
     fn size(&self) -> (i32,i32) { (self.width, BoxObject::HEIGHT) }
 
-    fn renderer(&self, cr: &cairo::Context) {
+    fn renderer(&self, cr: &cairo::Context, scaler: f64) {
         if self.selected {
             cr.set_source_rgba(0.0, 0.0, 0.0, 0.5);
-            cr.rectangle(self.coordinate().0 as f64 - 2.0, self.coordinate().1 as f64 - 2.0, self.size().0 as f64 + 4.0, self.size().1 as f64 + 4.0);
+            cr.rectangle(self.coordinate().0 as f64 - 2.0, self.coordinate().1 as f64 - 2.0, self.size().0 as f64 / scaler + 4.0, self.size().1 as f64 + 4.0);
             cr.stroke();
         }
 
         cr.set_source_rgba(0.0, 0.5, 1.0, 0.5);
-        cr.rectangle(self.coordinate().0.into(), self.coordinate().1.into(), self.size().0 as f64 - BoxObject::EDGE_WIDTH as f64, self.size().1.into());
+        cr.rectangle(self.coordinate().0 as f64, self.coordinate().1.into(), self.size().0 as f64 / scaler - BoxObject::EDGE_WIDTH as f64, self.size().1.into());
         cr.fill();
         cr.stroke();
         cr.set_source_rgba(0.5, 0.5, 0.5, 0.5);
-        cr.rectangle(self.coordinate().0 as f64 + self.size().0 as f64 - BoxObject::EDGE_WIDTH as f64, self.coordinate().1.into(), BoxObject::EDGE_WIDTH as f64, self.size().1.into());
+        cr.rectangle(self.coordinate().0 as f64 + self.size().0 as f64 / scaler - BoxObject::EDGE_WIDTH as f64, self.coordinate().1.into(), BoxObject::EDGE_WIDTH as f64, self.size().1.into());
         cr.fill();
         cr.stroke();
 
         cr.save();
-        cr.rectangle(self.coordinate().0.into(), self.coordinate().1.into(), self.size().0.into(), self.size().1.into());
+        cr.rectangle(self.coordinate().0.into(), self.coordinate().1.into(), self.size().0 as f64 / scaler, self.size().1.into());
         cr.clip();
 
         let font_extent = cr.font_extents();
@@ -85,12 +85,13 @@ pub struct BoxViewerWidget {
     selecting_box_index: Option<usize>,
     flag_resize: bool,
     callback_click_no_box: Box<Fn()>,
+    scaler: f64,
 }
 
 impl BoxViewerWidget {
-    pub fn new(width: i32, height: i32) -> Rc<RefCell<BoxViewerWidget>> {
+    pub fn new(height: i32) -> Rc<RefCell<BoxViewerWidget>> {
         let canvas = gtk::DrawingArea::new();
-        canvas.set_size_request(width, height);
+        canvas.set_size_request(-1, height);
 
         let self_ = Rc::new(RefCell::new(BoxViewerWidget {
             canvas: canvas,
@@ -100,6 +101,7 @@ impl BoxViewerWidget {
             selecting_box_index: None,
             flag_resize: false,
             callback_click_no_box: Box::new(|| {}),
+            scaler: 1.0,
         }));
         BoxViewerWidget::create_ui(self_.clone());
 
@@ -119,16 +121,20 @@ impl BoxViewerWidget {
 
         self_.borrow().canvas.connect_draw(move |_,cr| {
             let objects = (self__.borrow().requester)();
-            BoxViewerWidget::renderer(objects.clone(), cr);
+            BoxViewerWidget::renderer(objects.clone(), cr, self__.borrow().scaler);
             self__.borrow_mut().objects = objects;
 
             Inhibit(false)
         });
     }
 
-    fn renderer(objects: Vec<BoxObject>, cr: &cairo::Context) {
+    pub fn change_scale(self_: Rc<RefCell<BoxViewerWidget>>, value: f64) {
+        self_.borrow_mut().scaler = value;
+    }
+
+    fn renderer(objects: Vec<BoxObject>, cr: &cairo::Context, scaler: f64) {
         objects.iter().for_each(|object| {
-            object.renderer(cr);
+            object.renderer(cr, scaler);
         });
     }
 

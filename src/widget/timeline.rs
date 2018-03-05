@@ -28,7 +28,7 @@ pub struct TimelineWidget {
 // workaround for sharing a variable within callbacks
 impl TimelineWidget {
     pub fn new(width: i32, height: i32, length: i32) -> Rc<RefCell<TimelineWidget>> {
-        let box_viewer = BoxViewerWidget::new(length, height);
+        let box_viewer = BoxViewerWidget::new(height);
 
         let ruler_box = gtk::EventBox::new();
 
@@ -83,14 +83,13 @@ impl TimelineWidget {
         timeline.grid.attach(&gtk::Label::new("layers here"),0,1,1,1);
         timeline.grid.attach(&scroll, 1, 0, 1, 2);
 
+        timeline.overlay.set_size_request(length, -1);
+
         let self__ = self_.clone();
         self_.borrow().scaler.connect_value_changed(move |scaler| {
             RulerWidget::change_scale(self__.borrow().ruler.clone(), scaler.get_value());
-
-            let mut alloc = self__.borrow().overlay.get_allocation();
-            alloc.width = (length as f64 / scaler.get_value()) as i32;
-            self__.borrow().overlay.size_allocate(&mut alloc);
-
+            BoxViewerWidget::change_scale(self__.borrow().box_viewer.clone(), scaler.get_value());
+            self__.borrow().overlay.set_size_request((length as f64 / scaler.get_value()) as i32, -1);
             self__.borrow().as_widget().queue_draw();
         });
     }

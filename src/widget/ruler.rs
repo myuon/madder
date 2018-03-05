@@ -16,7 +16,7 @@ pub struct RulerWidget {
 impl RulerWidget {
     pub fn new(width: i32, height: i32) -> Rc<RefCell<RulerWidget>> {
         let ruler = gtk::DrawingArea::new();
-        ruler.set_size_request(width, height);
+        ruler.set_size_request(-1, height);
 
         let w = Rc::new(RefCell::new(RulerWidget {
             canvas: ruler,
@@ -45,7 +45,7 @@ impl RulerWidget {
             let interval = 10;
             let interval_height = height as f64 * 0.6;
 
-            for x in (0..(width / interval)).map(|x| x * interval) {
+            for x in (0..((width / interval) as f64 / self__.borrow().scaler) as i32).map(|x| x * interval) {
                 cr.move_to(x as f64, interval_large_height);
 
                 let h = if x % interval_large == 0 { interval_large_height } else { interval_height };
