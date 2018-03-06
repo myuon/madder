@@ -94,6 +94,31 @@ pub struct CommonProperty {
     pub scale: (f64, f64),
 }
 
+impl CommonProperty {
+    pub fn get_properties(&self) -> Properties {
+        use Property::*;
+
+        vec![
+            ("coordinate".to_string(), Pair(box I32(self.coordinate.0), box I32(self.coordinate.1))),
+            ("rotate".to_string(), F64(self.rotate)),
+            ("alpha".to_string(), I32(self.alpha)),
+            ("scale".to_string(), Pair(box F64(self.scale.0), box F64(self.scale.1))),
+        ]
+    }
+
+    pub fn set_property(&mut self, name: &str, prop: Property) {
+        use Property::*;
+
+        match (name, prop) {
+            ("coordinate", Pair(box I32(x), box I32(y))) => self.coordinate = (x,y),
+            ("rotate", F64(n)) => self.rotate = n,
+            ("alpha", I32(n)) => self.alpha = n,
+            ("scale", Pair(box F64(x), box F64(y))) => self.scale = (x,y),
+            _ => (),
+        }
+    }
+}
+
 use std::default::Default;
 impl Default for CommonProperty {
     fn default() -> CommonProperty {
@@ -265,7 +290,7 @@ impl ComponentWrapper for Component {
             ("start_time", Time(v)) => self.start_time = v,
             ("length", Time(v)) => self.length = v,
             ("layer_index", Usize(v)) => self.layer_index = v,
-            _ => unimplemented!(),
+            _ => (),
         }
     }
 

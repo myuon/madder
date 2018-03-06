@@ -150,6 +150,7 @@ impl ComponentWrapper for VideoFileComponent {
         use Property::*;
 
         let mut props = self.component.get_properties();
+        props.append(&mut self.prop.common.get_properties());
         props.push(("entity".to_string(), FilePath(self.prop.entity.clone())));
         props
     }
@@ -159,7 +160,10 @@ impl ComponentWrapper for VideoFileComponent {
 
         match (name, prop) {
             ("entity", FilePath(uri)) => self.reload(uri.as_str()),
-            (x,y) => self.component.set_property(x, y),
+            (x,y) => {
+                self.prop.common.set_property(x,y.clone());
+                self.component.set_property(x,y.clone());
+            },
         }
     }
 

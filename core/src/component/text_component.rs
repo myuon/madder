@@ -94,6 +94,7 @@ impl ComponentWrapper for TextComponent {
         use Property::*;
 
         let mut props = self.component.get_properties();
+        props.append(&mut self.prop.common.get_properties());
         props.push(("entity".to_string(), Document(self.prop.entity.clone())));
         props.push(("text_font".to_string(), Font(self.prop.text_font.clone())));
         props.push(("text_color".to_string(), Color(self.prop.text_color.clone())));
@@ -116,7 +117,10 @@ impl ComponentWrapper for TextComponent {
                 self.prop.text_color = rgba;
                 self.reload();
             },
-            (x,y) => self.component.set_property(x, y),
+            (x,y) => {
+                self.prop.common.set_property(x,y.clone());
+                self.component.set_property(x,y.clone());
+            },
         }
     }
 

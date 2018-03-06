@@ -120,8 +120,8 @@ impl Editor {
 
         for elem in elems.iter().rev() {
             if let Some(mut dest) = elem.peek(self.position) {
-                let mut elem = elem.as_ref().as_ref().clone();
                 let mut common_prop = serde_json::from_value::<CommonProperty>(elem.as_ref().get_properties_as_value()).unwrap_or(std::default::Default::default());
+                let mut elem = elem.as_ref().as_ref().clone();
                 dest = Effect::get_rotated_pixbuf(dest, common_prop.rotate);
 
                 for eff in elem.effect.clone() {
