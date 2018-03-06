@@ -140,6 +140,18 @@ impl App {
             appsrc.push_buffer(buffer).into_result().unwrap();
             pos += 1;
 
+            let position = gst::ClockTime::from_mseconds(self_.borrow().editor.get_by_pointer(Pointer::from_str("/position")).as_u64().unwrap());
+            let editor = &self__.borrow().editor;
+            let elems = editor.elements.iter().filter(|&elem| {
+                elem.component_type == ComponentType::Sound
+                    && elem.as_ref().start_time <= position
+                    && position <= elem.start_time + elem.length
+            }).collect::<Vec<_>>().clone();
+
+            elems.iter().for_each(|elem| {
+                elem.get_audio_pipeline().unwrap().set_state(gst::State::Playing).into_result().unwrap();
+            });
+
             Continue(true)
         });
     }

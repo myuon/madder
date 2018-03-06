@@ -13,7 +13,7 @@ struct SoundProperty {
 
 pub struct SoundComponent {
     component: Component,
-    data: gst::Element,
+    data: gst::Pipeline,
     prop: SoundProperty,
 }
 
@@ -28,7 +28,7 @@ impl SoundComponent {
         }
     }
 
-    fn create_data(uri: &str) -> gst::Element {
+    fn create_data(uri: &str) -> gst::Pipeline {
         let pipeline = gst::Pipeline::new(None);
         let src = gst::ElementFactory::make("filesrc", None).unwrap();
         let decodebin = gst::ElementFactory::make("decodebin", None).unwrap();
@@ -48,7 +48,7 @@ impl SoundComponent {
 
         pipeline.set_state(gst::State::Paused).into_result().unwrap();
 
-        audiosink
+        pipeline
     }
 
     pub fn reload(&mut self, uri: &str) {
@@ -58,7 +58,7 @@ impl SoundComponent {
 
 impl Peekable for SoundComponent {
     fn get_duration(&self) -> gst::ClockTime {
-        self.data.get_duration()
+        100 * gst::MSECOND
     }
 
     fn peek(&self, _time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
@@ -100,6 +100,10 @@ impl ComponentWrapper for SoundComponent {
 
     fn get_info(&self) -> String {
         format!("sound")
+    }
+
+    fn get_audio_pipeline(&self) -> Option<&gst::Pipeline> {
+        Some(&self.data)
     }
 }
 

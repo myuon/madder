@@ -46,7 +46,7 @@ impl EditorStructure {
 }
 
 pub struct Editor {
-    elements: Vec<Box<ComponentLike>>,
+    pub elements: Vec<Box<ComponentLike>>,
     position: gst::ClockTime,
     width: i32,
     height: i32,

@@ -53,7 +53,7 @@ pub trait Peekable {
     fn peek(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf>;
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum ComponentType {
     Video,
     Image,
@@ -257,6 +257,10 @@ pub trait ComponentWrapper : AsRef<Component> + AsMut<Component> {
     }
 
     fn get_info(&self) -> String;
+
+    fn get_audio_pipeline(&self) -> Option<&gst::Pipeline> {
+        None
+    }
 }
 
 impl AsRef<Component> for Component {
