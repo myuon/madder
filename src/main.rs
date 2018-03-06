@@ -30,7 +30,7 @@ fn main() {
                 width: 640,
                 height: 480,
                 length: 90000,
-                components: Box::new([
+                components: vec![
                     serde_json::from_value(json!({
                         "component_type": "Text",
                         "start_time": 0,
@@ -39,7 +39,7 @@ fn main() {
                         "layer_index": 0,
                         "coordinate": [50,50],
                     })).unwrap()
-                ]),
+                ],
             }
         };
 

@@ -1,18 +1,29 @@
 extern crate gstreamer as gst;
 extern crate gdk_pixbuf;
+extern crate serde_json;
 
 use component::component::*;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct ImageProperty {
+    common: CommonProperty,
+    entity: String,
+}
 
 pub struct ImageComponent {
     component: Component,
     data: gdk_pixbuf::Pixbuf,
+    prop: ImageProperty,
 }
 
 impl ImageComponent {
-    pub fn new_from_structure(component: &Component) -> ImageComponent {
+    pub fn new_from_json(json: serde_json::Value) -> ImageComponent {
+        let prop = serde_json::from_value::<ImageProperty>(json.as_object().unwrap()["prop"].clone()).unwrap();
+
         ImageComponent {
-            component: component.clone(),
-            data: ImageComponent::create_data(&component.entity),
+            component: serde_json::from_value(json).unwrap(),
+            data: ImageComponent::create_data(&prop.entity),
+            prop: prop,
         }
     }
 
@@ -62,7 +73,7 @@ impl ComponentWrapper for ImageComponent {
         use Property::*;
 
         let mut props = self.component.get_properties();
-        props.push(("entity".to_string(), FilePath(self.component.entity.clone())));
+        props.push(("entity".to_string(), FilePath(self.prop.entity.clone())));
         props
     }
 
@@ -78,7 +89,7 @@ impl ComponentWrapper for ImageComponent {
     fn get_info(&self) -> String {
         let mut w = 0;
         let mut h = 0;
-        format!("image {:?}", gdk_pixbuf::Pixbuf::get_file_info(&self.component.entity, &mut w, &mut h).unwrap().get_description())
+        format!("image {:?}", gdk_pixbuf::Pixbuf::get_file_info(&self.prop.entity, &mut w, &mut h).unwrap().get_description())
     }
 }
 

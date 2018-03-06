@@ -15,8 +15,9 @@ pub trait EffectOn {
 
 impl EffectOn for Effect {
     fn effect_on_component(&self, component: Component, current: f64) -> Component {
-        use EffectType::*;
+        // use EffectType::*;
 
+        /*
         match self.effect_type {
             CoordinateX => {
                 let mut comp = component;
@@ -45,6 +46,8 @@ impl EffectOn for Effect {
             },
             _ => component,
         }
+         */
+        unimplemented!()
     }
 }
 
@@ -73,10 +76,16 @@ pub struct Component {
     #[serde(deserialize_with = "gst_clocktime_deserialize")]
     pub length: gst::ClockTime,
 
+    pub layer_index: usize,
+
+    #[serde(default = "Vec::new")]
+    pub effect: Vec<Effect>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CommonProperty {
     #[serde(default = "coordinate_default")]
     pub coordinate: (i32,i32),
-
-    pub layer_index: usize,
 
     #[serde(default = "rotate_default")]
     pub rotate: f64,
@@ -84,13 +93,8 @@ pub struct Component {
     #[serde(default = "alpha_default")]
     pub alpha: i32,
 
-    pub entity: String,
-
     #[serde(default = "scale_default")]
     pub scale: (f64, f64),
-
-    #[serde(default = "Vec::new")]
-    pub effect: Vec<Effect>,
 }
 
 fn coordinate_default() -> (i32, i32) { (0,0) }
@@ -107,6 +111,7 @@ fn gst_clocktime_deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) 
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum Property {
     I32(i32),
     F64(f64),
@@ -129,7 +134,7 @@ pub enum Property {
     Choose(String,i32),
 }
 
-fn gdk_rgba_serialize<S: serde::Serializer>(self_: &gdk::RGBA, serializer: S) -> Result<S::Ok, S::Error> {
+pub fn gdk_rgba_serialize<S: serde::Serializer>(self_: &gdk::RGBA, serializer: S) -> Result<S::Ok, S::Error> {
     let mut tuple = serializer.serialize_tuple(4)?;
     tuple.serialize_element(&self_.red)?;
     tuple.serialize_element(&self_.green)?;
@@ -138,7 +143,7 @@ fn gdk_rgba_serialize<S: serde::Serializer>(self_: &gdk::RGBA, serializer: S) ->
     tuple.end()
 }
 
-fn gdk_rgba_deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<gdk::RGBA, D::Error> {
+pub fn gdk_rgba_deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<gdk::RGBA, D::Error> {
     serde::Deserialize::deserialize(deserializer).map(|(x,y,z,w)| gdk::RGBA {
         red: x,
         green: y,
@@ -201,6 +206,14 @@ pub trait ComponentWrapper : AsRef<Component> + AsMut<Component> {
         self.as_ref().get_properties()
     }
 
+    fn get_properties_as_value(&self) -> serde_json::Value {
+        let mut hmap = serde_json::Map::new();
+        for (k,v) in self.as_ref().get_properties() {
+            hmap.insert(k, serde_json::to_value(v).unwrap());
+        }
+        serde_json::Value::Object(hmap)
+    }
+
     fn set_property(&mut self, name: &str, prop: Property) {
         self.as_mut().set_property(name, prop);
     }
@@ -232,12 +245,12 @@ impl ComponentWrapper for Component {
             ("component_type".to_string(), ReadOnly(format!("{:?}", self.component_type))),
             ("start_time".to_string(), Time(self.start_time)),
             ("length".to_string(), Time(self.length)),
-            ("coordinate".to_string(), Pair(box I32(self.coordinate.0), box I32(self.coordinate.1))),
-            ("entity".to_string(), ReadOnly(self.entity.clone())),
+            // ("coordinate".to_string(), Pair(box I32(self.coordinate.0), box I32(self.coordinate.1))),
+            // ("entity".to_string(), ReadOnly(self.entity.clone())),
             ("layer_index".to_string(), Usize(self.layer_index)),
-            ("rotate".to_string(), F64(self.rotate)),
-            ("alpha".to_string(), I32(self.alpha)),
-            ("scale".to_string(), Pair(box F64(self.scale.0), box F64(self.scale.1))),
+            // ("rotate".to_string(), F64(self.rotate)),
+            // ("alpha".to_string(), I32(self.alpha)),
+            // ("scale".to_string(), Pair(box F64(self.scale.0), box F64(self.scale.1))),
         ].iter().cloned().collect()
     }
 
@@ -247,11 +260,11 @@ impl ComponentWrapper for Component {
         match (name, prop) {
             ("start_time", Time(v)) => self.start_time = v,
             ("length", Time(v)) => self.length = v,
-            ("coordinate", Pair(box I32(x), box I32(y))) => self.coordinate = (x,y),
+            // ("coordinate", Pair(box I32(x), box I32(y))) => self.coordinate = (x,y),
             ("layer_index", Usize(v)) => self.layer_index = v,
-            ("rotate", F64(v)) => self.rotate = v,
-            ("alpha", I32(v)) => self.alpha = v,
-            ("scale", Pair(box F64(x), box F64(y))) => self.scale = (x,y),
+            // ("rotate", F64(v)) => self.rotate = v,
+            // ("alpha", I32(v)) => self.alpha = v,
+            // ("scale", Pair(box F64(x), box F64(y))) => self.scale = (x,y),
             _ => unimplemented!(),
         }
     }

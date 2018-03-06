@@ -4,26 +4,44 @@ extern crate gdk_pixbuf;
 extern crate cairo;
 extern crate pango;
 extern crate pangocairo;
+extern crate serde;
+extern crate serde_json;
 
 use component::component::*;
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct TextProperty {
+    common: CommonProperty,
+
+    #[serde(serialize_with = "gdk_rgba_serialize")]
+    #[serde(deserialize_with = "gdk_rgba_deserialize")]
+    #[serde(default = "gdk::RGBA::white")]
+    text_color: gdk::RGBA,
+
+    #[serde(default = "default_text_font")]
+    text_font: String,
+
+    entity: String,
+}
+
+fn default_text_font() -> String {
+    "Serif 24".to_string()
+}
+
 pub struct TextComponent {
     component: Component,
-    text_color: gdk::RGBA,
-    text_font: String,
     data: gdk_pixbuf::Pixbuf,
+    prop: TextProperty,
 }
 
 impl TextComponent {
-    pub fn new_from_structure(component: &Component) -> TextComponent {
-        let text_color = gdk::RGBA::white();
-        let text_font = "Serif 24".to_string();
+    pub fn new_from_json(json: serde_json::Value) -> TextComponent {
+        let prop = serde_json::from_value::<TextProperty>(json.as_object().unwrap()["prop"].clone()).unwrap();
 
         TextComponent {
-            component: component.clone(),
-            text_color: text_color,
-            text_font: text_font.clone(),
-            data: TextComponent::create_data(&component.entity, &text_font, text_color),
+            component: serde_json::from_value(json).unwrap(),
+            data: TextComponent::create_data(&prop.entity, &prop.text_font, prop.text_color),
+            prop: prop,
         }
     }
 
@@ -42,7 +60,7 @@ impl TextComponent {
     }
 
     pub fn reload(&mut self) {
-        self.data = TextComponent::create_data(&self.component.entity, &self.text_font, self.text_color);
+        self.data = TextComponent::create_data(&self.prop.entity, &self.prop.text_font, self.prop.text_color);
     }
 }
 
@@ -73,9 +91,9 @@ impl ComponentWrapper for TextComponent {
         use Property::*;
 
         let mut props = self.component.get_properties();
-        props.push(("entity".to_string(), Document(self.component.entity.clone())));
-        props.push(("text_font".to_string(), Font(self.text_font.clone())));
-        props.push(("text_color".to_string(), Color(self.text_color.clone())));
+        props.push(("entity".to_string(), Document(self.prop.entity.clone())));
+        props.push(("text_font".to_string(), Font(self.prop.text_font.clone())));
+        props.push(("text_color".to_string(), Color(self.prop.text_color.clone())));
         props
     }
 
@@ -84,15 +102,15 @@ impl ComponentWrapper for TextComponent {
 
         match (name, prop) {
             ("entity", Document(doc)) => {
-                self.component.entity = doc;
+                self.prop.entity = doc;
                 self.reload()
             },
             ("text_font", Font(font)) => {
-                self.text_font = font;
+                self.prop.text_font = font;
                 self.reload();
             },
             ("text_color", Color(rgba)) => {
-                self.text_color = rgba;
+                self.prop.text_color = rgba;
                 self.reload();
             },
             (x,y) => self.component.set_property(x, y),

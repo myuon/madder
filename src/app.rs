@@ -482,7 +482,7 @@ impl App {
                     component.start_time.mseconds().unwrap() as i32,
                     component.length.mseconds().unwrap() as i32,
                     i
-                ).label(component.entity.clone())
+                ).label(component.get_properties_as_value().as_object().unwrap()["entity"].as_str().unwrap().to_string())
                     .selected(Some(i) == self__.borrow().selected_component_index)
                     .layer_index(component.layer_index)
             }).collect()

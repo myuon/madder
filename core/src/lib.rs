@@ -28,7 +28,7 @@ pub use self::json_patch::*;
 
 #[derive(Serialize, Deserialize)]
 pub struct EditorStructure {
-    pub components: Box<[Component]>,
+    pub components: Vec<Value>,
     pub width: i32,
     pub height: i32,
     pub length: u64,
@@ -66,10 +66,10 @@ impl Editor {
         }
     }
 
-    pub fn new_from_structure(structure: &EditorStructure) -> Editor {
+    pub fn new_from_structure(structure: EditorStructure) -> Editor {
         let mut editor = Editor::new(structure.width, structure.height, gst::ClockTime::from_mseconds(structure.length));
-        structure.components.iter().for_each(|item| {
-            editor.register(Component::new_from_structure(item));
+        structure.components.iter().for_each(|json| {
+            editor.register(Component::new_from_json(json.clone()));
         });
         editor
     }
@@ -121,7 +121,8 @@ impl Editor {
         for elem in elems.iter().rev() {
             if let Some(mut dest) = elem.peek(self.position) {
                 let mut elem = elem.as_ref().as_ref().clone();
-                dest = Effect::get_rotated_pixbuf(dest, elem.rotate);
+                let props = serde_json::from_value::<CommonProperty>(elem.as_ref().get_properties_as_value()).unwrap();
+                dest = Effect::get_rotated_pixbuf(dest, props.rotate);
 
                 for eff in elem.effect.clone() {
                     let start_time = elem.start_time;
@@ -133,11 +134,11 @@ impl Editor {
                 }
 
                 &dest.composite(
-                    &pixbuf, elem.coordinate.0, elem.coordinate.1,
-                    cmp::min(dest.get_width(), self.width - elem.coordinate.0),
-                    cmp::min(dest.get_height(), self.height - elem.coordinate.1),
-                    elem.coordinate.0.into(), elem.coordinate.1.into(), elem.scale.0, elem.scale.1,
-                    GdkInterpType::Nearest.to_i32(), elem.alpha);
+                    &pixbuf, props.coordinate.0, props.coordinate.1,
+                    cmp::min(dest.get_width(), self.width - props.coordinate.0),
+                    cmp::min(dest.get_height(), self.height - props.coordinate.1),
+                    props.coordinate.0.into(), props.coordinate.1.into(), props.scale.0, props.scale.1,
+                    GdkInterpType::Nearest.to_i32(), props.alpha);
             }
         }
 
@@ -168,12 +169,12 @@ impl Editor {
 // API for JSON Patch
 impl Editor {
     fn add_components(&mut self, value: Value) {
-        self.register(Component::new_from_structure(&serde_json::from_value(value).unwrap()));
+        self.register(Component::new_from_json(value));
     }
 
     fn add_components_n(&mut self, index: IndexRange, value: Value) {
         use IndexRange::*;
-        let component = Component::new_from_structure(&serde_json::from_value(value).unwrap());
+        let component = Component::new_from_json(value);
 
         match index {
             Index(i) => {

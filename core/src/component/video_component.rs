@@ -6,6 +6,8 @@ extern crate gstreamer_video as gstv;
 extern crate gstreamer_app as gsta;
 use gstv::prelude::*;
 
+extern crate serde_json;
+
 use component::component::*;
 
 impl Peekable for gst::Element {
@@ -65,9 +67,16 @@ impl AsMut<Component> for VideoTestComponent {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct VideoFileProperty {
+    common: CommonProperty,
+    entity: String,
+}
+
 pub struct VideoFileComponent {
     component: Component,
     data: gst::Element,
+    prop: VideoFileProperty,
 }
 
 impl AsRef<Component> for VideoFileComponent {
@@ -83,10 +92,13 @@ impl AsMut<Component> for VideoFileComponent {
 }
 
 impl VideoFileComponent {
-    pub fn new_from_structure(component: &Component) -> VideoFileComponent {
+    pub fn new_from_json(json: serde_json::Value) -> VideoFileComponent {
+        let prop = serde_json::from_value::<VideoFileProperty>(json.as_object().unwrap()["prop"].clone()).unwrap();
+
         VideoFileComponent {
-            component: component.clone(),
-            data: VideoFileComponent::create_data(&component.entity),
+            component: serde_json::from_value(json).unwrap(),
+            data: VideoFileComponent::create_data(&prop.entity),
+            prop: prop,
         }
     }
 
@@ -134,7 +146,7 @@ impl ComponentWrapper for VideoFileComponent {
         use Property::*;
 
         let mut props = self.component.get_properties();
-        props.push(("entity".to_string(), FilePath(self.component.entity.clone())));
+        props.push(("entity".to_string(), FilePath(self.prop.entity.clone())));
         props
     }
 
@@ -149,7 +161,7 @@ impl ComponentWrapper for VideoFileComponent {
 
     fn get_info(&self) -> String {
         format!("video\ndata_uri:\t{}\nclock:\t{:?}\n",
-                self.component.entity,
+                self.prop.entity,
                 self.data.get_clock()
         )
     }
