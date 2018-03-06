@@ -175,7 +175,7 @@ impl BoxViewerWidget {
             let window = canvas.get_window().unwrap();
 
             if event.get_state().contains(gdk::ModifierType::BUTTON1_MASK) {
-                let distance = x - self__.borrow().offset;
+                let distance = ((x - self__.borrow().offset) as f64 * self__.borrow().scaler) as i32;
                 let layer_index = y / BoxObject::HEIGHT;
 
                 if self__.borrow().flag_resize {
@@ -186,8 +186,8 @@ impl BoxViewerWidget {
                 self__.borrow_mut().offset = event.get_position().0 as i32;
             } else {
                 match objects.iter().find(|&object| object.contains(x,y)) {
-                    Some(object) if object.coordinate().0 + object.size().0 - BoxObject::EDGE_WIDTH <= x
-                                 && x <= object.coordinate().0 + object.size().0 => {
+                    Some(object) if object.coordinate().0 + (object.size().0 as f64 / self__.borrow().scaler) as i32 - BoxObject::EDGE_WIDTH <= x
+                                 && x <= object.coordinate().0 + (object.size().0 as f64 / self__.borrow().scaler) as i32 => {
                         window.set_cursor(&gdk::Cursor::new_from_name(&window.get_display(), "e-resize"));
                         self__.borrow_mut().flag_resize = true;
                     },
