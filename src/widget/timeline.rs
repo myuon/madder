@@ -39,7 +39,7 @@ impl TimelineWidget {
         ruler_box.add(ruler.borrow().as_widget());
 
         let tracker = gtk::DrawingArea::new();
-        tracker.set_size_request(length, 100);
+        tracker.set_size_request(length, -1);
 
         let overlay = {
             let overlay = gtk::Overlay::new();
@@ -61,12 +61,12 @@ impl TimelineWidget {
             overlay: overlay,
             scaler: gtk::Scale::new_with_range(gtk::Orientation::Horizontal, 1.0, 10.0, 0.1),
         }));
-        TimelineWidget::create_ui(w.clone(), width, length);
+        TimelineWidget::create_ui(w.clone(), width, height, length);
 
         w
     }
 
-    fn create_ui(self_: Rc<RefCell<TimelineWidget>>, width: i32, length: i32) {
+    fn create_ui(self_: Rc<RefCell<TimelineWidget>>, width: i32, height: i32, length: i32) {
         let timeline = self_.borrow();
         timeline.tracker.connect_realize(move |tracker| {
             let window = tracker.get_window().unwrap();
@@ -74,7 +74,7 @@ impl TimelineWidget {
         });
 
         let scroll = gtk::ScrolledWindow::new(None, None);
-        scroll.set_size_request(width, 100);
+        scroll.set_size_request(width, height);
         scroll.set_hexpand(true);
         scroll.set_vexpand(true);
         scroll.add(&timeline.overlay);

@@ -43,7 +43,7 @@ impl App {
 
         App {
             editor: Editor::new(width, height, length),
-            timeline: TimelineWidget::new(width, 100, cmp::max(width + prop_width, length.mseconds().unwrap() as i32)),
+            timeline: TimelineWidget::new(width, 130, cmp::max(width + prop_width, length.mseconds().unwrap() as i32)),
             canvas: gtk::DrawingArea::new(),
             property: PropertyViewerWidget::new(prop_width),
             selected_component_index: None,
