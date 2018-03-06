@@ -69,7 +69,9 @@ impl AsMut<Component> for VideoTestComponent {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct VideoFileProperty {
+    #[serde(default)]
     common: CommonProperty,
+
     entity: String,
 }
 
@@ -93,7 +95,9 @@ impl AsMut<Component> for VideoFileComponent {
 
 impl VideoFileComponent {
     pub fn new_from_json(json: serde_json::Value) -> VideoFileComponent {
-        let prop = serde_json::from_value::<VideoFileProperty>(json.as_object().unwrap()["prop"].clone()).unwrap();
+        let common = serde_json::from_value::<CommonProperty>(json.clone()).unwrap();
+        let mut prop = serde_json::from_value::<VideoFileProperty>(json.clone()).unwrap();
+        prop.common = common;
 
         VideoFileComponent {
             component: serde_json::from_value(json).unwrap(),

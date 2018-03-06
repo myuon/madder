@@ -121,24 +121,25 @@ impl Editor {
         for elem in elems.iter().rev() {
             if let Some(mut dest) = elem.peek(self.position) {
                 let mut elem = elem.as_ref().as_ref().clone();
-                let props = serde_json::from_value::<CommonProperty>(elem.as_ref().get_properties_as_value()).unwrap();
-                dest = Effect::get_rotated_pixbuf(dest, props.rotate);
+                let mut common_prop = serde_json::from_value::<CommonProperty>(elem.as_ref().get_properties_as_value()).unwrap_or(std::default::Default::default());
+                dest = Effect::get_rotated_pixbuf(dest, common_prop.rotate);
 
                 for eff in elem.effect.clone() {
                     let start_time = elem.start_time;
                     let length = elem.length;
                     let position = (self.position - start_time).mseconds().unwrap() as f64 / length.mseconds().unwrap() as f64;
 
-                    elem = eff.effect_on_component(elem, position);
+                    common_prop = eff.effect_on_component(common_prop, position);
                     dest = eff.effect_on_pixbuf(dest, position);
                 }
 
                 &dest.composite(
-                    &pixbuf, props.coordinate.0, props.coordinate.1,
-                    cmp::min(dest.get_width(), self.width - props.coordinate.0),
-                    cmp::min(dest.get_height(), self.height - props.coordinate.1),
-                    props.coordinate.0.into(), props.coordinate.1.into(), props.scale.0, props.scale.1,
-                    GdkInterpType::Nearest.to_i32(), props.alpha);
+                    &pixbuf, common_prop.coordinate.0, common_prop.coordinate.1,
+                    cmp::min(dest.get_width(), self.width - common_prop.coordinate.0),
+                    cmp::min(dest.get_height(), self.height - common_prop.coordinate.1),
+                    common_prop.coordinate.0.into(), common_prop.coordinate.1.into(),
+                    common_prop.scale.0, common_prop.scale.1,
+                    GdkInterpType::Nearest.to_i32(), common_prop.alpha);
             }
         }
 
@@ -228,7 +229,7 @@ impl Patch for Editor {
             &[ref c] if c == "height" => json!(self.height),
             &[ref c] if c == "length" => json!(self.length.mseconds().unwrap()),
             &[ref c] if c == "position" => json!(self.position.mseconds().unwrap()),
-            &[ref c] if c == "components" => serde_json::to_value(self.elements.iter().map(|c| c.as_ref().as_ref().clone()).collect::<Vec<Component>>()).unwrap(),
+            &[ref c] if c == "components" => serde_json::to_value(self.elements.iter().map(|c: &Box<ComponentLike>| c.as_ref().get_properties_as_value()).collect::<Vec<_>>()).unwrap(),
             &[ref c, ref n] if c == "components" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_ref().as_ref()).unwrap(),
             &[ref c, ref n, ref e] if c == "components" && e == "effect" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.clone()).unwrap(),
             &[ref c, ref n, ref e, ref m] if c == "components" && e == "effect" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap())).unwrap(),

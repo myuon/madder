@@ -10,14 +10,13 @@ use self::serde::ser::SerializeTuple;
 use component::effect::*;
 
 pub trait EffectOn {
-    fn effect_on_component(&self, component: Component, current: f64) -> Component;
+    fn effect_on_component(&self, component: CommonProperty, current: f64) -> CommonProperty;
 }
 
 impl EffectOn for Effect {
-    fn effect_on_component(&self, component: Component, current: f64) -> Component {
-        // use EffectType::*;
+    fn effect_on_component(&self, component: CommonProperty, current: f64) -> CommonProperty {
+        use EffectType::*;
 
-        /*
         match self.effect_type {
             CoordinateX => {
                 let mut comp = component;
@@ -46,8 +45,6 @@ impl EffectOn for Effect {
             },
             _ => component,
         }
-         */
-        unimplemented!()
     }
 }
 
@@ -95,6 +92,18 @@ pub struct CommonProperty {
 
     #[serde(default = "scale_default")]
     pub scale: (f64, f64),
+}
+
+use std::default::Default;
+impl Default for CommonProperty {
+    fn default() -> CommonProperty {
+        CommonProperty {
+            coordinate: coordinate_default(),
+            rotate: rotate_default(),
+            alpha: alpha_default(),
+            scale: scale_default(),
+        }
+    }
 }
 
 fn coordinate_default() -> (i32, i32) { (0,0) }
@@ -208,7 +217,7 @@ pub trait ComponentWrapper : AsRef<Component> + AsMut<Component> {
 
     fn get_properties_as_value(&self) -> serde_json::Value {
         let mut hmap = serde_json::Map::new();
-        for (k,v) in self.as_ref().get_properties() {
+        for (k,v) in self.get_properties() {
             hmap.insert(k, serde_json::to_value(v).unwrap());
         }
         serde_json::Value::Object(hmap)
@@ -241,17 +250,12 @@ impl ComponentWrapper for Component {
     fn get_properties(&self) -> Properties {
         use Property::*;
 
-        [
+        vec![
             ("component_type".to_string(), ReadOnly(format!("{:?}", self.component_type))),
             ("start_time".to_string(), Time(self.start_time)),
             ("length".to_string(), Time(self.length)),
-            // ("coordinate".to_string(), Pair(box I32(self.coordinate.0), box I32(self.coordinate.1))),
-            // ("entity".to_string(), ReadOnly(self.entity.clone())),
             ("layer_index".to_string(), Usize(self.layer_index)),
-            // ("rotate".to_string(), F64(self.rotate)),
-            // ("alpha".to_string(), I32(self.alpha)),
-            // ("scale".to_string(), Pair(box F64(self.scale.0), box F64(self.scale.1))),
-        ].iter().cloned().collect()
+        ]
     }
 
     fn set_property(&mut self, name: &str, prop: Property) {
@@ -260,11 +264,7 @@ impl ComponentWrapper for Component {
         match (name, prop) {
             ("start_time", Time(v)) => self.start_time = v,
             ("length", Time(v)) => self.length = v,
-            // ("coordinate", Pair(box I32(x), box I32(y))) => self.coordinate = (x,y),
             ("layer_index", Usize(v)) => self.layer_index = v,
-            // ("rotate", F64(v)) => self.rotate = v,
-            // ("alpha", I32(v)) => self.alpha = v,
-            // ("scale", Pair(box F64(x), box F64(y))) => self.scale = (x,y),
             _ => unimplemented!(),
         }
     }
