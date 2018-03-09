@@ -40,25 +40,29 @@ impl BoxObject {
 
     fn coordinate(&self) -> (i32,i32) { (self.x, self.layer_index as i32 * BoxObject::HEIGHT) }
     fn size(&self) -> (i32,i32) { (self.width, BoxObject::HEIGHT) }
+    fn hscale(&mut self, scaler: f64) {
+        self.x = (self.x as f64 / scaler) as i32;
+        self.width = (self.width as f64 / scaler) as i32;
+    }
 
-    fn renderer(&self, cr: &cairo::Context, scaler: f64) {
+    fn renderer(&self, cr: &cairo::Context) {
         if self.selected {
             cr.set_source_rgba(0.0, 0.0, 0.0, 0.5);
-            cr.rectangle(self.coordinate().0 as f64 - 2.0, self.coordinate().1 as f64 - 2.0, self.size().0 as f64 / scaler + 4.0, self.size().1 as f64 + 4.0);
+            cr.rectangle(self.coordinate().0 as f64 - 2.0, self.coordinate().1 as f64 - 2.0, self.size().0 as f64 + 4.0, self.size().1 as f64 + 4.0);
             cr.stroke();
         }
 
         cr.set_source_rgba(0.0, 0.5, 1.0, 0.5);
-        cr.rectangle(self.coordinate().0 as f64, self.coordinate().1.into(), self.size().0 as f64 / scaler - BoxObject::EDGE_WIDTH as f64, self.size().1.into());
+        cr.rectangle(self.coordinate().0 as f64, self.coordinate().1.into(), self.size().0 as f64 - BoxObject::EDGE_WIDTH as f64, self.size().1.into());
         cr.fill();
         cr.stroke();
         cr.set_source_rgba(0.5, 0.5, 0.5, 0.5);
-        cr.rectangle(self.coordinate().0 as f64 + self.size().0 as f64 / scaler - BoxObject::EDGE_WIDTH as f64, self.coordinate().1.into(), BoxObject::EDGE_WIDTH as f64, self.size().1.into());
+        cr.rectangle(self.coordinate().0 as f64 + self.size().0 as f64 - BoxObject::EDGE_WIDTH as f64, self.coordinate().1.into(), BoxObject::EDGE_WIDTH as f64, self.size().1.into());
         cr.fill();
         cr.stroke();
 
         cr.save();
-        cr.rectangle(self.coordinate().0.into(), self.coordinate().1.into(), self.size().0 as f64 / scaler, self.size().1.into());
+        cr.rectangle(self.coordinate().0.into(), self.coordinate().1.into(), self.size().0 as f64, self.size().1.into());
         cr.clip();
 
         let font_extent = cr.font_extents();
@@ -132,9 +136,10 @@ impl BoxViewerWidget {
         self_.borrow_mut().scaler = value;
     }
 
-    fn renderer(objects: Vec<BoxObject>, cr: &cairo::Context, scaler: f64) {
-        objects.iter().for_each(|object| {
-            object.renderer(cr, scaler);
+    fn renderer(mut objects: Vec<BoxObject>, cr: &cairo::Context, scaler: f64) {
+        objects.iter_mut().for_each(|object| {
+            object.hscale(scaler);
+            object.renderer(cr);
         });
     }
 
