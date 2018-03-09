@@ -95,7 +95,7 @@ pub struct BoxViewerWidget {
     offset: i32,
     selecting_box_index: Option<usize>,
     flag_resize: bool,
-    callback_click_no_box: Box<Fn()>,
+    callback_click_no_box: Box<Fn(&gdk::EventButton)>,
     scaler: f64,
 }
 
@@ -111,7 +111,7 @@ impl BoxViewerWidget {
             offset: 0,
             selecting_box_index: None,
             flag_resize: false,
-            callback_click_no_box: Box::new(|| {}),
+            callback_click_no_box: Box::new(|_| {}),
             scaler: 1.0,
         }));
         BoxViewerWidget::create_ui(self_.clone());
@@ -163,14 +163,14 @@ impl BoxViewerWidget {
                 self__.borrow_mut().selecting_box_index = Some(object.index);
                 cont(object.index);
             } else {
-                (self__.borrow().callback_click_no_box)();
+                (self__.borrow().callback_click_no_box)(event);
             }
 
             Inhibit(false)
         });
     }
 
-    pub fn connect_click_no_box(self_: Rc<RefCell<BoxViewerWidget>>, cont: Box<Fn()>) {
+    pub fn connect_click_no_box(self_: Rc<RefCell<BoxViewerWidget>>, cont: Box<Fn(&gdk::EventButton)>) {
         self_.borrow_mut().callback_click_no_box = cont;
     }
 

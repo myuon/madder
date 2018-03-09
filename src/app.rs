@@ -503,9 +503,9 @@ impl App {
         }));
 
         let self__ = self_.clone();
-        app.timeline.borrow().ruler_connect_button_press_event(move |event| {
-            let (x,_) = event.get_position();
-            self__.borrow_mut().editor.seek_to(x as u64 * gst::MSECOND);
+        TimelineWidget::connect_ruler_seek_time(app.timeline.clone(), move |time| {
+            println!("{:?}", time);
+            self__.borrow_mut().editor.seek_to(time);
             self__.borrow().queue_draw();
 
             Inhibit(false)

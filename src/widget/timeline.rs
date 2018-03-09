@@ -1,10 +1,10 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 
+extern crate gstreamer as gst;
 extern crate gtk;
-use gtk::prelude::*;
-
 extern crate gdk;
+use gtk::prelude::*;
 use gdk::prelude::*;
 
 extern crate cairo;
@@ -96,9 +96,11 @@ impl TimelineWidget {
 
     pub fn create_menu(&self, menu: &gtk::Menu) {
         let menu = menu.clone();
-        BoxViewerWidget::connect_click_no_box(self.box_viewer.clone(), Box::new(move || {
-            menu.popup_easy(0, gtk::get_current_event_time());
-            menu.show_all();
+        BoxViewerWidget::connect_click_no_box(self.box_viewer.clone(), Box::new(move |event| {
+            if event.get_button() == 3 {
+                menu.popup_easy(0, gtk::get_current_event_time());
+                menu.show_all();
+            }
         }));
     }
 
@@ -114,9 +116,10 @@ impl TimelineWidget {
         BoxViewerWidget::connect_drag_box(self.box_viewer.clone(), cont_move, cont_resize);
     }
 
-    pub fn ruler_connect_button_press_event<F: Fn(&gdk::EventButton) -> gtk::Inhibit + 'static>(&self, cont: F) {
-        self.ruler_box.connect_button_press_event(move |_, event| {
-            cont(event)
+    pub fn connect_ruler_seek_time<F: Fn(gst::ClockTime) -> gtk::Inhibit + 'static>(self_: Rc<RefCell<TimelineWidget>>, cont: F) {
+        let ruler = self_.borrow().ruler.clone();
+        self_.borrow().ruler_box.connect_button_press_event(move |_, event| {
+            cont((event.get_position().0) as u64 * gst::MSECOND)
         });
     }
 
@@ -136,5 +139,6 @@ impl AsWidget for TimelineWidget {
 
     fn as_widget(&self) -> &Self::T {
         &self.grid
+
     }
 }

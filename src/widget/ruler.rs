@@ -10,7 +10,7 @@ use widget::AsWidget;
 
 pub struct RulerWidget {
     canvas: gtk::DrawingArea,
-    scaler: f64,
+    pub scaler: f64,
 }
 
 impl RulerWidget {
