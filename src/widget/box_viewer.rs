@@ -40,9 +40,16 @@ impl BoxObject {
 
     fn coordinate(&self) -> (i32,i32) { (self.x, self.layer_index as i32 * BoxObject::HEIGHT) }
     fn size(&self) -> (i32,i32) { (self.width, BoxObject::HEIGHT) }
-    fn hscale(&mut self, scaler: f64) {
-        self.x = (self.x as f64 / scaler) as i32;
-        self.width = (self.width as f64 / scaler) as i32;
+
+    fn hscaled(self, scaler: f64) -> Self {
+        BoxObject {
+            index: self.index,
+            x: (*&self.x as f64 / scaler) as i32,
+            width: (self.width as f64 / scaler) as i32,
+            label: self.label,
+            layer_index: self.layer_index,
+            selected: self.selected,
+        }
     }
 
     fn renderer(&self, cr: &cairo::Context) {
@@ -136,10 +143,9 @@ impl BoxViewerWidget {
         self_.borrow_mut().scaler = value;
     }
 
-    fn renderer(mut objects: Vec<BoxObject>, cr: &cairo::Context, scaler: f64) {
-        objects.iter_mut().for_each(|object| {
-            object.hscale(scaler);
-            object.renderer(cr);
+    fn renderer(objects: Vec<BoxObject>, cr: &cairo::Context, scaler: f64) {
+        objects.into_iter().for_each(|object| {
+            object.hscaled(scaler).renderer(cr);
         });
     }
 
@@ -152,7 +158,7 @@ impl BoxViewerWidget {
             let y = y as i32;
 
             let objects = self__.borrow().objects.clone();
-            if let Some(object) = objects.iter().find(|&object| object.contains(x,y)) {
+            if let Some(object) = objects.into_iter().find(|object| object.clone().hscaled(self__.borrow().scaler).contains(x,y)) {
                 self__.borrow_mut().offset = x;
                 self__.borrow_mut().selecting_box_index = Some(object.index);
                 cont(object.index);
