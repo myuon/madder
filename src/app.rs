@@ -504,20 +504,8 @@ impl App {
 
         let self__ = self_.clone();
         TimelineWidget::connect_ruler_seek_time(app.timeline.clone(), move |time| {
-            println!("{:?}", time);
             self__.borrow_mut().editor.seek_to(time);
             self__.borrow().queue_draw();
-
-            Inhibit(false)
-        });
-
-        let self__ = self_.clone();
-        app.timeline.borrow().tracker_connect_draw(move |cr| {
-            cr.set_source_rgb(200f64, 0f64, 0f64);
-
-            cr.move_to(self__.borrow().editor.get_by_pointer(Pointer::from_str("/position")).as_u64().unwrap() as f64, 0f64);
-            cr.rel_line_to(0f64, 100f64);
-            cr.stroke();
 
             Inhibit(false)
         });

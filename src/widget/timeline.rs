@@ -23,6 +23,7 @@ pub struct TimelineWidget {
     grid: gtk::Grid,
     overlay: gtk::Overlay,
     scaler: gtk::Scale,
+    tracking_position: i32,
 }
 
 // workaround for sharing a variable within callbacks
@@ -60,6 +61,7 @@ impl TimelineWidget {
             tracker: tracker,
             overlay: overlay,
             scaler: gtk::Scale::new_with_range(gtk::Orientation::Horizontal, 1.0, 10.0, 0.1),
+            tracking_position: 0,
         }));
         TimelineWidget::create_ui(w.clone(), width, height, length);
 
@@ -71,6 +73,17 @@ impl TimelineWidget {
         timeline.tracker.connect_realize(move |tracker| {
             let window = tracker.get_window().unwrap();
             window.set_pass_through(true);
+        });
+
+        let self__ = self_.clone();
+        timeline.tracker.connect_draw(move |_,cr| {
+            cr.set_source_rgb(200f64, 0f64, 0f64);
+
+            cr.move_to(self__.borrow().tracking_position as f64, 0f64);
+            cr.rel_line_to(0f64, 100f64);
+            cr.stroke();
+
+            Inhibit(false)
         });
 
         let scroll = gtk::ScrolledWindow::new(None, None);
@@ -118,14 +131,10 @@ impl TimelineWidget {
 
     pub fn connect_ruler_seek_time<F: Fn(gst::ClockTime) -> gtk::Inhibit + 'static>(self_: Rc<RefCell<TimelineWidget>>, cont: F) {
         let ruler = self_.borrow().ruler.clone();
+        let self__ = self_.clone();
         self_.borrow().ruler_box.connect_button_press_event(move |_, event| {
-            cont((event.get_position().0) as u64 * gst::MSECOND)
-        });
-    }
-
-    pub fn tracker_connect_draw<F: Fn(&cairo::Context) -> gtk::Inhibit + 'static>(&self, cont: F) {
-        self.tracker.connect_draw(move |_, cr| {
-            cont(cr)
+            self__.borrow_mut().tracking_position = event.get_position().0 as i32;
+            cont((event.get_position().0 * ruler.borrow().scaler) as u64 * gst::MSECOND)
         });
     }
 
