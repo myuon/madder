@@ -294,7 +294,7 @@ impl ComponentWrapper for Component {
             ("start_time", Time(v)) => self.start_time = v,
             ("length", Time(v)) => self.length = v,
             ("layer_index", Usize(v)) => self.layer_index = v,
-            _ => (),
+            _ => unimplemented!(),
         }
     }
 

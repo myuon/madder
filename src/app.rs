@@ -450,6 +450,10 @@ impl App {
                             "value": (position - this.start_time).mseconds().unwrap(),
                         })).unwrap()
                     ]).unwrap();
+
+                    let that = serde_json::from_value::<Component>(self___.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
+                    println!("{:?}\n{:?}", this, that);
+
                     self___.borrow().queue_draw();
                 });
 
@@ -475,16 +479,16 @@ impl App {
                     }
                 };
 
-                self__.borrow_mut().editor.set_component_property(
-                    index,
-                    "start_time",
-                    Property::Time(add_time(props.start_time, distance as f64)),
-                );
-                self__.borrow_mut().editor.set_component_property(
-                    index,
-                    "layer_index",
-                    Property::Usize(cmp::max(layer_index, 0)),
-                );
+                self__.borrow_mut().editor.patch_once(Operation::new_from_json(json!({
+                    "op": "add",
+                    "path": format!("/components/{}/start_time", index),
+                    "value": json!(add_time(props.start_time, distance as f64).mseconds().unwrap()),
+                })).unwrap()).unwrap();
+                self__.borrow_mut().editor.patch_once(Operation::new_from_json(json!({
+                    "op": "add",
+                    "path": format!("/components/{}/layer_index", index),
+                    "value": json!(cmp::max(layer_index, 0)),
+                })).unwrap()).unwrap();
                 self__.borrow().queue_draw();
             }),
             Box::new(move |index,distance| {

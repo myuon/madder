@@ -162,7 +162,6 @@ impl ComponentWrapper for VideoFileComponent {
             ("entity", FilePath(uri)) => self.reload(uri.as_str()),
             (x,y) => {
                 self.prop.common.set_property(x,y.clone());
-                self.component.set_property(x,y.clone());
             },
         }
     }

@@ -119,7 +119,6 @@ impl ComponentWrapper for TextComponent {
             },
             (x,y) => {
                 self.prop.common.set_property(x,y.clone());
-                self.component.set_property(x,y.clone());
             },
         }
     }

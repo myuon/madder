@@ -200,6 +200,10 @@ impl Editor {
         self.elements.as_index_mut(n).as_mut().set_property(key, serde_json::from_value(value).unwrap());
     }
 
+    fn add_components_n_prop_key(&mut self, n: IndexRange, key: &str, value: Value) {
+        self.elements.as_index_mut(n).set_property(key, serde_json::from_value(value).unwrap());
+    }
+
     fn add_components_n_effect_n_key(&mut self, n: IndexRange, m: IndexRange, key: &str, value: Value) {
         self.elements.as_index_mut(n).effect.as_index_mut(m).set_property(key, serde_json::from_value(value).unwrap());
     }
@@ -253,6 +257,7 @@ impl Patch for Editor {
                     &[ref c, ref n] if c == "components" => self.add_components_n(IndexRange::from_str(n).unwrap(),v),
                     &[ref c, ref n, ref e] if c == "components" && e == "effect" => self.add_components_n_effect(IndexRange::from_str(n).unwrap(), v),
                     &[ref c, ref n, ref e, ref m, ref key] if c == "components" && e == "effect" => self.add_components_n_effect_n_key(IndexRange::from_str(n).unwrap(), IndexRange::from_str(m).unwrap(), key.as_str(), v),
+                    &[ref c, ref n, ref p, ref key] if c == "components" && p == "prop" => self.add_components_n_prop_key(IndexRange::from_str(n).unwrap(), key.as_str(), v),
                     &[ref c, ref n, ref key] if c == "components" => self.add_components_n_key(IndexRange::from_str(n).unwrap(), key.as_str(), v),
                     _ => unimplemented!(),
                 }
