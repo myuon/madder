@@ -431,9 +431,32 @@ impl App {
         let app = self_.borrow();
 
         let self__ = self_.clone();
-        app.timeline.borrow().connect_select_component(Box::new(move |index| {
-            App::select_component(self__.clone(), index);
-        }));
+        let self___ = self_.clone();
+        TimelineWidget::connect_select_component(app.timeline.clone(),
+            Box::new(move |index| {
+                App::select_component(self__.clone(), index);
+            }),
+            Box::new(move |index, position| {
+                let menu = gtk::Menu::new();
+                let split_component_here = gtk::MenuItem::new_with_label("オブジェクトをこの位置で分割");
+                let self___ = self___.clone();
+                split_component_here.connect_activate(move |_| {
+                    let this = serde_json::from_value::<Component>(self___.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
+
+                    self___.borrow_mut().editor.patch(vec![
+                        Operation::new_from_json(json!({
+                            "op": "add",
+                            "path": format!("/components/{}/length", index),
+                            "value": (position - this.start_time).mseconds().unwrap(),
+                        })).unwrap()
+                    ]).unwrap();
+                    self___.borrow().queue_draw();
+                });
+
+                menu.append(&split_component_here);
+                menu
+            })
+        );
 
         let self__ = self_.clone();
         let self___ = self_.clone();

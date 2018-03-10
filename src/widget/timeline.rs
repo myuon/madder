@@ -131,8 +131,18 @@ impl TimelineWidget {
         self.box_viewer.borrow_mut().connect_request_objects(cont);
     }
 
-    pub fn connect_select_component(&self, cont: Box<Fn(usize)>) {
-        BoxViewerWidget::connect_select_box(self.box_viewer.clone(), cont);
+    pub fn connect_select_component(self_: Rc<RefCell<TimelineWidget>>, cont: Box<Fn(usize)>, cont_menu: Box<Fn(usize, gst::ClockTime) -> gtk::Menu>) {
+        let self__ = self_.clone();
+        BoxViewerWidget::connect_select_box(self_.borrow().box_viewer.clone(), Box::new(move |index, event| {
+            if event.get_button() == 1 {
+                cont(index)
+            } else if event.get_button() == 3 {
+                let length = (event.get_position().0 / self__.borrow().scaler.get_value()) as u64 * gst::MSECOND;
+                let menu = cont_menu(index, length);
+                menu.popup_easy(0, gtk::get_current_event_time());
+                menu.show_all();
+            }
+        }));
     }
 
     pub fn connect_drag_component(&self, cont_move: Box<Fn(usize, i32, usize)>, cont_resize: Box<Fn(usize, i32)>) {

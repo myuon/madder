@@ -146,7 +146,7 @@ impl BoxViewerWidget {
         });
     }
 
-    pub fn connect_select_box(self_: Rc<RefCell<BoxViewerWidget>>, cont: Box<Fn(usize)>) {
+    pub fn connect_select_box(self_: Rc<RefCell<BoxViewerWidget>>, cont: Box<Fn(usize, &gdk::EventButton)>) {
         let self__ = self_.clone();
         self_.borrow().canvas.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
         self_.borrow().canvas.connect_button_press_event(move |_,event| {
@@ -159,7 +159,7 @@ impl BoxViewerWidget {
             if let Some(object) = objects.into_iter().find(|object| object.clone().hscaled(scale).contains(x,y)) {
                 self__.borrow_mut().offset = x;
                 self__.borrow_mut().selecting_box_index = Some(object.index);
-                cont(object.index);
+                cont(object.index, event);
             } else {
                 (self__.borrow().cb_click_no_box)(event);
             }
