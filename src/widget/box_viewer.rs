@@ -95,8 +95,8 @@ pub struct BoxViewerWidget {
     offset: i32,
     selecting_box_index: Option<usize>,
     flag_resize: bool,
-    callback_click_no_box: Box<Fn(&gdk::EventButton)>,
-    scaler: f64,
+    cb_click_no_box: Box<Fn(&gdk::EventButton)>,
+    cb_get_scale: Box<Fn() -> f64>,
 }
 
 impl BoxViewerWidget {
@@ -111,8 +111,8 @@ impl BoxViewerWidget {
             offset: 0,
             selecting_box_index: None,
             flag_resize: false,
-            callback_click_no_box: Box::new(|_| {}),
-            scaler: 1.0,
+            cb_click_no_box: Box::new(|_| {}),
+            cb_get_scale: Box::new(|| { 1.0 }),
         }));
         BoxViewerWidget::create_ui(self_.clone());
 
@@ -132,15 +132,12 @@ impl BoxViewerWidget {
 
         self_.borrow().canvas.connect_draw(move |_,cr| {
             let objects = (self__.borrow().requester)();
-            BoxViewerWidget::renderer(objects.clone(), cr, self__.borrow().scaler);
+            let scale = (self__.borrow().cb_get_scale)();
+            BoxViewerWidget::renderer(objects.clone(), cr, scale);
             self__.borrow_mut().objects = objects;
 
             Inhibit(false)
         });
-    }
-
-    pub fn change_scale(self_: Rc<RefCell<BoxViewerWidget>>, value: f64) {
-        self_.borrow_mut().scaler = value;
     }
 
     fn renderer(objects: Vec<BoxObject>, cr: &cairo::Context, scaler: f64) {
@@ -158,12 +155,13 @@ impl BoxViewerWidget {
             let y = y as i32;
 
             let objects = self__.borrow().objects.clone();
-            if let Some(object) = objects.into_iter().find(|object| object.clone().hscaled(self__.borrow().scaler).contains(x,y)) {
+            let scale = (self__.borrow().cb_get_scale)();
+            if let Some(object) = objects.into_iter().find(|object| object.clone().hscaled(scale).contains(x,y)) {
                 self__.borrow_mut().offset = x;
                 self__.borrow_mut().selecting_box_index = Some(object.index);
                 cont(object.index);
             } else {
-                (self__.borrow().callback_click_no_box)(event);
+                (self__.borrow().cb_click_no_box)(event);
             }
 
             Inhibit(false)
@@ -171,7 +169,11 @@ impl BoxViewerWidget {
     }
 
     pub fn connect_click_no_box(self_: Rc<RefCell<BoxViewerWidget>>, cont: Box<Fn(&gdk::EventButton)>) {
-        self_.borrow_mut().callback_click_no_box = cont;
+        self_.borrow_mut().cb_click_no_box = cont;
+    }
+
+    pub fn connect_get_scale(self_: Rc<RefCell<BoxViewerWidget>>, cont: Box<Fn() -> f64>) {
+        self_.borrow_mut().cb_get_scale = cont;
     }
 
     pub fn connect_drag_box(self_: Rc<RefCell<BoxViewerWidget>>, cont_move: Box<Fn(usize, i32, usize)>, cont_resize: Box<Fn(usize, i32)>) {
@@ -184,9 +186,10 @@ impl BoxViewerWidget {
 
             let objects = self__.borrow().objects.clone();
             let window = canvas.get_window().unwrap();
+            let scale = (self__.borrow().cb_get_scale)();
 
             if event.get_state().contains(gdk::ModifierType::BUTTON1_MASK) {
-                let distance = ((x - self__.borrow().offset) as f64 * self__.borrow().scaler) as i32;
+                let distance = ((x - self__.borrow().offset) as f64 * scale) as i32;
                 let layer_index = y / BoxObject::HEIGHT;
 
                 if self__.borrow().flag_resize {
@@ -197,8 +200,8 @@ impl BoxViewerWidget {
                 self__.borrow_mut().offset = event.get_position().0 as i32;
             } else {
                 match objects.iter().find(|&object| object.contains(x,y)) {
-                    Some(object) if object.coordinate().0 + (object.size().0 as f64 / self__.borrow().scaler) as i32 - BoxObject::EDGE_WIDTH <= x
-                                 && x <= object.coordinate().0 + (object.size().0 as f64 / self__.borrow().scaler) as i32 => {
+                    Some(object) if object.coordinate().0 + (object.size().0 as f64 / scale) as i32 - BoxObject::EDGE_WIDTH <= x
+                                 && x <= object.coordinate().0 + (object.size().0 as f64 / scale) as i32 => {
                         window.set_cursor(&gdk::Cursor::new_from_name(&window.get_display(), "e-resize"));
                         self__.borrow_mut().flag_resize = true;
                     },

@@ -10,7 +10,7 @@ use widget::AsWidget;
 
 pub struct RulerWidget {
     canvas: gtk::DrawingArea,
-    pub scaler: f64,
+    cb_get_scale: Box<Fn() -> f64>,
 }
 
 impl RulerWidget {
@@ -20,7 +20,7 @@ impl RulerWidget {
 
         let w = Rc::new(RefCell::new(RulerWidget {
             canvas: ruler,
-            scaler: 1.0,
+            cb_get_scale: Box::new(|| { 1.0 }),
         }));
         RulerWidget::create_ui(w.clone(), width, height);
 
@@ -45,7 +45,9 @@ impl RulerWidget {
             let interval = 10;
             let interval_height = height as f64 * 0.6;
 
-            for x in (0..((width / interval) as f64 / self__.borrow().scaler) as i32).map(|x| x * interval) {
+            let scaler = (self__.borrow().cb_get_scale)();
+
+            for x in (0..(((width / interval) as f64) / scaler) as i32).map(|x| x * interval) {
                 cr.move_to(x as f64, interval_large_height);
 
                 let h = if x % interval_large == 0 { interval_large_height } else { interval_height };
@@ -53,7 +55,7 @@ impl RulerWidget {
 
                 if x % interval_large == 0 {
                     cr.move_to(x as f64 + 2.0, interval_height as f64 - 10.0);
-                    cr.show_text(&gst::ClockTime::from_mseconds(x as u64 * self__.borrow().scaler as u64).to_string()[0..10]);
+                    cr.show_text(&gst::ClockTime::from_mseconds(x as u64 * scaler as u64).to_string()[0..10]);
                 }
             }
 
@@ -62,8 +64,8 @@ impl RulerWidget {
         });
     }
 
-    pub fn change_scale(self_: Rc<RefCell<RulerWidget>>, value: f64) {
-        self_.borrow_mut().scaler = value;
+    pub fn connect_get_scale(self_: Rc<RefCell<RulerWidget>>, cb: Box<Fn() -> f64>) {
+        self_.borrow_mut().cb_get_scale = cb;
     }
 }
 

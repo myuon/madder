@@ -99,9 +99,19 @@ impl TimelineWidget {
         timeline.overlay.set_size_request(length, -1);
 
         let self__ = self_.clone();
+        let ruler_ = self_.borrow().ruler.clone();
+        RulerWidget::connect_get_scale(ruler_, Box::new(move || {
+            self__.borrow().scaler.get_value()
+        }));
+
+        let self__ = self_.clone();
+        let box_viewer_ = self__.borrow().box_viewer.clone();
+        BoxViewerWidget::connect_get_scale(box_viewer_, Box::new(move || {
+            self__.borrow().scaler.get_value()
+        }));
+
+        let self__ = self_.clone();
         self_.borrow().scaler.connect_value_changed(move |scaler| {
-            RulerWidget::change_scale(self__.borrow().ruler.clone(), scaler.get_value());
-            BoxViewerWidget::change_scale(self__.borrow().box_viewer.clone(), scaler.get_value());
             self__.borrow().overlay.set_size_request((length as f64 / scaler.get_value()) as i32, -1);
             self__.borrow().as_widget().queue_draw();
         });
@@ -130,11 +140,11 @@ impl TimelineWidget {
     }
 
     pub fn connect_ruler_seek_time<F: Fn(gst::ClockTime) -> gtk::Inhibit + 'static>(self_: Rc<RefCell<TimelineWidget>>, cont: F) {
-        let ruler = self_.borrow().ruler.clone();
+        let scaler = self_.borrow().scaler.clone();
         let self__ = self_.clone();
         self_.borrow().ruler_box.connect_button_press_event(move |_, event| {
             self__.borrow_mut().tracking_position = event.get_position().0 as i32;
-            cont((event.get_position().0 * ruler.borrow().scaler) as u64 * gst::MSECOND)
+            cont((event.get_position().0 * scaler.get_value()) as u64 * gst::MSECOND)
         });
     }
 
