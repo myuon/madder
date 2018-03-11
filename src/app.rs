@@ -163,11 +163,10 @@ impl App {
         {
             let app = app.clone();
             json.components.iter().for_each(move |item| {
-                app.borrow_mut().editor.patch_once(Operation::new_from_json(json!({
-                    "op": "add",
-                    "path": "/components",
-                    "value": item,
-                })).unwrap()).unwrap();
+                app.borrow_mut().editor.patch_once(Operation::Add(
+                    Pointer::from_str("/components"),
+                    item.clone(),
+                )).unwrap();
             });
         }
         app
@@ -182,10 +181,9 @@ impl App {
 
     fn remove_selected(self_: Rc<RefCell<App>>) {
         let index = self_.borrow().selected_component_index.unwrap();
-        self_.borrow_mut().editor.patch_once(Operation::new_from_json(json!({
-            "op": "remove",
-            "path": format!("/components/{}", index),
-        })).unwrap()).unwrap();
+        self_.borrow_mut().editor.patch_once(Operation::Remove(
+            Pointer::from_str(&format!("/components/{}", index))
+        )).unwrap();
         self_.borrow_mut().selected_component_index = None;
         self_.borrow().property.clear();
         self_.borrow().queue_draw();
@@ -248,16 +246,15 @@ impl App {
                 expander.dynamic_cast().unwrap()
             }),
             Box::new(move || {
-                self___.borrow_mut().editor.patch_once(Operation::new_from_json(json!({
-                    "op": "add",
-                    "path": format!("/components/{}/effect", index),
-                    "value": {
+                self___.borrow_mut().editor.patch_once(Operation::Add(
+                    Pointer::from_str(&format!("/components/{}/effect", index)),
+                    json!({
                         "effect_type": "CoordinateX",
                         "transition": "Linear",
                         "start_value": 0.0,
                         "end_value": 0.0,
-                    }
-                })).unwrap()).unwrap();
+                    }),
+                )).unwrap();
                 App::select_component(self___.clone(), index);
             }),
             Box::new(move |i| {
@@ -356,17 +353,16 @@ impl App {
                 }
                 dialog.run();
 
-                self__.borrow_mut().editor.patch_once(Operation::new_from_json(json!({
-                    "op": "add",
-                    "path": "/components",
-                    "value": {
+                self__.borrow_mut().editor.patch_once(Operation::Add(
+                    Pointer::from_str("/components"),
+                    json!({
                         "component_type": "Video",
                         "start_time": 0,
                         "length": 100,
                         "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
                         "layer_index": 0,
-                    }
-                })).unwrap()).unwrap();
+                    }),
+                )).unwrap();
 
                 self__.borrow().queue_draw();
                 dialog.destroy();
@@ -384,17 +380,16 @@ impl App {
                 }
                 dialog.run();
 
-                self__.borrow_mut().editor.patch_once(Operation::new_from_json(json!({
-                    "op": "add",
-                    "path": "/components",
-                    "value": {
+                self__.borrow_mut().editor.patch_once(Operation::Add(
+                    Pointer::from_str("/components"),
+                    json!({
                         "component_type": "Image",
                         "start_time": 0,
                         "length": 100,
                         "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
                         "layer_index": 0,
-                    }
-                })).unwrap()).unwrap();
+                    }),
+                )).unwrap();
 
                 self__.borrow().queue_draw();
                 dialog.destroy();
@@ -402,18 +397,17 @@ impl App {
 
             let self__ = self_.clone();
             text_item.connect_activate(move |_| {
-                self__.borrow_mut().editor.patch_once(Operation::new_from_json(json!({
-                    "op": "add",
-                    "path": "/components",
-                    "value": {
+                self__.borrow_mut().editor.patch_once(Operation::Add(
+                    Pointer::from_str("/components"),
+                    json!({
                         "component_type": "Text",
                         "start_time": 0,
                         "length": 100,
                         "entity": "dummy entity",
                         "layer_index": 0,
                         "coordinate": [50, 50],
-                    }
-                })).unwrap()).unwrap();
+                    }),
+                )).unwrap();
 
                 self__.borrow().queue_draw();
             });
@@ -444,11 +438,10 @@ impl App {
                     let this = serde_json::from_value::<Component>(self___.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
 
                     self___.borrow_mut().editor.patch(vec![
-                        Operation::new_from_json(json!({
-                            "op": "add",
-                            "path": format!("/components/{}/length", index),
-                            "value": (position - this.start_time).mseconds().unwrap(),
-                        })).unwrap()
+                        Operation::Add(
+                            Pointer::from_str(&format!("/components/{}/length", index)),
+                            json!((position - this.start_time).mseconds().unwrap()),
+                        )
                     ]).unwrap();
 
                     let that = serde_json::from_value::<Component>(self___.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
@@ -479,16 +472,14 @@ impl App {
                     }
                 };
 
-                self__.borrow_mut().editor.patch_once(Operation::new_from_json(json!({
-                    "op": "add",
-                    "path": format!("/components/{}/start_time", index),
-                    "value": json!(add_time(props.start_time, distance as f64).mseconds().unwrap()),
-                })).unwrap()).unwrap();
-                self__.borrow_mut().editor.patch_once(Operation::new_from_json(json!({
-                    "op": "add",
-                    "path": format!("/components/{}/layer_index", index),
-                    "value": json!(cmp::max(layer_index, 0)),
-                })).unwrap()).unwrap();
+                self__.borrow_mut().editor.patch_once(Operation::Add(
+                    Pointer::from_str(&format!("/components/{}/start_time", index)),
+                    json!(add_time(props.start_time, distance as f64).mseconds().unwrap()),
+                )).unwrap();
+                self__.borrow_mut().editor.patch_once(Operation::Add(
+                    Pointer::from_str(&format!("/components/{}/layer_index", index)),
+                    json!(cmp::max(layer_index, 0)),
+                )).unwrap();
                 self__.borrow().queue_draw();
             }),
             Box::new(move |index,distance| {
@@ -505,11 +496,10 @@ impl App {
                     }
                 };
 
-                self___.borrow_mut().editor.set_component_property(
-                    index,
-                    "length",
-                    Property::Time(add_time(props.length, distance as f64)),
-                );
+                self___.borrow_mut().editor.patch_once(Operation::Add(
+                    Pointer::from_str(&format!("/components/{}/length", index)),
+                    json!(add_time(props.length, distance as f64).mseconds().unwrap()),
+                )).unwrap();
                 self___.borrow().queue_draw();
             }),
         );
