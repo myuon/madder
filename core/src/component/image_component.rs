@@ -14,12 +14,19 @@ struct ImageProperty {
 }
 
 impl HasProperty for ImageProperty {
-    fn get_props(&self) -> Properties {
+    fn keys() -> Vec<String> {
+        let mut keys = CommonProperty::keys();
+        keys.append(&mut vec!["entity"].into_iter().map(|x| x.to_string()).collect());
+        keys
+    }
+
+    fn get_prop(&self, name: &str) -> Property {
         use Property::*;
 
-        let mut props = self.common.get_props();
-        props.push(("entity".to_string(), FilePath(self.entity.clone())));
-        props
+        match name {
+            "entity" => FilePath(self.entity.clone()),
+            _ => self.common.get_prop(name),
+        }
     }
 
     fn set_prop(&mut self, name: &str, prop: Property) {

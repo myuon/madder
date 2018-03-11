@@ -130,21 +130,26 @@ pub struct Effect {
 }
 
 impl HasProperty for Effect {
-    fn get_props(&self) -> Properties {
+    fn keys() -> Vec<String> {
+        vec!["effect_type", "transition", "start_value", "end_value"].iter().map(|x| x.to_string()).collect()
+    }
+
+    fn get_prop(&self, name: &str) -> Property {
         use Property::*;
 
-        [
-            ("effect_type".to_string(), Choose(
+        match name {
+            "effect_type" => Choose(
                 EffectType::types().iter().map(|x| format!("{:?}", x)).collect(),
                 EffectType::types().iter().position(|x| x == &self.effect_type),
-            )),
-            ("transitions".to_string(), Choose(
+            ),
+            "transitions" => Choose(
                 Transition::transitions().iter().map(|x| format!("{:?}", x)).collect(),
                 Transition::transitions().iter().position(|x| x == &self.transition),
-            )),
-            ("start_value".to_string(), F64(self.start_value)),
-            ("end_value".to_string(), F64(self.end_value)),
-        ].iter().cloned().collect()
+            ),
+            "start_value" => F64(self.start_value),
+            "end_value" => F64(self.end_value),
+            _ => unimplemented!(),
+        }
     }
 
     fn set_prop(&mut self, name: &str, prop: Property) {

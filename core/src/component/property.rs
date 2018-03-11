@@ -105,8 +105,14 @@ impl Property {
 pub type Properties = Vec<(String, Property)>;
 
 pub trait HasProperty {
-    fn get_props(&self) -> Properties;
+    fn keys() -> Vec<String>;
+
+    fn get_prop(&self, name: &str) -> Property;
     fn set_prop(&mut self, name: &str, prop: Property);
+
+    fn get_props(&self) -> Properties {
+        Self::keys().into_iter().map(|key| (key.to_string(), self.get_prop(&key))).collect()
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -125,15 +131,20 @@ pub struct CommonProperty {
 }
 
 impl HasProperty for CommonProperty {
-    fn get_props(&self) -> Properties {
+    fn keys() -> Vec<String> {
+        vec!["coordinate", "rotate", "alpha", "scale"].iter().map(|x| x.to_string()).collect()
+    }
+
+    fn get_prop(&self, name: &str) -> Property {
         use Property::*;
 
-        vec![
-            ("coordinate".to_string(), Pair(box I32(self.coordinate.0), box I32(self.coordinate.1))),
-            ("rotate".to_string(), F64(self.rotate)),
-            ("alpha".to_string(), I32(self.alpha)),
-            ("scale".to_string(), Pair(box F64(self.scale.0), box F64(self.scale.1))),
-        ]
+        match name {
+            "coordinate" => Pair(box I32(self.coordinate.0), box I32(self.coordinate.1)),
+            "rotate" => F64(self.rotate),
+            "alpha" => I32(self.alpha),
+            "scale" => Pair(box F64(self.scale.0), box F64(self.scale.1)),
+            _ => unimplemented!(),
+        }
     }
 
     fn set_prop(&mut self, name: &str, prop: Property) {
@@ -144,7 +155,7 @@ impl HasProperty for CommonProperty {
             ("rotate", F64(n)) => self.rotate = n,
             ("alpha", I32(n)) => self.alpha = n,
             ("scale", Pair(box F64(x), box F64(y))) => self.scale = (x,y),
-            _ => (),
+            _ => unimplemented!(),
         }
     }
 }

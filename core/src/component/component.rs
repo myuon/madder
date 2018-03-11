@@ -118,15 +118,20 @@ impl AsMut<Component> for Component {
 }
 
 impl HasProperty for Component {
-    fn get_props(&self) -> Properties {
+    fn keys() -> Vec<String> {
+        vec!["component_type", "start_time", "length", "layer_index"].iter().map(|x| x.to_string()).collect()
+    }
+
+    fn get_prop(&self, name: &str) -> Property {
         use Property::*;
 
-        vec![
-            ("component_type".to_string(), ReadOnly(format!("{:?}", self.component_type))),
-            ("start_time".to_string(), Time(self.start_time)),
-            ("length".to_string(), Time(self.length)),
-            ("layer_index".to_string(), Usize(self.layer_index)),
-        ]
+        match name {
+            "component_type" => ReadOnly(format!("{:?}", self.component_type)),
+            "start_time" => Time(self.start_time),
+            "length" => Time(self.length),
+            "layer_index" => Usize(self.layer_index),
+            _ => unimplemented!(),
+        }
     }
 
     fn set_prop(&mut self, name: &str, prop: Property) {

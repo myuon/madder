@@ -209,18 +209,46 @@ impl Editor {
 impl Patch for Editor {
     fn get_by_pointer(&self, path: Pointer) -> Value {
         match path.0.as_slice() {
-            &[ref c] if c == "width" => json!(self.width),
-            &[ref c] if c == "height" => json!(self.height),
-            &[ref c] if c == "length" => json!(self.length.mseconds().unwrap()),
-            &[ref c] if c == "position" => json!(self.position.mseconds().unwrap()),
-            &[ref c] if c == "components" => serde_json::to_value(self.elements.iter().map(|c: &Box<ComponentLike>| c.as_value()).collect::<Vec<_>>()).unwrap(),
-            &[ref c, ref n] if c == "components" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_ref().as_ref()).unwrap(),
-            &[ref c, ref n, ref e] if c == "components" && e == "effect" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.clone()).unwrap(),
-            &[ref c, ref n, ref e, ref m] if c == "components" && e == "effect" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap())).unwrap(),
-            &[ref c, ref n, ref e, ref m, ref key] if c == "components" && e == "effect" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap())).unwrap().as_object().unwrap()[key].clone(),
-            &[ref c, ref n, ref e] if c == "components" && e == "info" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_info()).unwrap(),
-            &[ref c, ref n, ref key] if c == "components" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_ref().as_ref()).unwrap().as_object().unwrap()[key].clone(),
-            _ => unimplemented!(),
+            &[ref c] if c == "width" => {
+                json!(self.width)
+            },
+            &[ref c] if c == "height" => {
+                json!(self.height)
+            },
+            &[ref c] if c == "length" => {
+                json!(self.length.mseconds().unwrap())
+            },
+            &[ref c] if c == "position" => {
+                json!(self.position.mseconds().unwrap())
+            },
+            &[ref c] if c == "components" => {
+                serde_json::to_value(self.elements.iter().map(|c: &Box<ComponentLike>| c.as_value()).collect::<Vec<_>>()).unwrap()
+            },
+            &[ref c, ref n] if c == "components" => {
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_ref().as_ref()).unwrap()
+            },
+            &[ref c, ref n, ref e] if c == "components" && e == "effect" => {
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.clone()).unwrap()
+            },
+            &[ref c, ref n, ref e, ref m] if c == "components" && e == "effect" => {
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap())).unwrap()
+            },
+            &[ref c, ref n, ref e, ref m, ref key] if c == "components" && e == "effect" => {
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap())).unwrap().as_object().unwrap()[key].clone()
+            },
+            &[ref c, ref n, ref e] if c == "components" && e == "info" => {
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_info()).unwrap()
+            },
+            &[ref c, ref n, ref p] if c == "components" && p == "prop" => {
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_ref().get_props()).unwrap().clone()
+            },
+            &[ref c, ref n, ref p] if c == "components" && p == "prop" => {
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_ref().get_props()).unwrap().clone()
+            },
+            &[ref c, ref n, ref key] if c == "components" => {
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_ref().as_ref()).unwrap().as_object().unwrap()[key].clone()
+            },
+            z => panic!(format!("Call get_by_pointer with unexisting path: {:?}", z)),
         }
     }
 

@@ -31,14 +31,21 @@ fn default_text_font() -> String {
 }
 
 impl HasProperty for TextProperty {
-    fn get_props(&self) -> Properties {
+    fn keys() -> Vec<String> {
+        let mut keys = CommonProperty::keys();
+        keys.append(&mut vec!["entity"].into_iter().map(|x| x.to_string()).collect());
+        keys
+    }
+
+    fn get_prop(&self, name: &str) -> Property {
         use Property::*;
 
-        let mut props = self.common.get_props();
-        props.push(("entity".to_string(), Document(self.entity.clone())));
-        props.push(("text_font".to_string(), Font(self.text_font.clone())));
-        props.push(("text_color".to_string(), Color(self.text_color.clone())));
-        props
+        match name {
+            "entity" => Document(self.entity.clone()),
+            "text_font" => Font(self.text_font.clone()),
+            "text_color" => Color(self.text_color.clone()),
+            _ => self.common.get_prop(name),
+        }
     }
 
     fn set_prop(&mut self, name: &str, prop: Property) {
