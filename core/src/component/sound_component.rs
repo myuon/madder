@@ -41,7 +41,7 @@ pub struct SoundComponent {
 
 impl SoundComponent {
     pub fn new_from_json(json: serde_json::Value) -> SoundComponent {
-        let prop = serde_json::from_value::<SoundProperty>(json.clone()).unwrap();
+        let prop = serde_json::from_value::<SoundProperty>(json.as_object().unwrap()["prop"].clone()).unwrap();
 
         SoundComponent {
             component: serde_json::from_value(json).unwrap(),

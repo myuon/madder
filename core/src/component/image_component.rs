@@ -43,7 +43,7 @@ pub struct ImageComponent {
 impl ImageComponent {
     pub fn new_from_json(json: serde_json::Value) -> ImageComponent {
         let common = serde_json::from_value::<CommonProperty>(json.clone()).unwrap();
-        let mut prop = serde_json::from_value::<ImageProperty>(json.clone()).unwrap();
+        let mut prop = serde_json::from_value::<ImageProperty>(json.as_object().unwrap()["prop"].clone()).unwrap();
         prop.common = common;
 
         ImageComponent {

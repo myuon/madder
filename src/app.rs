@@ -514,14 +514,15 @@ impl App {
 
         let self__ = self_.clone();
         app.timeline.borrow().connect_request_objects(Box::new(move || {
-            serde_json::from_value::<Vec<serde_json::Value>>(self__.borrow().editor.get_by_pointer(Pointer::from_str("/components"))).unwrap().iter().enumerate().map(|(i,value)| {
-                let component = serde_json::from_value::<Component>(value.clone()).unwrap();
+            let self___ = self__.clone();
+            serde_json::from_value::<Vec<Component>>(self__.borrow().editor.get_by_pointer(Pointer::from_str("/components"))).unwrap().iter().enumerate().map(|(i,component)| {
+                let entity = self___.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/prop/entity", i)));
 
                 BoxObject::new(
                     component.start_time.mseconds().unwrap() as i32,
                     component.length.mseconds().unwrap() as i32,
                     i
-                ).label(value.as_object().unwrap()["entity"].as_str().unwrap().to_string())
+                ).label(format!("{:?}", entity.as_str()))
                     .selected(Some(i) == self__.borrow().selected_component_index)
                     .layer_index(component.layer_index)
             }).collect()

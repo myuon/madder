@@ -21,9 +21,9 @@ impl Component {
     pub fn new_from_json(json: serde_json::Value) -> Box<ComponentLike> {
         match json.as_object().unwrap()["component_type"].as_str().unwrap() {
             "Video" => Box::new(VideoFileComponent::new_from_json(json)),
-//            "Image" => Box::new(ImageComponent::new_from_json(json)),
-//            "Text" => Box::new(TextComponent::new_from_json(json)),
-//            "Sound" => Box::new(SoundComponent::new_from_json(json)),
+            "Image" => Box::new(ImageComponent::new_from_json(json)),
+            "Text" => Box::new(TextComponent::new_from_json(json)),
+            "Sound" => Box::new(SoundComponent::new_from_json(json)),
             _ => unimplemented!(),
         }
     }

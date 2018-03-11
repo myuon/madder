@@ -73,7 +73,7 @@ pub struct TextComponent {
 impl TextComponent {
     pub fn new_from_json(json: serde_json::Value) -> TextComponent {
         let common = serde_json::from_value::<CommonProperty>(json.clone()).unwrap();
-        let mut prop = serde_json::from_value::<TextProperty>(json.clone()).unwrap();
+        let mut prop = serde_json::from_value::<TextProperty>(json.as_object().unwrap()["prop"].clone()).unwrap();
         prop.common = common;
 
         TextComponent {
