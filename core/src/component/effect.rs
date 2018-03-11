@@ -5,6 +5,8 @@ extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 extern crate serde;
 
+use component::property::*;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum EffectType {
     CoordinateX,
@@ -125,6 +127,43 @@ pub struct Effect {
     pub transition: Transition,
     pub start_value: f64,
     pub end_value: f64,
+}
+
+impl HasProperty for Effect {
+    fn get_props(&self) -> Properties {
+        use Property::*;
+
+        [
+            ("effect_type".to_string(), Choose(
+                EffectType::types().iter().map(|x| format!("{:?}", x)).collect(),
+                EffectType::types().iter().position(|x| x == &self.effect_type),
+            )),
+            ("transitions".to_string(), Choose(
+                Transition::transitions().iter().map(|x| format!("{:?}", x)).collect(),
+                Transition::transitions().iter().position(|x| x == &self.transition),
+            )),
+            ("start_value".to_string(), F64(self.start_value)),
+            ("end_value".to_string(), F64(self.end_value)),
+        ].iter().cloned().collect()
+    }
+
+    fn set_prop(&mut self, name: &str, prop: Property) {
+        match name {
+            "effect_type" => {
+                self.effect_type = EffectType::types()[prop.as_choose().unwrap()].clone();
+            },
+            "transition" => {
+                self.transition = Transition::transitions()[prop.as_choose().unwrap()].clone();
+            },
+            "start_value" => {
+                self.start_value = prop.as_f64().unwrap();
+            },
+            "end_value" => {
+                self.end_value = prop.as_f64().unwrap();
+            },
+            _ => unimplemented!(),
+        }
+    }
 }
 
 impl Effect {

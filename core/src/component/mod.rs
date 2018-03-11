@@ -1,7 +1,7 @@
-mod effect;
-pub use self::effect::*;
 mod property;
 pub use self::property::*;
+mod effect;
+pub use self::effect::*;
 mod component;
 pub use self::component::*;
 

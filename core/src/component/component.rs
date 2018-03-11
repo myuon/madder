@@ -48,16 +48,6 @@ impl EffectOn for Effect {
     }
 }
 
-impl HasProperty for Effect {
-    fn get_props(&self) -> Properties {
-        unimplemented!()
-    }
-
-    fn set_prop(&mut self, name: &str, prop: Property) {
-        unimplemented!()
-    }
-}
-
 pub trait Peekable {
     fn get_duration(&self) -> gst::ClockTime;
     fn peek(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf>;
@@ -158,37 +148,6 @@ impl ComponentWrapper for Component {
 
     fn get_info(&self) -> String {
         format!("Component")
-    }
-}
-
-impl Effect {
-    pub fn get_property(&self) -> Properties {
-        use Property::*;
-
-        [
-            ("effect_type".to_string(), Choose(format!("EffectType"), EffectType::types().iter().position(|p| p == &self.effect_type).unwrap() as i32)),
-            ("transition".to_string(), Choose(format!("Transition"), Transition::transitions().iter().position(|p| p == &self.transition).unwrap() as i32)),
-            ("start_value".to_string(), F64(self.start_value)),
-            ("end_value".to_string(), F64(self.end_value)),
-        ].iter().cloned().collect()
-    }
-
-    pub fn set_property(&mut self, name: &str, prop: Property) {
-        match name {
-            "effect_type" => {
-                self.effect_type = EffectType::types()[prop.as_choose().unwrap() as usize].clone();
-            },
-            "transition" => {
-                self.transition = Transition::transitions()[prop.as_choose().unwrap() as usize].clone();
-            },
-            "start_value" => {
-                self.start_value = prop.as_f64().unwrap();
-            },
-            "end_value" => {
-                self.end_value = prop.as_f64().unwrap();
-            },
-            _ => unimplemented!(),
-        }
     }
 }
 

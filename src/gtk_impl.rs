@@ -118,27 +118,20 @@ pub fn edit_type_as_widget(self_: &Property, tracker: Vec<Tracker>, cont: Rc<Fn(
             });
             colorbtn.dynamic_cast().unwrap()
         },
-        &Choose(ref name, ref i) => {
-            let make_widget = |items: Vec<String>| {
-                let combo = gtk::ComboBoxText::new();
-                for item in items {
-                    combo.append_text(item.as_str());
-                }
-                combo.set_active(i.clone() as i32);
-
-                let name = name.to_string();
-                combo.connect_changed(move |combo| {
-                    cont(Some(Choose(name.clone(), combo.get_active())), &tracker.clone());
-                });
-
-                combo.dynamic_cast().unwrap()
-            };
-
-            match name {
-                _ if name == &format!("{:?}", Tracker::EffectType) => make_widget(EffectType::types().iter().map(|x| format!("{:?}", x)).collect()),
-                _ if name == &format!("{:?}", Tracker::Transition) => make_widget(Transition::transitions().iter().map(|x| format!("{:?}", x)).collect()),
-                _ => unimplemented!(),
+        &Choose(ref labels, ref i) => {
+            let combo = gtk::ComboBoxText::new();
+            for item in labels {
+                combo.append_text(item.as_str());
             }
+            combo.set_active(i.unwrap() as i32);
+
+            let labels = Rc::new(labels.clone());
+            let labels = labels.clone();
+            combo.connect_changed(move |combo| {
+                cont(Some(Choose((*labels).clone(), Some(combo.get_active() as usize))), &tracker.clone());
+            });
+
+            combo.dynamic_cast().unwrap()
         },
     }
 }

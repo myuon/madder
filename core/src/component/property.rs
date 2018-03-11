@@ -26,7 +26,7 @@ pub enum Property {
     Color(gdk::RGBA),
 
     ReadOnly(String),
-    Choose(String,i32),
+    Choose(Vec<String>,Option<usize>),
 }
 
 pub fn gdk_rgba_serialize<S: serde::Serializer>(self_: &gdk::RGBA, serializer: S) -> Result<S::Ok, S::Error> {
@@ -92,11 +92,11 @@ impl Property {
         }
     }
 
-    pub fn as_choose(&self) -> Option<i32> {
+    pub fn as_choose(&self) -> Option<usize> {
         use Property::*;
 
         match self {
-            &Choose(_,t) => Some(t),
+            &Choose(_,Some(t)) => Some(t),
             _ => None,
         }
     }

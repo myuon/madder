@@ -185,7 +185,7 @@ impl Editor {
     }
 
     fn add_components_n_effect_n_key(&mut self, n: IndexRange, m: IndexRange, key: &str, value: Value) {
-        self.elements.as_index_mut(n).effect.as_index_mut(m).set_property(key, serde_json::from_value(value).unwrap());
+        self.elements.as_index_mut(n).effect.as_index_mut(m).set_prop(key, serde_json::from_value(value).unwrap());
     }
 
     fn remove_components_n(&mut self, index: IndexRange) {
