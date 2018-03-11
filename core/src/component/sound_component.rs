@@ -16,7 +16,7 @@ impl HasProperty for SoundProperty {
     fn get_props(&self) -> Properties {
         use Property::*;
 
-        let mut props = self.get_props();
+        let mut props = vec![];
         props.push(("entity".to_string(), FilePath(self.entity.clone())));
         props
     }
@@ -112,7 +112,7 @@ impl ComponentWrapper for SoundComponent {
             props
         };
 
-        json.as_object_mut().unwrap().insert("property".to_string(), json!(props));
+        json.as_object_mut().unwrap().insert("prop".to_string(), json!(props));
         json
     }
 

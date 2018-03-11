@@ -106,7 +106,7 @@ impl ComponentWrapper for ImageComponent {
             props
         };
 
-        json.as_object_mut().unwrap().insert("property".to_string(), json!(props));
+        json.as_object_mut().unwrap().insert("prop".to_string(), json!(props));
         json
     }
 

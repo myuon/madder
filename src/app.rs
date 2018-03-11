@@ -195,7 +195,7 @@ impl App {
         let self__ = self_.clone();
         self_.borrow().property.append_page("component", GridPage::new(
             self_.borrow().property.width,
-            self_.borrow().editor.request_component_property(index),
+            serde_json::from_value(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/prop", index)))).unwrap(),
             Box::new(move |prop_index, prop_name, prop| {
                 let prop_index = Rc::new(prop_index);
                 let prop_name = Rc::new(prop_name.to_string());
@@ -203,9 +203,12 @@ impl App {
 
                 gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
                     // request the property again, since in this callback the value of property might have been changed
-                    let prop = self__.borrow().editor.request_component_property(index)[*prop_index].1.clone();
+                    let prop = serde_json::from_value::<Properties>(self__.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/prop", index)))).unwrap()[*prop_index].1.clone();
                     if let Some(new_prop) = new_prop {
-                        self__.borrow_mut().editor.set_component_property(index, &prop_name.as_str(), gtk_impl::recover_property(prop, tracker, new_prop));
+                        self__.borrow_mut().editor.patch_once(Operation::Add(
+                            Pointer::from_str(&format!("/components/{}/prop/{}", index, prop_name.as_str())),
+                            json!(gtk_impl::recover_property(prop, tracker, new_prop)),
+                        )).unwrap();
                     }
 
                     self__.borrow().queue_draw();
@@ -218,7 +221,7 @@ impl App {
         let self____ = self_.clone();
         self_.borrow().property.append_page("effect", BoxPage::new(
             self_.borrow().property.width,
-            self_.borrow().editor.request_effect_property(index),
+            serde_json::from_value::<Vec<Properties>>(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/effect", index)))).unwrap(),
             Box::new(move |prop_index, prop_vec| {
                 let prop_index = Rc::new(prop_index);
                 let self__ = self__.clone();
@@ -234,9 +237,12 @@ impl App {
 
                     vbox.pack_start(&gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop,tracker| {
                         // request the property again, since in this callback the value of property might have been changed
-                        let prop = self__.borrow().editor.request_effect_property(index)[*prop_index][i].1.clone();
+                        let prop = serde_json::from_value::<Vec<Properties>>(self__.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/effect", index)))).unwrap()[*prop_index][i].1.clone();
                         if let Some(new_prop) = new_prop {
-                            self__.borrow_mut().editor.set_effect_property(index, *prop_index, prop_name.as_ref(), gtk_impl::recover_property(prop, tracker, new_prop));
+                            self__.borrow_mut().editor.patch_once(Operation::Add(
+                                Pointer::from_str(&format!("/components/{}/effect/{}/{}", index, *prop_index, prop_name.as_str())),
+                                json!(gtk_impl::recover_property(prop, tracker, new_prop)),
+                            )).unwrap();
                         }
 
                         self__.borrow().queue_draw();
@@ -258,7 +264,9 @@ impl App {
                 App::select_component(self___.clone(), index);
             }),
             Box::new(move |i| {
-                self____.borrow_mut().editor.remove_effect_property(index, i);
+                self____.borrow_mut().editor.patch_once(Operation::Remove(
+                    Pointer::from_str(&format!("/components/{}/effect/{}", index, i)),
+                )).unwrap();
                 App::select_component(self____.clone(), index);
             }),
         ));
