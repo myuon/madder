@@ -76,34 +76,6 @@ struct VideoFileProperty {
     entity: String,
 }
 
-impl HasProperty for VideoFileProperty {
-    fn keys() -> Vec<String> {
-        let mut keys = CommonProperty::keys();
-        keys.append(&mut vec!["entity"].iter().map(|x| x.to_string()).collect());
-        keys
-    }
-
-    fn get_prop(&self, name: &str) -> Property {
-        use Property::*;
-
-        match name {
-            "entity" => FilePath(self.entity.clone()),
-            _ => self.common.get_prop(name),
-        }
-    }
-
-    fn set_prop(&mut self, name: &str, prop: Property) {
-        use Property::*;
-
-        match (name, prop) {
-            ("entity", FilePath(uri)) => unimplemented!(),
-            (x,y) => {
-                self.common.set_prop(x,y.clone());
-            },
-        }
-    }
-}
-
 pub struct VideoFileComponent {
     component: Component,
     data: gst::Element,
@@ -179,14 +151,14 @@ impl ComponentWrapper for VideoFileComponent {
         let mut json = serde_json::to_value(self.as_ref()).unwrap();
         let props = {
             let mut props = serde_json::Map::new();
-            for (k,v) in self.prop.get_props() {
+            for (k,v) in self.get_props() {
                 props.insert(k, serde_json::to_value(v).unwrap());
             }
 
             props
         };
 
-        json.as_object_mut().unwrap().insert("property".to_string(), json!(props));
+        json.as_object_mut().unwrap().insert("prop".to_string(), json!(props));
         json
     }
 
@@ -197,4 +169,37 @@ impl ComponentWrapper for VideoFileComponent {
         )
     }
 }
+
+impl VideoFileComponent {
+    fn keys() -> Vec<String> {
+        vec_add!(CommonProperty::keys(), strings!["entity"])
+    }
+}
+
+impl HasProperty for VideoFileComponent {
+    fn get_props(&self) -> Properties {
+        self._make_get_props(Self::keys())
+    }
+
+    fn get_prop(&self, name: &str) -> Property {
+        use Property::*;
+
+        match name {
+            "entity" => FilePath(self.prop.entity.clone()),
+            _ => self.prop.common.get_prop(name),
+        }
+    }
+
+    fn set_prop(&mut self, name: &str, prop: Property) {
+        use Property::*;
+
+        match (name, prop) {
+            ("entity", FilePath(uri)) => unimplemented!(),
+            (x,y) => {
+                self.prop.common.set_prop(x,y.clone());
+            },
+        }
+    }
+}
+
 

@@ -1,0 +1,6 @@
+[package]
+name = "madder-util"
+version = "0.1.0"
+authors = ["myuon <ioi.joi.koi.loi@gmail.com>"]
+
+[dependencies]

@@ -130,8 +130,8 @@ pub struct Effect {
 }
 
 impl HasProperty for Effect {
-    fn keys() -> Vec<String> {
-        vec!["effect_type", "transition", "start_value", "end_value"].iter().map(|x| x.to_string()).collect()
+    fn get_props(&self) -> Properties {
+        self._make_get_props(strings!["effect_type", "transition", "start_value", "end_value"])
     }
 
     fn get_prop(&self, name: &str) -> Property {

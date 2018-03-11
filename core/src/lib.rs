@@ -20,6 +20,8 @@ use avi_renderer::AviRenderer;
 #[macro_use] extern crate serde_json;
 use serde_json::Value;
 
+#[macro_use] extern crate madder_util as util;
+
 pub mod component;
 pub use self::component::*;
 
@@ -177,11 +179,11 @@ impl Editor {
     }
 
     fn add_components_n_key(&mut self, n: IndexRange, key: &str, value: Value) {
-        self.elements.as_index_mut(n).as_mut().set_prop(key, serde_json::from_value(value).unwrap());
+//        self.elements.as_index_mut(n).as_mut().set_prop(key, serde_json::from_value(value).unwrap());
     }
 
     fn add_components_n_prop_key(&mut self, n: IndexRange, key: &str, value: Value) {
-        self.elements.as_index_mut(n).set_prop(key, serde_json::from_value(value).unwrap());
+//        self.elements.as_index_mut(n).set_prop(key, serde_json::from_value(value).unwrap());
     }
 
     fn add_components_n_effect_n_key(&mut self, n: IndexRange, m: IndexRange, key: &str, value: Value) {
@@ -225,7 +227,7 @@ impl Patch for Editor {
                 serde_json::to_value(self.elements.iter().map(|c: &Box<ComponentLike>| c.as_value()).collect::<Vec<_>>()).unwrap()
             },
             &[ref c, ref n] if c == "components" => {
-                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_ref().as_ref()).unwrap()
+                self.elements.as_index(IndexRange::from_str(n).unwrap()).as_value()
             },
             &[ref c, ref n, ref e] if c == "components" && e == "effect" => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.clone()).unwrap()
@@ -240,13 +242,13 @@ impl Patch for Editor {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_info()).unwrap()
             },
             &[ref c, ref n, ref p] if c == "components" && p == "prop" => {
-                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_ref().get_props()).unwrap().clone()
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_props()).unwrap()
             },
-            &[ref c, ref n, ref p] if c == "components" && p == "prop" => {
-                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_ref().get_props()).unwrap().clone()
+            &[ref c, ref n, ref p, ref key] if c == "components" && p == "prop" => {
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_prop(key)).unwrap()
             },
             &[ref c, ref n, ref key] if c == "components" => {
-                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_ref().as_ref()).unwrap().as_object().unwrap()[key].clone()
+                panic!("/components/n/hoge")
             },
             z => panic!(format!("Call get_by_pointer with unexisting path: {:?}", z)),
         }

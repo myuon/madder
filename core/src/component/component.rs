@@ -117,6 +117,7 @@ impl AsMut<Component> for Component {
     }
 }
 
+/*
 impl HasProperty for Component {
     fn keys() -> Vec<String> {
         vec!["component_type", "start_time", "length", "layer_index"].iter().map(|x| x.to_string()).collect()
@@ -130,7 +131,7 @@ impl HasProperty for Component {
             "start_time" => Time(self.start_time),
             "length" => Time(self.length),
             "layer_index" => Usize(self.layer_index),
-            _ => unimplemented!(),
+            z => panic!("Key `{}` not found in the property", z),
         }
     }
 
@@ -145,6 +146,7 @@ impl HasProperty for Component {
         }
     }
 }
+ */
 
 impl ComponentWrapper for Component {
     fn as_value(&self) -> serde_json::Value {
@@ -156,8 +158,8 @@ impl ComponentWrapper for Component {
     }
 }
 
-pub trait ComponentLike: ComponentWrapper + Peekable {}
-impl<T: ComponentWrapper + Peekable> ComponentLike for T {}
+pub trait ComponentLike: ComponentWrapper + Peekable + HasProperty {}
+impl<T: ComponentWrapper + Peekable + HasProperty> ComponentLike for T {}
 
 impl Deref for ComponentLike {
     type Target = Component;

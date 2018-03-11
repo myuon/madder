@@ -105,13 +105,12 @@ impl Property {
 pub type Properties = Vec<(String, Property)>;
 
 pub trait HasProperty {
-    fn keys() -> Vec<String>;
-
     fn get_prop(&self, name: &str) -> Property;
+    fn get_props(&self) -> Properties;
     fn set_prop(&mut self, name: &str, prop: Property);
 
-    fn get_props(&self) -> Properties {
-        Self::keys().into_iter().map(|key| (key.to_string(), self.get_prop(&key))).collect()
+    fn _make_get_props(&self, keys: Vec<String>) -> Properties {
+        keys.into_iter().map(|key| (key.to_string(), self.get_prop(&key))).collect()
     }
 }
 
@@ -130,11 +129,13 @@ pub struct CommonProperty {
     pub scale: (f64, f64),
 }
 
-impl HasProperty for CommonProperty {
-    fn keys() -> Vec<String> {
-        vec!["coordinate", "rotate", "alpha", "scale"].iter().map(|x| x.to_string()).collect()
+impl CommonProperty {
+    pub fn keys() -> Vec<String> {
+        strings!["coordinate", "rotate", "alpha", "scale"]
     }
+}
 
+impl HasProperty for CommonProperty {
     fn get_prop(&self, name: &str) -> Property {
         use Property::*;
 
@@ -145,6 +146,10 @@ impl HasProperty for CommonProperty {
             "scale" => Pair(box F64(self.scale.0), box F64(self.scale.1)),
             _ => unimplemented!(),
         }
+    }
+
+    fn get_props(&self) -> Properties {
+        self._make_get_props(Self::keys())
     }
 
     fn set_prop(&mut self, name: &str, prop: Property) {

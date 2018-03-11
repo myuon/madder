@@ -30,47 +30,6 @@ fn default_text_font() -> String {
     "Serif 24".to_string()
 }
 
-impl HasProperty for TextProperty {
-    fn keys() -> Vec<String> {
-        let mut keys = CommonProperty::keys();
-        keys.append(&mut vec!["entity"].into_iter().map(|x| x.to_string()).collect());
-        keys
-    }
-
-    fn get_prop(&self, name: &str) -> Property {
-        use Property::*;
-
-        match name {
-            "entity" => Document(self.entity.clone()),
-            "text_font" => Font(self.text_font.clone()),
-            "text_color" => Color(self.text_color.clone()),
-            _ => self.common.get_prop(name),
-        }
-    }
-
-    fn set_prop(&mut self, name: &str, prop: Property) {
-        use Property::*;
-
-        match (name, prop) {
-            ("entity", Document(doc)) => {
-                self.entity = doc;
-                unimplemented!();
-            },
-            ("text_font", Font(font)) => {
-                self.text_font = font;
-                unimplemented!();
-            },
-            ("text_color", Color(rgba)) => {
-                self.text_color = rgba;
-                unimplemented!();
-            },
-            (x,y) => {
-                self.common.set_prop(x,y.clone());
-            },
-        }
-    }
-}
-
 pub struct TextComponent {
     component: Component,
     data: gdk_pixbuf::Pixbuf,
@@ -136,7 +95,7 @@ impl ComponentWrapper for TextComponent {
         let mut json = serde_json::to_value(self.as_ref()).unwrap();
         let props = {
             let mut props = serde_json::Map::new();
-            for (k,v) in self.prop.get_props() {
+            for (k,v) in self.get_props() {
                 props.insert(k, serde_json::to_value(v).unwrap());
             }
 
@@ -149,6 +108,51 @@ impl ComponentWrapper for TextComponent {
 
     fn get_info(&self) -> String {
         format!("text")
+    }
+}
+
+impl TextComponent {
+    fn keys() -> Vec<String> {
+        vec_add!(CommonProperty::keys(), strings!["entity"])
+    }
+}
+
+impl HasProperty for TextComponent {
+    fn get_props(&self) -> Properties {
+        self._make_get_props(Self::keys())
+    }
+
+    fn get_prop(&self, name: &str) -> Property {
+        use Property::*;
+
+        match name {
+            "entity" => Document(self.prop.entity.clone()),
+            "text_font" => Font(self.prop.text_font.clone()),
+            "text_color" => Color(self.prop.text_color.clone()),
+            _ => self.prop.common.get_prop(name),
+        }
+    }
+
+    fn set_prop(&mut self, name: &str, prop: Property) {
+        use Property::*;
+
+        match (name, prop) {
+            ("entity", Document(doc)) => {
+                self.prop.entity = doc;
+                unimplemented!();
+            },
+            ("text_font", Font(font)) => {
+                self.prop.text_font = font;
+                unimplemented!();
+            },
+            ("text_color", Color(rgba)) => {
+                self.prop.text_color = rgba;
+                unimplemented!();
+            },
+            (x,y) => {
+                self.prop.common.set_prop(x,y.clone());
+            },
+        }
     }
 }
 

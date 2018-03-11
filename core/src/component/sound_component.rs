@@ -12,32 +12,6 @@ struct SoundProperty {
     entity: String,
 }
 
-impl HasProperty for SoundProperty {
-    fn keys() -> Vec<String> {
-        vec!["entity"].iter().map(|x| x.to_string()).collect()
-    }
-
-    fn get_prop(&self, name: &str) -> Property {
-        use Property::*;
-
-        match name {
-            "entity" => Document(self.entity.clone()),
-            _ => unimplemented!(),
-        }
-    }
-
-    fn set_prop(&mut self, name: &str, prop: Property) {
-        use Property::*;
-
-        match (name, prop) {
-            ("entity", FilePath(doc)) => {
-                unimplemented!();
-            },
-            _ => unimplemented!(),
-        }
-    }
-}
-
 pub struct SoundComponent {
     component: Component,
     data: gst::Pipeline,
@@ -110,7 +84,7 @@ impl ComponentWrapper for SoundComponent {
         let mut json = serde_json::to_value(self.as_ref()).unwrap();
         let props = {
             let mut props = serde_json::Map::new();
-            for (k,v) in self.prop.get_props() {
+            for (k,v) in self.get_props() {
                 props.insert(k, serde_json::to_value(v).unwrap());
             }
 
@@ -127,6 +101,38 @@ impl ComponentWrapper for SoundComponent {
 
     fn get_audio_pipeline(&self) -> Option<&gst::Pipeline> {
         Some(&self.data)
+    }
+}
+
+impl SoundComponent {
+    fn keys() -> Vec<String> {
+        strings!["entity"]
+    }
+}
+
+impl HasProperty for SoundComponent {
+    fn get_props(&self) -> Properties {
+        self._make_get_props(Self::keys())
+    }
+
+    fn get_prop(&self, name: &str) -> Property {
+        use Property::*;
+
+        match name {
+            "entity" => Document(self.prop.entity.clone()),
+            _ => unimplemented!(),
+        }
+    }
+
+    fn set_prop(&mut self, name: &str, prop: Property) {
+        use Property::*;
+
+        match (name, prop) {
+            ("entity", FilePath(doc)) => {
+                unimplemented!();
+            },
+            _ => unimplemented!(),
+        }
     }
 }
 
