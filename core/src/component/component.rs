@@ -236,6 +236,8 @@ impl Property {
 pub type Properties = Vec<(String, Property)>;
 
 pub trait ComponentWrapper : AsRef<Component> + AsMut<Component> {
+    fn as_value(&self) -> serde_json::Value;
+
     fn get_properties(&self) -> Properties {
         self.as_ref().get_properties()
     }
@@ -276,6 +278,10 @@ impl AsMut<Component> for Component {
 }
 
 impl ComponentWrapper for Component {
+    fn as_value(&self) -> serde_json::Value {
+        self.get_properties_as_value()
+    }
+
     fn get_properties(&self) -> Properties {
         use Property::*;
 

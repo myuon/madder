@@ -79,6 +79,12 @@ impl AsMut<Component> for SoundComponent {
 }
 
 impl ComponentWrapper for SoundComponent {
+    fn as_value(&self) -> serde_json::Value {
+        let mut json = self.component.get_properties_as_value().as_object().unwrap().clone();
+        json.insert("prop".to_string(), self.get_properties_as_value());
+        json!(json)
+    }
+
     fn get_properties(&self) -> Properties {
         use Property::*;
 
