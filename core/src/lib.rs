@@ -83,26 +83,6 @@ impl Editor {
         self.position = time;
     }
 
-    pub fn request_component_property(&self, index: usize) -> Properties {
-        self.elements[index].get_properties()
-    }
-
-    pub fn request_effect_property(&self, index: usize) -> Vec<Properties> {
-        self.elements[index].get_effect_properties()
-    }
-
-    pub fn set_effect_property(&mut self, index: usize, i: usize, name: &str, prop: Property) {
-        self.elements[index].effect[i].set_property(name, prop);
-    }
-
-    pub fn remove_effect_property(&mut self, index: usize, i: usize) {
-        self.elements[index].as_mut().effect.remove(i);
-    }
-
-    pub fn set_component_property(&mut self, index: usize, name: &str, prop: Property) {
-        self.elements[index].set_property(name, prop);
-    }
-
     pub fn get_current_pixbuf(&self) -> gdk_pixbuf::Pixbuf {
         let pixbuf = unsafe { gdk_pixbuf::Pixbuf::new(0, false, 8, self.width, self.height).unwrap() };
 
@@ -120,7 +100,7 @@ impl Editor {
 
         for elem in elems.iter().rev() {
             if let Some(mut dest) = elem.peek(self.position) {
-                let mut common_prop = serde_json::from_value::<CommonProperty>(elem.as_ref().get_properties_as_value()).unwrap_or(std::default::Default::default());
+                let mut common_prop = serde_json::from_value::<CommonProperty>(elem.as_ref().as_value()).unwrap_or(std::default::Default::default());
                 let mut elem = elem.as_ref().as_ref().clone();
                 dest = Effect::get_rotated_pixbuf(dest, common_prop.rotate);
 
@@ -197,11 +177,11 @@ impl Editor {
     }
 
     fn add_components_n_key(&mut self, n: IndexRange, key: &str, value: Value) {
-        self.elements.as_index_mut(n).as_mut().set_property(key, serde_json::from_value(value).unwrap());
+        self.elements.as_index_mut(n).as_mut().set_prop(key, serde_json::from_value(value).unwrap());
     }
 
     fn add_components_n_prop_key(&mut self, n: IndexRange, key: &str, value: Value) {
-        self.elements.as_index_mut(n).set_property(key, serde_json::from_value(value).unwrap());
+        self.elements.as_index_mut(n).set_prop(key, serde_json::from_value(value).unwrap());
     }
 
     fn add_components_n_effect_n_key(&mut self, n: IndexRange, m: IndexRange, key: &str, value: Value) {
@@ -233,7 +213,7 @@ impl Patch for Editor {
             &[ref c] if c == "height" => json!(self.height),
             &[ref c] if c == "length" => json!(self.length.mseconds().unwrap()),
             &[ref c] if c == "position" => json!(self.position.mseconds().unwrap()),
-            &[ref c] if c == "components" => serde_json::to_value(self.elements.iter().map(|c: &Box<ComponentLike>| c.as_ref().get_properties_as_value()).collect::<Vec<_>>()).unwrap(),
+            &[ref c] if c == "components" => serde_json::to_value(self.elements.iter().map(|c: &Box<ComponentLike>| c.as_value()).collect::<Vec<_>>()).unwrap(),
             &[ref c, ref n] if c == "components" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_ref().as_ref()).unwrap(),
             &[ref c, ref n, ref e] if c == "components" && e == "effect" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.clone()).unwrap(),
             &[ref c, ref n, ref e, ref m] if c == "components" && e == "effect" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap())).unwrap(),

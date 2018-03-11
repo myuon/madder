@@ -7,9 +7,10 @@ extern crate pangocairo;
 extern crate serde;
 extern crate serde_json;
 
+use component::property::*;
 use component::component::*;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 struct TextProperty {
     #[serde(default)]
     common: CommonProperty,
@@ -27,6 +28,40 @@ struct TextProperty {
 
 fn default_text_font() -> String {
     "Serif 24".to_string()
+}
+
+impl HasProperty for TextProperty {
+    fn get_props(&self) -> Properties {
+        use Property::*;
+
+        let mut props = self.common.get_props();
+        props.push(("entity".to_string(), Document(self.entity.clone())));
+        props.push(("text_font".to_string(), Font(self.text_font.clone())));
+        props.push(("text_color".to_string(), Color(self.text_color.clone())));
+        props
+    }
+
+    fn set_prop(&mut self, name: &str, prop: Property) {
+        use Property::*;
+
+        match (name, prop) {
+            ("entity", Document(doc)) => {
+                self.entity = doc;
+                unimplemented!();
+            },
+            ("text_font", Font(font)) => {
+                self.text_font = font;
+                unimplemented!();
+            },
+            ("text_color", Color(rgba)) => {
+                self.text_color = rgba;
+                unimplemented!();
+            },
+            (x,y) => {
+                self.common.set_prop(x,y.clone());
+            },
+        }
+    }
 }
 
 pub struct TextComponent {
@@ -91,42 +126,18 @@ impl AsMut<Component> for TextComponent {
 
 impl ComponentWrapper for TextComponent {
     fn as_value(&self) -> serde_json::Value {
-        let mut json = self.component.get_properties_as_value().as_object().unwrap().clone();
-        json.insert("prop".to_string(), self.get_properties_as_value());
-        json!(json)
-    }
+        let mut json = serde_json::to_value(self.as_ref()).unwrap();
+        let props = {
+            let mut props = serde_json::Map::new();
+            for (k,v) in self.prop.get_props() {
+                props.insert(k, serde_json::to_value(v).unwrap());
+            }
 
-    fn get_properties(&self) -> Properties {
-        use Property::*;
+            props
+        };
 
-        let mut props = self.component.get_properties();
-        props.append(&mut self.prop.common.get_properties());
-        props.push(("entity".to_string(), Document(self.prop.entity.clone())));
-        props.push(("text_font".to_string(), Font(self.prop.text_font.clone())));
-        props.push(("text_color".to_string(), Color(self.prop.text_color.clone())));
-        props
-    }
-
-    fn set_property(&mut self, name: &str, prop: Property) {
-        use Property::*;
-
-        match (name, prop) {
-            ("entity", Document(doc)) => {
-                self.prop.entity = doc;
-                self.reload()
-            },
-            ("text_font", Font(font)) => {
-                self.prop.text_font = font;
-                self.reload();
-            },
-            ("text_color", Color(rgba)) => {
-                self.prop.text_color = rgba;
-                self.reload();
-            },
-            (x,y) => {
-                self.prop.common.set_property(x,y.clone());
-            },
-        }
+        json.as_object_mut().unwrap().insert("property".to_string(), json!(props));
+        json
     }
 
     fn get_info(&self) -> String {
