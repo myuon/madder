@@ -142,13 +142,13 @@ impl HasProperty for Effect {
                 EffectType::types().iter().map(|x| format!("{:?}", x)).collect(),
                 EffectType::types().iter().position(|x| x == &self.effect_type),
             ),
-            "transitions" => Choose(
+            "transition" => Choose(
                 Transition::transitions().iter().map(|x| format!("{:?}", x)).collect(),
                 Transition::transitions().iter().position(|x| x == &self.transition),
             ),
             "start_value" => F64(self.start_value),
             "end_value" => F64(self.end_value),
-            _ => unimplemented!(),
+            z => panic!("Effect has no such property: {}", z),
         }
     }
 

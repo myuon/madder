@@ -230,7 +230,7 @@ impl Patch for Editor {
                 self.elements.as_index(IndexRange::from_str(n).unwrap()).as_value()
             },
             &[ref c, ref n, ref e] if c == "components" && e == "effect" => {
-                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.clone()).unwrap()
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_effect()).unwrap()
             },
             &[ref c, ref n, ref e, ref m] if c == "components" && e == "effect" => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap())).unwrap()
