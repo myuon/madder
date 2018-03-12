@@ -179,11 +179,11 @@ impl Editor {
     }
 
     fn add_components_n_key(&mut self, n: IndexRange, key: &str, value: Value) {
-//        self.elements.as_index_mut(n).as_mut().set_prop(key, serde_json::from_value(value).unwrap());
+        self.elements.as_index_mut(n).as_mut().set_prop(key, serde_json::from_value(value).unwrap());
     }
 
     fn add_components_n_prop_key(&mut self, n: IndexRange, key: &str, value: Value) {
-//        self.elements.as_index_mut(n).set_prop(key, serde_json::from_value(value).unwrap());
+        self.elements.as_index_mut(n).set_prop(key, serde_json::from_value(value).unwrap());
     }
 
     fn add_components_n_effect_n_key(&mut self, n: IndexRange, m: IndexRange, key: &str, value: Value) {
@@ -253,10 +253,10 @@ impl Patch for Editor {
                     "start_time" => serde_json::to_value(Property::Time(self.elements.as_index(IndexRange::from_str(n).unwrap()).start_time)).unwrap(),
                     "length" => serde_json::to_value(Property::Time(self.elements.as_index(IndexRange::from_str(n).unwrap()).length)).unwrap(),
                     "layer_index" => serde_json::to_value(Property::Usize(self.elements.as_index(IndexRange::from_str(n).unwrap()).layer_index)).unwrap(),
-                    _ => unimplemented!(),
+                    z => panic!("Call get_by_pointer with unexisting path: /components/index/{}", z),
                 }
             },
-            z => panic!(format!("Call get_by_pointer with unexisting path: {:?}", z)),
+            z => panic!("Call get_by_pointer with unexisting path: {:?}", z),
         }
     }
 
@@ -274,7 +274,14 @@ impl Patch for Editor {
                     &[ref c, ref n, ref e] if c == "components" && e == "effect" => self.add_components_n_effect(IndexRange::from_str(n).unwrap(), v),
                     &[ref c, ref n, ref e, ref m, ref key] if c == "components" && e == "effect" => self.add_components_n_effect_n_key(IndexRange::from_str(n).unwrap(), IndexRange::from_str(m).unwrap(), key.as_str(), v),
                     &[ref c, ref n, ref p, ref key] if c == "components" && p == "prop" => self.add_components_n_prop_key(IndexRange::from_str(n).unwrap(), key.as_str(), v),
-                    &[ref c, ref n, ref key] if c == "components" => self.add_components_n_key(IndexRange::from_str(n).unwrap(), key.as_str(), v),
+                    &[ref c, ref n, ref key] if c == "components" => {
+                        match key.as_str() {
+                            "start_time" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).start_time = serde_json::from_value::<Property>(v).unwrap().as_time().unwrap(),
+                            "length" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).length = serde_json::from_value::<Property>(v).unwrap().as_time().unwrap(),
+                            "layer_index" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).layer_index = serde_json::from_value(v).unwrap(),
+                            _ => unimplemented!(),
+                        }
+                    },
                     _ => unimplemented!(),
                 }
             },

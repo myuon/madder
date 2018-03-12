@@ -208,7 +208,7 @@ impl App {
 
                 gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
                     // request the property again, since in this callback the value of property might have been changed
-                    let prop = serde_json::from_value::<Property>(self__.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/{}", index, *prop_index)))).unwrap().clone();
+                    let prop = serde_json::from_value::<Property>(self__.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/{}", index, *prop_name)))).unwrap().clone();
                     if let Some(new_prop) = new_prop {
                         self__.borrow_mut().editor.patch_once(Operation::Add(
                             Pointer::from_str(&format!("/components/{}/{}", index, prop_name.as_str())),
