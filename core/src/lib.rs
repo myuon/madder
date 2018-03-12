@@ -278,7 +278,7 @@ impl Patch for Editor {
                         match key {
                             "start_time" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).start_time = serde_json::from_value::<Property>(v).unwrap().as_time().unwrap(),
                             "length" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).length = serde_json::from_value::<Property>(v).unwrap().as_time().unwrap(),
-                            "layer_index" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).layer_index = serde_json::from_value(v).unwrap(),
+                            "layer_index" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).layer_index = serde_json::from_value::<Property>(v).unwrap().as_usize().unwrap(),
                             _ => unimplemented!(),
                         }
                     },

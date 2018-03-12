@@ -201,8 +201,7 @@ impl App {
                 ("length".to_string(), serde_json::from_value::<Property>(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/length", index)))).unwrap()),
                 ("layer_index".to_string(), serde_json::from_value::<Property>(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/layer_index", index)))).unwrap()),
             ],
-            Box::new(move |prop_index, prop_name, prop| {
-                let prop_index = Rc::new(prop_index);
+            Box::new(move |_, prop_name, prop| {
                 let prop_name = Rc::new(prop_name.to_string());
                 let self__ = self__.clone();
 
@@ -511,11 +510,11 @@ impl App {
 
                 self__.borrow_mut().editor.patch_once(Operation::Add(
                     Pointer::from_str(&format!("/components/{}/start_time", index)),
-                    json!(add_time(props.start_time, distance as f64).mseconds().unwrap()),
+                    json!(Property::Time(add_time(props.start_time, distance as f64))),
                 )).unwrap();
                 self__.borrow_mut().editor.patch_once(Operation::Add(
                     Pointer::from_str(&format!("/components/{}/layer_index", index)),
-                    json!(cmp::max(layer_index, 0)),
+                    json!(Property::Usize(cmp::max(layer_index, 0))),
                 )).unwrap();
                 self__.borrow().queue_draw();
             }),
@@ -535,7 +534,7 @@ impl App {
 
                 self___.borrow_mut().editor.patch_once(Operation::Add(
                     Pointer::from_str(&format!("/components/{}/length", index)),
-                    json!(add_time(props.length, distance as f64).mseconds().unwrap()),
+                    json!(Property::Time(add_time(props.length, distance as f64))),
                 )).unwrap();
                 self___.borrow().queue_draw();
             }),

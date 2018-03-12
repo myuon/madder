@@ -74,6 +74,15 @@ impl Property {
         }
     }
 
+    pub fn as_usize(&self) -> Option<usize> {
+        use Property::*;
+
+        match self {
+            &Usize(t) => Some(t),
+            _ => None,
+        }
+    }
+
     pub fn as_i32(&self) -> Option<i32> {
         use Property::*;
 
