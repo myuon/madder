@@ -3,9 +3,10 @@ use std::rc::Rc;
 extern crate gstreamer as gst;
 extern crate gtk;
 extern crate gdk;
-
 use gtk::prelude::*;
+
 use madder_core::*;
+use widget::*;
 
 #[derive(Clone, Debug)]
 pub enum Tracker {
@@ -159,4 +160,14 @@ pub fn recover_property(dynamic_type: Property, tracker: &[Tracker], value: Prop
     }
 }
 
+pub struct ComponentRenderer {
+    pub object: BoxObject,
+    pub object_type: ComponentType,
+}
+
+impl AsRef<BoxObject> for ComponentRenderer {
+    fn as_ref(&self) -> &BoxObject {
+        &self.object
+    }
+}
 

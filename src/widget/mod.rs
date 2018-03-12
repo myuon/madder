@@ -5,7 +5,7 @@ mod ruler;
 pub use self::ruler::RulerWidget;
 
 mod box_viewer;
-pub use self::box_viewer::{BoxViewerWidget, BoxObject};
+pub use self::box_viewer::*;
 
 mod timeline;
 pub use self::timeline::TimelineWidget;

@@ -10,10 +10,7 @@ use gdk::prelude::*;
 extern crate cairo;
 extern crate pango;
 
-use widget::AsWidget;
-use widget::RulerWidget;
-use widget::BoxViewerWidget;
-use widget::BoxObject;
+use widget::*;
 
 pub struct TimelineWidget {
     box_viewer: Rc<RefCell<BoxViewerWidget>>,
@@ -127,8 +124,8 @@ impl TimelineWidget {
         }));
     }
 
-    pub fn connect_request_objects(&self, cont: Box<Fn() -> Vec<BoxObject>>) {
-        self.box_viewer.borrow_mut().connect_request_objects(cont);
+    pub fn setup_object_renderer<T: 'static + AsRef<BoxObject>>(&self, cont: Box<Fn() -> Vec<T>>, renderer: Box<Fn(&T, f64, &cairo::Context)>) {
+        BoxViewerWidget::setup(self.box_viewer.clone(), cont, renderer);
     }
 
     pub fn connect_select_component(self_: Rc<RefCell<TimelineWidget>>, cont: Box<Fn(usize)>, cont_menu: Box<Fn(usize, gst::ClockTime) -> gtk::Menu>) {

@@ -545,19 +545,49 @@ impl App {
         );
 
         let self__ = self_.clone();
-        app.timeline.borrow().connect_request_objects(Box::new(move || {
+        let self___ = self_.clone();
+
+        app.timeline.borrow().setup_object_renderer(Box::new(move || {
             let self___ = self__.clone();
             serde_json::from_value::<Vec<Component>>(self__.borrow().editor.get_by_pointer(Pointer::from_str("/components"))).unwrap().iter().enumerate().map(|(i,component)| {
                 let entity = serde_json::from_value::<Property>(self___.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
 
-                BoxObject::new(
+                let obj = BoxObject::new(
                     component.start_time.mseconds().unwrap() as i32,
                     component.length.mseconds().unwrap() as i32,
                     i
                 ).label(format!("{:?}", entity))
                     .selected(Some(i) == self__.borrow().selected_component_index)
-                    .layer_index(component.layer_index)
+                    .layer_index(component.layer_index);
+
+                gtk_impl::ComponentRenderer {
+                    object: obj,
+                    object_type: component.component_type.clone(),
+                }
+
             }).collect()
+        }), Box::new(move |robj, scaler, cr| {
+            let self___ = self___.clone();
+            let region = robj.object.clone().hscaled(scaler);
+
+            match robj.object_type {
+                ComponentType::Video => {
+                    for i in 0..(region.size().0 / BoxObject::HEIGHT) {
+                        if let Some(pixbuf) = self___.borrow().editor.elements[robj.object.index].peek((i * BoxObject::HEIGHT) as u64 * gst::MSECOND) {
+                            cr.set_source_pixbuf(&pixbuf.scale_simple(BoxObject::HEIGHT, BoxObject::HEIGHT, 0).unwrap(), (region.coordinate().0 + BoxObject::HEIGHT * i) as f64, region.coordinate().1 as f64);
+                            cr.rectangle((region.coordinate().0 + BoxObject::HEIGHT * i) as f64, region.coordinate().1 as f64, region.size().0 as f64, region.size().1 as f64);
+                            cr.fill();
+                        }
+                    }
+                },
+                ComponentType::Image => {
+                    let pixbuf = self___.borrow().editor.elements[robj.object.index].peek(0 * gst::MSECOND).unwrap();
+                    cr.set_source_pixbuf(&pixbuf.scale_simple(50, 50, 0).unwrap(), region.coordinate().0 as f64, region.coordinate().1 as f64);
+                    cr.rectangle(region.coordinate().0 as f64, region.coordinate().1 as f64, region.size().0 as f64, region.size().1 as f64);
+                    cr.fill();
+                },
+                _ => (),
+            }
         }));
 
         let self__ = self_.clone();

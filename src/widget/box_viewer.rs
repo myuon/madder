@@ -3,6 +3,7 @@ use std::cell::RefCell;
 
 extern crate gtk;
 extern crate gdk;
+extern crate gdk_pixbuf;
 extern crate cairo;
 use gtk::prelude::*;
 use gdk::prelude::*;
@@ -20,7 +21,7 @@ pub struct BoxObject {
 }
 
 impl BoxObject {
-    const HEIGHT: i32 = 30;
+    pub const HEIGHT: i32 = 50;
     const EDGE_WIDTH: i32 = 15;
 
     pub fn new(x: i32, width: i32, index: usize) -> BoxObject {
@@ -38,10 +39,10 @@ impl BoxObject {
     pub fn selected(mut self: BoxObject, selected: bool) -> BoxObject { self.selected = selected; self }
     pub fn layer_index(mut self: BoxObject, layer_index: usize) -> BoxObject { self.layer_index = layer_index; self }
 
-    fn coordinate(&self) -> (i32,i32) { (self.x, self.layer_index as i32 * BoxObject::HEIGHT) }
-    fn size(&self) -> (i32,i32) { (self.width, BoxObject::HEIGHT) }
+    pub fn coordinate(&self) -> (i32,i32) { (self.x, self.layer_index as i32 * BoxObject::HEIGHT) }
+    pub fn size(&self) -> (i32,i32) { (self.width, BoxObject::HEIGHT) }
 
-    fn hscaled(self, scaler: f64) -> Self {
+    pub fn hscaled(self, scaler: f64) -> Self {
         BoxObject {
             index: self.index,
             x: (*&self.x as f64 / scaler) as i32,
@@ -52,7 +53,7 @@ impl BoxObject {
         }
     }
 
-    fn renderer(&self, cr: &cairo::Context) {
+    fn renderer(&self, cr: &cairo::Context, method: &Fn(&cairo::Context)) {
         if self.selected {
             cr.set_source_rgba(0.0, 0.0, 0.0, 0.5);
             cr.rectangle(self.coordinate().0 as f64 - 2.0, self.coordinate().1 as f64 - 2.0, self.size().0 as f64 + 4.0, self.size().1 as f64 + 4.0);
@@ -66,6 +67,7 @@ impl BoxObject {
         cr.set_source_rgba(0.5, 0.5, 0.5, 0.5);
         cr.rectangle(self.coordinate().0 as f64 + self.size().0 as f64 - BoxObject::EDGE_WIDTH as f64, self.coordinate().1.into(), BoxObject::EDGE_WIDTH as f64, self.size().1.into());
         cr.fill();
+        method(cr);
         cr.stroke();
 
         cr.save();
@@ -91,7 +93,6 @@ impl BoxObject {
 pub struct BoxViewerWidget {
     canvas: gtk::DrawingArea,
     objects: Vec<BoxObject>,
-    requester: Box<Fn() -> Vec<BoxObject>>,
     offset: i32,
     selecting_box_index: Option<usize>,
     flag_resize: bool,
@@ -104,45 +105,36 @@ impl BoxViewerWidget {
         let canvas = gtk::DrawingArea::new();
         canvas.set_size_request(-1, height);
 
-        let self_ = Rc::new(RefCell::new(BoxViewerWidget {
+        Rc::new(RefCell::new(BoxViewerWidget {
             canvas: canvas,
             objects: vec![],
-            requester: Box::new(|| vec![]),
             offset: 0,
             selecting_box_index: None,
             flag_resize: false,
             cb_click_no_box: Box::new(|_| {}),
             cb_get_scale: Box::new(|| { 1.0 }),
-        }));
-        BoxViewerWidget::create_ui(self_.clone());
-
-        self_
+        }))
     }
 
     pub fn set_model(&mut self, objects: Vec<BoxObject>) {
         self.objects = objects
     }
 
-    pub fn connect_request_objects(&mut self, cont: Box<Fn() -> Vec<BoxObject>>) {
-        self.requester = cont;
-    }
-
-    fn create_ui(self_: Rc<RefCell<BoxViewerWidget>>) {
+    pub fn setup<T: 'static + AsRef<BoxObject>>(self_: Rc<RefCell<BoxViewerWidget>>, requester: Box<Fn() -> Vec<T>>, renderer: Box<Fn(&T, f64, &cairo::Context)>) {
         let self__ = self_.clone();
+        let req = Rc::new(requester);
+        let renderer = Rc::new(renderer);
 
         self_.borrow().canvas.connect_draw(move |_,cr| {
-            let objects = (self__.borrow().requester)();
-            let scale = (self__.borrow().cb_get_scale)();
-            BoxViewerWidget::renderer(objects.clone(), cr, scale);
-            self__.borrow_mut().objects = objects;
+            let objects = (*req)();
+            let scaler = (self__.borrow().cb_get_scale)();
+            self__.borrow_mut().objects = objects.into_iter().map(|wrapper| {
+                let object = wrapper.as_ref().clone().hscaled(scaler);
+                object.renderer(cr, &|cr| renderer(&wrapper, scaler, cr));
+                object
+            }).collect();
 
             Inhibit(false)
-        });
-    }
-
-    fn renderer(objects: Vec<BoxObject>, cr: &cairo::Context, scaler: f64) {
-        objects.into_iter().for_each(|object| {
-            object.hscaled(scaler).renderer(cr);
         });
     }
 
