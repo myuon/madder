@@ -480,9 +480,6 @@ impl App {
                         )
                     ]).unwrap();
 
-                    let that = serde_json::from_value::<Component>(self___.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
-                    println!("{:?}\n{:?}", this, that);
-
                     self___.borrow().queue_draw();
                 });
 

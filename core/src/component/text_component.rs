@@ -139,15 +139,15 @@ impl HasProperty for TextComponent {
         match (name, prop) {
             ("entity", Document(doc)) => {
                 self.prop.entity = doc;
-                unimplemented!();
+                self.reload();
             },
             ("text_font", Font(font)) => {
                 self.prop.text_font = font;
-                unimplemented!();
+                self.reload();
             },
             ("text_color", Color(rgba)) => {
                 self.prop.text_color = rgba;
-                unimplemented!();
+                self.reload();
             },
             (x,y) => {
                 self.prop.common.set_prop(x,y.clone());

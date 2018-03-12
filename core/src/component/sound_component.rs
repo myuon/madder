@@ -129,7 +129,8 @@ impl HasProperty for SoundComponent {
 
         match (name, prop) {
             ("entity", FilePath(doc)) => {
-                unimplemented!();
+                self.reload(&doc);
+                self.prop.entity = doc;
             },
             _ => unimplemented!(),
         }

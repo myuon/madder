@@ -178,10 +178,6 @@ impl Editor {
         self.elements.as_index_mut(index).effect.push(effect);
     }
 
-    fn add_components_n_key(&mut self, n: IndexRange, key: &str, value: Value) {
-        self.elements.as_index_mut(n).as_mut().set_prop(key, serde_json::from_value(value).unwrap());
-    }
-
     fn add_components_n_prop_key(&mut self, n: IndexRange, key: &str, value: Value) {
         self.elements.as_index_mut(n).set_prop(key, serde_json::from_value(value).unwrap());
     }

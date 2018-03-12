@@ -120,7 +120,10 @@ impl HasProperty for ImageComponent {
         use Property::*;
 
         match (name, prop) {
-            ("entity", FilePath(uri)) => unimplemented!(),
+            ("entity", FilePath(uri)) => {
+                self.reload(&uri);
+                self.prop.entity = uri;
+            },
             (x,y) => {
                 self.prop.common.set_prop(x,y.clone());
             },
