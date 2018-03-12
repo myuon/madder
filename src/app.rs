@@ -471,13 +471,20 @@ impl App {
                 let split_component_here = gtk::MenuItem::new_with_label("オブジェクトをこの位置で分割");
                 let self___ = self___.clone();
                 split_component_here.connect_activate(move |_| {
-                    let this = serde_json::from_value::<Component>(self___.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
+                    let this_component = serde_json::from_value::<Component>(self___.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
+                    let mut this = self___.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}", index)));
+                    this.as_object_mut().unwrap()["start_time"] = json!(position.mseconds().unwrap());
+                    this.as_object_mut().unwrap()["length"] = json!(this_component.length.mseconds().unwrap() - position.mseconds().unwrap());
 
                     self___.borrow_mut().editor.patch(vec![
                         Operation::Add(
                             Pointer::from_str(&format!("/components/{}/length", index)),
-                            json!((position - this.start_time).mseconds().unwrap()),
-                        )
+                            json!((position - this_component.start_time).mseconds().unwrap()),
+                        ),
+                        Operation::Add(
+                            Pointer::from_str("/components"),
+                            this,
+                        ),
                     ]).unwrap();
 
                     self___.borrow().queue_draw();
