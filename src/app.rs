@@ -196,7 +196,7 @@ impl App {
         self_.borrow().property.append_page("component", GridPage::new(
             self_.borrow().property.width,
             vec![
-                ("component_type".to_string(), Property::ReadOnly(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/component_type", index))).as_str().unwrap().to_string())),
+                ("component_type".to_string(), serde_json::from_value::<Property>(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/component_type", index)))).unwrap()),
                 ("start_time".to_string(), serde_json::from_value::<Property>(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/start_time", index)))).unwrap()),
                 ("length".to_string(), serde_json::from_value::<Property>(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/length", index)))).unwrap()),
                 ("layer_index".to_string(), serde_json::from_value::<Property>(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/layer_index", index)))).unwrap()),
@@ -545,13 +545,13 @@ impl App {
         app.timeline.borrow().connect_request_objects(Box::new(move || {
             let self___ = self__.clone();
             serde_json::from_value::<Vec<Component>>(self__.borrow().editor.get_by_pointer(Pointer::from_str("/components"))).unwrap().iter().enumerate().map(|(i,component)| {
-                let entity = self___.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/prop/entity", i)));
+                let entity = serde_json::from_value::<Property>(self___.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
 
                 BoxObject::new(
                     component.start_time.mseconds().unwrap() as i32,
                     component.length.mseconds().unwrap() as i32,
                     i
-                ).label(format!("{:?}", entity.as_str()))
+                ).label(format!("{:?}", entity))
                     .selected(Some(i) == self__.borrow().selected_component_index)
                     .layer_index(component.layer_index)
             }).collect()

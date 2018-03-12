@@ -276,8 +276,8 @@ impl Patch for Editor {
                     &[ref c, ref n, ref p, ref key] if c == "components" && p == "prop" => self.add_components_n_prop_key(IndexRange::from_str(n).unwrap(), key.as_str(), v),
                     &[ref c, ref n, ref key] if c == "components" => {
                         match key.as_str() {
-                            "start_time" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).start_time = gst::ClockTime::from_mseconds(serde_json::from_value::<u64>(v).unwrap()),
-                            "length" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).length = gst::ClockTime::from_mseconds(serde_json::from_value::<u64>(v).unwrap()),
+                            "start_time" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).start_time = serde_json::from_value::<Property>(v).unwrap().as_time().unwrap(),
+                            "length" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).length = serde_json::from_value::<Property>(v).unwrap().as_time().unwrap(),
                             "layer_index" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).layer_index = serde_json::from_value(v).unwrap(),
                             _ => unimplemented!(),
                         }
