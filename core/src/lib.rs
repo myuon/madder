@@ -210,45 +210,45 @@ impl Editor {
 
 impl Patch for Editor {
     fn get_by_pointer(&self, path: Pointer) -> Value {
-        match path.0.as_slice() {
-            &[ref c] if c == "width" => {
+        match path.0.iter().map(|ref x| x.as_str()).collect::<Vec<&str>>().as_slice() {
+            &["width"] => {
                 json!(self.width)
             },
-            &[ref c] if c == "height" => {
+            &["height"] => {
                 json!(self.height)
             },
-            &[ref c] if c == "length" => {
+            &["length"] => {
                 json!(self.length.mseconds().unwrap())
             },
-            &[ref c] if c == "position" => {
+            &["position"] => {
                 json!(self.position.mseconds().unwrap())
             },
-            &[ref c] if c == "components" => {
+            &["components"] => {
                 serde_json::to_value(self.elements.iter().map(|c: &Box<ComponentLike>| c.as_value()).collect::<Vec<_>>()).unwrap()
             },
-            &[ref c, ref n] if c == "components" => {
+            &["components", ref n] => {
                 self.elements.as_index(IndexRange::from_str(n).unwrap()).as_value()
             },
-            &[ref c, ref n, ref e] if c == "components" && e == "effect" => {
+            &["components", ref n, "effect"] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_effect()).unwrap()
             },
-            &[ref c, ref n, ref e, ref m] if c == "components" && e == "effect" => {
+            &["components", ref n, "effect", ref m] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap())).unwrap()
             },
-            &[ref c, ref n, ref e, ref m, ref key] if c == "components" && e == "effect" => {
+            &["components", ref n, "effect", ref m, key] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap())).unwrap().as_object().unwrap()[key].clone()
             },
-            &[ref c, ref n, ref e] if c == "components" && e == "info" => {
+            &["components", ref n, "info"] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_info()).unwrap()
             },
-            &[ref c, ref n, ref p] if c == "components" && p == "prop" => {
+            &["components", ref n, "prop"] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_props()).unwrap()
             },
-            &[ref c, ref n, ref p, ref key] if c == "components" && p == "prop" => {
+            &["components", ref n, "prop", ref key] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_prop(key)).unwrap()
             },
-            &[ref c, ref n, ref key] if c == "components" => {
-                match key.as_str() {
+            &["components", ref n, key] => {
+                match key {
                     "component_type" => serde_json::to_value(Property::ReadOnly(format!("{:?}", self.elements.as_index(IndexRange::from_str(n).unwrap()).component_type))).unwrap(),
                     "start_time" => serde_json::to_value(Property::Time(self.elements.as_index(IndexRange::from_str(n).unwrap()).start_time)).unwrap(),
                     "length" => serde_json::to_value(Property::Time(self.elements.as_index(IndexRange::from_str(n).unwrap()).length)).unwrap(),
@@ -265,17 +265,17 @@ impl Patch for Editor {
 
         match op {
             Add(path, v) => {
-                match path.0.as_slice() {
+                match path.0.iter().map(|ref x| x.as_str()).collect::<Vec<&str>>().as_slice() {
                     &[] => panic!("add"),
-                    &[ref c] if c == "width" => panic!("update_width"),
-                    &[ref c] if c == "height" => panic!("update_height"),
-                    &[ref c] if c == "components" => self.add_components(v),
-                    &[ref c, ref n] if c == "components" => self.add_components_n(IndexRange::from_str(n).unwrap(),v),
-                    &[ref c, ref n, ref e] if c == "components" && e == "effect" => self.add_components_n_effect(IndexRange::from_str(n).unwrap(), v),
-                    &[ref c, ref n, ref e, ref m, ref key] if c == "components" && e == "effect" => self.add_components_n_effect_n_key(IndexRange::from_str(n).unwrap(), IndexRange::from_str(m).unwrap(), key.as_str(), v),
-                    &[ref c, ref n, ref p, ref key] if c == "components" && p == "prop" => self.add_components_n_prop_key(IndexRange::from_str(n).unwrap(), key.as_str(), v),
-                    &[ref c, ref n, ref key] if c == "components" => {
-                        match key.as_str() {
+                    &["width"] => panic!("update_width"),
+                    &["height"] => panic!("update_height"),
+                    &["components"] => self.add_components(v),
+                    &["components", ref n] => self.add_components_n(IndexRange::from_str(n).unwrap(),v),
+                    &["components", ref n, "effect"] => self.add_components_n_effect(IndexRange::from_str(n).unwrap(), v),
+                    &["components", ref n, "effect", ref m, key] => self.add_components_n_effect_n_key(IndexRange::from_str(n).unwrap(), IndexRange::from_str(m).unwrap(), key, v),
+                    &["components", ref n, "prop", key] => self.add_components_n_prop_key(IndexRange::from_str(n).unwrap(), key, v),
+                    &["components", ref n, key] => {
+                        match key {
                             "start_time" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).start_time = serde_json::from_value::<Property>(v).unwrap().as_time().unwrap(),
                             "length" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).length = serde_json::from_value::<Property>(v).unwrap().as_time().unwrap(),
                             "layer_index" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).layer_index = serde_json::from_value(v).unwrap(),
@@ -286,8 +286,8 @@ impl Patch for Editor {
                 }
             },
             Remove(path) => {
-                match path.0.as_slice() {
-                    &[ref c, ref n] if c == "components" => self.remove_components_n(IndexRange::from_str(n).unwrap()),
+                match path.0.iter().map(|ref x| x.as_str()).collect::<Vec<&str>>().as_slice() {
+                    &["components", ref n] => self.remove_components_n(IndexRange::from_str(n).unwrap()),
                     _ => unimplemented!(),
                 }
             }
