@@ -195,6 +195,35 @@ impl App {
         let self__ = self_.clone();
         self_.borrow().property.append_page("component", GridPage::new(
             self_.borrow().property.width,
+            vec![
+                ("component_type".to_string(), Property::ReadOnly(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/component_type", index))).as_str().unwrap().to_string())),
+                ("start_time".to_string(), serde_json::from_value::<Property>(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/start_time", index)))).unwrap()),
+                ("length".to_string(), serde_json::from_value::<Property>(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/length", index)))).unwrap()),
+                ("layer_index".to_string(), serde_json::from_value::<Property>(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/layer_index", index)))).unwrap()),
+            ],
+            Box::new(move |prop_index, prop_name, prop| {
+                let prop_index = Rc::new(prop_index);
+                let prop_name = Rc::new(prop_name.to_string());
+                let self__ = self__.clone();
+
+                gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
+                    // request the property again, since in this callback the value of property might have been changed
+                    let prop = serde_json::from_value::<Property>(self__.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/{}", index, *prop_index)))).unwrap().clone();
+                    if let Some(new_prop) = new_prop {
+                        self__.borrow_mut().editor.patch_once(Operation::Add(
+                            Pointer::from_str(&format!("/components/{}/{}", index, prop_name.as_str())),
+                            json!(gtk_impl::recover_property(prop, tracker, new_prop)),
+                        )).unwrap();
+                    }
+
+                    self__.borrow().queue_draw();
+                }))
+            }),
+        ));
+
+        let self__ = self_.clone();
+        self_.borrow().property.append_page("property", GridPage::new(
+            self_.borrow().property.width,
             serde_json::from_value(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/prop", index)))).unwrap(),
             Box::new(move |prop_index, prop_name, prop| {
                 let prop_index = Rc::new(prop_index);

@@ -117,37 +117,6 @@ impl AsMut<Component> for Component {
     }
 }
 
-/*
-impl HasProperty for Component {
-    fn keys() -> Vec<String> {
-        vec!["component_type", "start_time", "length", "layer_index"].iter().map(|x| x.to_string()).collect()
-    }
-
-    fn get_prop(&self, name: &str) -> Property {
-        use Property::*;
-
-        match name {
-            "component_type" => ReadOnly(format!("{:?}", self.component_type)),
-            "start_time" => Time(self.start_time),
-            "length" => Time(self.length),
-            "layer_index" => Usize(self.layer_index),
-            z => panic!("Key `{}` not found in the property", z),
-        }
-    }
-
-    fn set_prop(&mut self, name: &str, prop: Property) {
-        use Property::*;
-
-        match (name, prop) {
-            ("start_time", Time(v)) => self.start_time = v,
-            ("length", Time(v)) => self.length = v,
-            ("layer_index", Usize(v)) => self.layer_index = v,
-            _ => unimplemented!(),
-        }
-    }
-}
- */
-
 impl ComponentWrapper for Component {
     fn as_value(&self) -> serde_json::Value {
         serde_json::to_value(self).unwrap()
