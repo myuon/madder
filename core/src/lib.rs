@@ -102,7 +102,7 @@ impl Editor {
 
         for elem in elems.iter().rev() {
             if let Some(mut dest) = elem.peek(self.position) {
-                let mut common_prop = serde_json::from_value::<CommonProperty>(elem.as_ref().as_value()).unwrap_or(std::default::Default::default());
+                let mut common_prop = serde_json::from_value::<CommonProperty>(elem.as_ref().as_value().as_object().unwrap()["prop"].clone()).unwrap_or(std::default::Default::default());
                 let mut elem = elem.as_ref().as_ref().clone();
                 dest = Effect::get_rotated_pixbuf(dest, common_prop.rotate);
 
@@ -276,9 +276,9 @@ impl Patch for Editor {
                     &["components", ref n, "prop", key] => self.add_components_n_prop_key(IndexRange::from_str(n).unwrap(), key, v),
                     &["components", ref n, key] => {
                         match key {
-                            "start_time" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).start_time = serde_json::from_value::<Property>(v).unwrap().as_time().unwrap(),
-                            "length" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).length = serde_json::from_value::<Property>(v).unwrap().as_time().unwrap(),
-                            "layer_index" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).layer_index = serde_json::from_value::<Property>(v).unwrap().as_usize().unwrap(),
+                            "start_time" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).start_time = gst::ClockTime::from_mseconds(serde_json::from_value::<u64>(v).unwrap()),
+                            "length" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).length = gst::ClockTime::from_mseconds(serde_json::from_value::<u64>(v).unwrap()),
+                            "layer_index" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).layer_index = serde_json::from_value::<usize>(v).unwrap(),
                             _ => unimplemented!(),
                         }
                     },

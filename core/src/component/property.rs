@@ -6,7 +6,7 @@ extern crate serde_json;
 use self::serde::ser::SerializeTuple;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", content = "value")]
+#[serde(untagged)]
 pub enum Property {
     I32(i32),
     F64(f64),
