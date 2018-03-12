@@ -248,7 +248,13 @@ impl Patch for Editor {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_prop(key)).unwrap()
             },
             &[ref c, ref n, ref key] if c == "components" => {
-                panic!("/components/n/hoge")
+                match key.as_str() {
+                    "component_type" => serde_json::to_value(Property::ReadOnly(format!("{:?}", self.elements.as_index(IndexRange::from_str(n).unwrap()).component_type))).unwrap(),
+                    "start_time" => serde_json::to_value(Property::Time(self.elements.as_index(IndexRange::from_str(n).unwrap()).start_time)).unwrap(),
+                    "length" => serde_json::to_value(Property::Time(self.elements.as_index(IndexRange::from_str(n).unwrap()).length)).unwrap(),
+                    "layer_index" => serde_json::to_value(Property::Usize(self.elements.as_index(IndexRange::from_str(n).unwrap()).layer_index)).unwrap(),
+                    _ => unimplemented!(),
+                }
             },
             z => panic!(format!("Call get_by_pointer with unexisting path: {:?}", z)),
         }
