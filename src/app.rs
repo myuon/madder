@@ -196,10 +196,10 @@ impl App {
         self_.borrow().property.append_page("component", GridPage::new(
             self_.borrow().property.width,
             vec![
-                ("component_type".to_string(), serde_json::from_value::<Property>(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/component_type", index)))).unwrap()),
-                ("start_time".to_string(), serde_json::from_value::<Property>(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/start_time", index)))).unwrap()),
-                ("length".to_string(), serde_json::from_value::<Property>(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/length", index)))).unwrap()),
-                ("layer_index".to_string(), serde_json::from_value::<Property>(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/layer_index", index)))).unwrap()),
+                ("component_type".to_string(), Property::ReadOnly(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/component_type", index))).as_str().unwrap().to_string())),
+                ("start_time".to_string(), Property::Time(gst::ClockTime::from_mseconds(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/start_time", index))).as_u64().unwrap()))),
+                ("length".to_string(), Property::Time(gst::ClockTime::from_mseconds(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/length", index))).as_u64().unwrap()))),
+                ("layer_index".to_string(), Property::Usize(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/layer_index", index))).as_u64().unwrap() as usize)),
             ],
             Box::new(move |_, prop_name, prop| {
                 let prop_name = Rc::new(prop_name.to_string());
