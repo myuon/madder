@@ -450,9 +450,38 @@ impl App {
 
             editor_item
         };
+        let project_item = {
+            let project_item = gtk::MenuItem::new_with_label("プロジェクト");
+            let project_menu = gtk::Menu::new();
+            project_item.set_submenu(&project_menu);
+
+            let project_info = gtk::MenuItem::new_with_label("情報");
+            project_menu.append(&project_info);
+
+            let self__ = self_.clone();
+            project_info.connect_activate(move |_| {
+                let dialog = gtk::MessageDialog::new(
+                    Some(&self__.borrow().window),
+                    gtk::DialogFlags::MODAL,
+                    gtk::MessageType::Info,
+                    gtk::ButtonsType::Ok,
+                    &serde_json::to_string(&json!({
+                        "size": (self__.borrow().editor.get_by_pointer(Pointer::from_str("/width")),
+                                 self__.borrow().editor.get_by_pointer(Pointer::from_str("/height"))),
+                        "components": self__.borrow().editor.get_by_pointer(Pointer::from_str("/components")).as_array().unwrap().len(),
+                    })).unwrap(),
+                );
+
+                dialog.run();
+                dialog.destroy();
+            });
+
+            project_item
+        };
 
         menubar.append(&file_item);
         menubar.append(&editor_item);
+        menubar.append(&project_item);
 
         menubar
     }
