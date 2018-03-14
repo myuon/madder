@@ -98,6 +98,7 @@ pub struct BoxViewerWidget {
     flag_resize: bool,
     cb_click_no_box: Box<Fn(&gdk::EventButton)>,
     cb_get_scale: Box<Fn() -> f64>,
+    cb_motion_notify: Box<Fn(&gdk::EventMotion)>,
 }
 
 impl BoxViewerWidget {
@@ -113,6 +114,7 @@ impl BoxViewerWidget {
             flag_resize: false,
             cb_click_no_box: Box::new(|_| {}),
             cb_get_scale: Box::new(|| { 1.0 }),
+            cb_motion_notify: Box::new(|_| {}),
         }))
     }
 
@@ -168,10 +170,16 @@ impl BoxViewerWidget {
         self_.borrow_mut().cb_get_scale = cont;
     }
 
+    pub fn connect_motion_notify_event(self_: Rc<RefCell<BoxViewerWidget>>, cont: Box<Fn(&gdk::EventMotion)>) {
+        self_.borrow_mut().cb_motion_notify = cont;
+    }
+
     pub fn connect_drag_box(self_: Rc<RefCell<BoxViewerWidget>>, cont_move: Box<Fn(usize, i32, usize)>, cont_resize: Box<Fn(usize, i32)>) {
         let self__ = self_.clone();
         self_.borrow().canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
         self_.borrow().canvas.connect_motion_notify_event(move |canvas,event| {
+            (self__.borrow().cb_motion_notify)(event);
+
             let (x,y) = event.get_position();
             let x = x as i32;
             let y = y as i32;

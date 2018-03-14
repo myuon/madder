@@ -65,6 +65,12 @@ impl TimelineWidget {
         w
     }
 
+    fn notify_pointer_motion(&self, x: f64) {
+        let ruler = self.ruler.clone();
+        ruler.borrow().queue_draw();
+        RulerWidget::send_pointer_position(ruler, x);
+    }
+
     fn create_ui(self_: Rc<RefCell<TimelineWidget>>, width: i32, height: i32, length: i32) {
         let timeline = self_.borrow();
         timeline.tracker.connect_realize(move |tracker| {
@@ -75,10 +81,7 @@ impl TimelineWidget {
         let self__ = self_.clone();
         timeline.ruler_box.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
         timeline.ruler_box.connect_motion_notify_event(move |_,event| {
-            let ruler = self__.borrow().ruler.clone();
-
-            ruler.borrow().queue_draw();
-            RulerWidget::send_pointer_position(ruler, event.get_position().0);
+            self__.borrow().notify_pointer_motion(event.get_position().0);
             Inhibit(false)
         });
 
@@ -109,6 +112,11 @@ impl TimelineWidget {
         let ruler_ = self_.borrow().ruler.clone();
         RulerWidget::connect_get_scale(ruler_, Box::new(move || {
             self__.borrow().scaler.get_value()
+        }));
+
+        let self__ = self_.clone();
+        BoxViewerWidget::connect_motion_notify_event(timeline.box_viewer.clone(), Box::new(move |event| {
+            self__.borrow().notify_pointer_motion(event.get_position().0);
         }));
 
         let self__ = self_.clone();
