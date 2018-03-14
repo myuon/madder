@@ -359,20 +359,32 @@ impl App {
             let file_menu = gtk::Menu::new();
             file_item.set_submenu(&file_menu);
 
+            let new_project = gtk::MenuItem::new_with_label("新規作成");
             let open = gtk::MenuItem::new_with_label("開く");
             let save_as = gtk::MenuItem::new_with_label("名前を付けて保存");
             let save = gtk::MenuItem::new_with_label("上書き保存");
             let output = gtk::MenuItem::new_with_label("動画の書き出し");
 
+            file_menu.append(&new_project);
             file_menu.append(&open);
             file_menu.append(&save_as);
             file_menu.append(&save);
             file_menu.append(&output);
 
+            new_project.connect_activate(move |_| {
+                let editor = serde_json::from_value(json!({
+                    "components": [],
+                    "width": 640,
+                    "height": 480,
+                    "length": 900000,
+                })).unwrap();
+                let app = App::new_from_json(&editor, None);
+                App::create_ui(app);
+            });
+
             let self__ = self_.clone();
             open.connect_activate(move |_| {
                 App::open_with_dialog(self__.clone());
-                self__.borrow().queue_draw();
             });
 
             let self__ = self_.clone();
