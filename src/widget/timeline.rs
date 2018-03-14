@@ -73,11 +73,11 @@ impl TimelineWidget {
         });
 
         let self__ = self_.clone();
-        timeline.tracker.connect_draw(move |_,cr| {
+        timeline.tracker.connect_draw(move |tracker,cr| {
             cr.set_source_rgb(200f64, 0f64, 0f64);
 
             cr.move_to(self__.borrow().tracking_position as f64, 0f64);
-            cr.rel_line_to(0f64, 100f64);
+            cr.rel_line_to(0.0, tracker.get_allocation().height as f64);
             cr.stroke();
 
             Inhibit(false)
