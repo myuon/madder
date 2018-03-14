@@ -28,8 +28,9 @@ extern crate madder_core;
 use madder_core::*;
 
 use widget::*;
-
 use gtk_impl;
+
+use WINDOW_NUMBER;
 
 pub struct App {
     editor: Editor,
@@ -223,7 +224,8 @@ impl App {
         dialog.destroy();
 
         let editor = EditorStructure::new_from_file(path.to_str().unwrap());
-        *self_.borrow_mut() = App::load(&editor, path.to_str());
+        let app = App::new_from_json(&editor, path.to_str());
+        App::create_ui(app);
     }
 
     fn select_component(self_: Rc<RefCell<App>>, index: usize) {
@@ -735,9 +737,22 @@ impl App {
 
         app.window.add(&vbox);
         app.window.show_all();
-        app.window.connect_delete_event(move |_,_| {
-            gtk::main_quit();
+        app.window.connect_delete_event(move |window,_| {
+            window.destroy();
+
+            unsafe {
+                if WINDOW_NUMBER == 1 {
+                    gtk::main_quit();
+                } else {
+                    WINDOW_NUMBER -= 1;
+                }
+            }
+
             Inhibit(false)
         });
+
+        unsafe {
+            WINDOW_NUMBER += 1;
+        }
     }
 }

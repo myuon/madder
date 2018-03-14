@@ -15,6 +15,8 @@ pub mod gtk_impl;
 pub mod app;
 use app::App;
 
+static mut WINDOW_NUMBER: i32 = 0;
+
 fn main() {
     gtk::init().expect("Gtk initialization error");
     gst::init().expect("Gstreamer initialization error");
