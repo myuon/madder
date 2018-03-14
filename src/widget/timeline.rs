@@ -33,7 +33,7 @@ impl TimelineWidget {
         let grid = gtk::Grid::new();
         grid.set_column_spacing(4);
 
-        let ruler = RulerWidget::new(length, 30);
+        let ruler = RulerWidget::new(length, 20);
         ruler_box.add(ruler.borrow().as_widget());
 
         let tracker = gtk::DrawingArea::new();

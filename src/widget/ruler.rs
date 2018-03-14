@@ -39,22 +39,28 @@ impl RulerWidget {
             cr.select_font_face("Serif", cairo::FontSlant::Normal, cairo::FontWeight::Bold);
             cr.set_font_size(10 as f64);
 
-            let interval_large = 100;
             let interval_large_height = height as f64;
-
+            let interval_height = height as f64 * 0.5;
+            let interval_small_height = height as f64 * 0.25;
             let interval = 10;
-            let interval_height = height as f64 * 0.6;
 
             let scaler = (self__.borrow().cb_get_scale)();
 
             for x in (0..(((width / interval) as f64) / scaler) as i32).map(|x| x * interval) {
                 cr.move_to(x as f64, interval_large_height);
 
-                let h = if x % interval_large == 0 { interval_large_height } else { interval_height };
+                let h = if x % (interval * 10) == 0 {
+                    interval_large_height
+                } else if x % (interval * 2) == 0 {
+                    interval_height
+                } else {
+                    interval_small_height
+                };
+
                 cr.rel_line_to(0f64, -h as f64);
 
-                if x % interval_large == 0 {
-                    cr.move_to(x as f64 + 2.0, interval_height as f64 - 10.0);
+                if x % (interval * 10) == 0 {
+                    cr.move_to(x as f64 + 2.0, interval_height as f64);
                     cr.show_text(&gst::ClockTime::from_mseconds(x as u64 * scaler as u64).to_string()[0..10]);
                 }
             }
