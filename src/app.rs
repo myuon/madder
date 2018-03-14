@@ -163,18 +163,21 @@ impl App {
 
 
     pub fn new_from_json(json: &EditorStructure, path: Option<&str>) -> Rc<RefCell<App>> {
-        let app = Rc::new(RefCell::new(App::new(json.width, json.height, gst::ClockTime::from_mseconds(json.length))));
+        Rc::new(RefCell::new(App::load(json, path)))
+    }
 
-        let app_ = app.clone();
-        json.components.iter().for_each(move |item| {
-            app_.borrow_mut().editor.patch_once(Operation::Add(
+    fn load(json: &EditorStructure, path: Option<&str>) -> App {
+        let mut app = App::new(json.width, json.height, gst::ClockTime::from_mseconds(json.length));
+
+        json.components.iter().for_each(|item| {
+            app.editor.patch_once(Operation::Add(
                 Pointer::from_str("/components"),
                 item.clone(),
             )).unwrap();
         });
 
         if let Some(path) = path {
-            app.borrow_mut().project_file_path = Some(PathBuf::from(path));
+            app.project_file_path = Some(PathBuf::from(path));
         }
 
         app
@@ -210,6 +213,17 @@ impl App {
     fn save_to_file(self_: Rc<RefCell<App>>, path: PathBuf) {
         let mut buf = BufWriter::new(File::create(path).unwrap());
         buf.write(&format!("{:#}", self_.borrow().editor.get_by_pointer(Pointer::from_str(""))).as_bytes()).unwrap();
+    }
+
+    fn open_with_dialog(self_: Rc<RefCell<App>>) {
+        let dialog = gtk::FileChooserDialog::new(Some("開くファイルを指定"), Some(&self_.borrow().window), gtk::FileChooserAction::Open);
+        dialog.add_button("開く", 0);
+        dialog.run();
+        let path = dialog.get_filename().unwrap();
+        dialog.destroy();
+
+        let editor = EditorStructure::new_from_file(path.to_str().unwrap());
+        *self_.borrow_mut() = App::load(&editor, path.to_str());
     }
 
     fn select_component(self_: Rc<RefCell<App>>, index: usize) {
@@ -343,13 +357,21 @@ impl App {
             let file_menu = gtk::Menu::new();
             file_item.set_submenu(&file_menu);
 
+            let open = gtk::MenuItem::new_with_label("開く");
             let save_as = gtk::MenuItem::new_with_label("名前を付けて保存");
             let save = gtk::MenuItem::new_with_label("上書き保存");
             let output = gtk::MenuItem::new_with_label("動画の書き出し");
 
+            file_menu.append(&open);
             file_menu.append(&save_as);
             file_menu.append(&save);
             file_menu.append(&output);
+
+            let self__ = self_.clone();
+            open.connect_activate(move |_| {
+                App::open_with_dialog(self__.clone());
+                self__.borrow().queue_draw();
+            });
 
             let self__ = self_.clone();
             save_as.connect_activate(move |_| {
@@ -438,8 +460,10 @@ impl App {
                         "component_type": "Video",
                         "start_time": 0,
                         "length": 100,
-                        "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
                         "layer_index": 0,
+                        "prop": {
+                            "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                        }
                     }),
                 )).unwrap();
 
@@ -465,8 +489,10 @@ impl App {
                         "component_type": "Image",
                         "start_time": 0,
                         "length": 100,
-                        "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
                         "layer_index": 0,
+                        "prop": {
+                            "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                        }
                     }),
                 )).unwrap();
 
@@ -482,9 +508,11 @@ impl App {
                         "component_type": "Text",
                         "start_time": 0,
                         "length": 100,
-                        "entity": "dummy entity",
                         "layer_index": 0,
-                        "coordinate": [50, 50],
+                        "prop": {
+                            "entity": "dummy entity",
+                            "coordinate": [50, 50],
+                        }
                     }),
                 )).unwrap();
 

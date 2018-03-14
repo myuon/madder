@@ -175,6 +175,7 @@ impl TimelineWidget {
 
     pub fn queue_draw(&self) {
         self.overlay.queue_draw();
+        self.box_viewer.borrow().as_widget().queue_draw();
     }
 }
 
