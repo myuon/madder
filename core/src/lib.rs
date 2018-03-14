@@ -16,6 +16,9 @@ extern crate pango;
 mod avi_renderer;
 use avi_renderer::AviRenderer;
 
+extern crate serde;
+use serde::ser::SerializeSeq;
+
 #[macro_use] extern crate serde_derive;
 #[macro_use] extern crate serde_json;
 use serde_json::Value;
@@ -47,13 +50,35 @@ impl EditorStructure {
     }
 }
 
+#[derive(Serialize)]
 pub struct Editor {
+    #[serde(serialize_with = "vec_componentlike_serialize")]
+    #[serde(rename = "components")]
     pub elements: Vec<Box<ComponentLike>>,
+
+    #[serde(serialize_with = "gst_clocktime_serialize")]
     position: gst::ClockTime,
+
     width: i32,
     height: i32,
+
+    #[serde(serialize_with = "gst_clocktime_serialize")]
     length: gst::ClockTime,
+
+    #[serde(skip_serializing)]
     renderer: Option<AviRenderer>,
+}
+
+fn gst_clocktime_serialize<S: serde::Serializer>(g: &gst::ClockTime, serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.serialize_u64(g.mseconds().unwrap())
+}
+
+fn vec_componentlike_serialize<S: serde::Serializer>(g: &Vec<Box<ComponentLike>>, serializer: S) -> Result<S::Ok, S::Error> {
+    let mut seq = serializer.serialize_seq(Some(g.len()))?;
+    for c in g {
+        seq.serialize_element(&c.as_value()).unwrap();
+    }
+    seq.end()
 }
 
 impl Editor {
@@ -207,6 +232,9 @@ impl Editor {
 impl Patch for Editor {
     fn get_by_pointer(&self, path: Pointer) -> Value {
         match path.0.iter().map(|ref x| x.as_str()).collect::<Vec<&str>>().as_slice() {
+            &[] => {
+                json!(self)
+            },
             &["width"] => {
                 json!(self.width)
             },

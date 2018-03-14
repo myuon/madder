@@ -320,8 +320,33 @@ impl App {
             let file_menu = gtk::Menu::new();
             file_item.set_submenu(&file_menu);
 
+            let save_as = gtk::MenuItem::new_with_label("名前を付けて保存");
+            let save = gtk::MenuItem::new_with_label("上書き保存");
             let output = gtk::MenuItem::new_with_label("動画の書き出し");
+
+            file_menu.append(&save_as);
+            file_menu.append(&save);
             file_menu.append(&output);
+
+            let self__ = self_.clone();
+            save_as.connect_activate(move |_| {
+                use std::fs::File;
+                use std::io::{BufWriter, Write};
+
+                let dialog = gtk::FileChooserDialog::new(Some("保存先のファイルを指定"), Some(&self__.borrow().window), gtk::FileChooserAction::Save);
+                dialog.add_button("保存", 0);
+                dialog.run();
+                let path = dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string();
+                dialog.destroy();
+
+                let mut buf = BufWriter::new(File::create(path).unwrap());
+                buf.write(&format!("{:#}", self__.borrow().editor.get_by_pointer(Pointer::from_str(""))).as_bytes()).unwrap();
+            });
+
+            let self__ = self_.clone();
+            save.connect_activate(move |_| {
+                println!("save");
+            });
 
             let self__ = self_.clone();
             output.connect_activate(move |_| {
