@@ -1,6 +1,9 @@
 use std::cmp;
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::path::PathBuf;
+use std::io::{BufWriter, Write};
+use std::fs::File;
 
 extern crate gstreamer as gst;
 extern crate gstreamer_video as gstv;
@@ -35,6 +38,7 @@ pub struct App {
     property: PropertyViewerWidget,
     selected_component_index: Option<usize>,
     window: gtk::Window,
+    project_file_path: Option<PathBuf>,
 }
 
 impl App {
@@ -48,6 +52,7 @@ impl App {
             property: PropertyViewerWidget::new(prop_width),
             selected_component_index: None,
             window: gtk::Window::new(gtk::WindowType::Toplevel),
+            project_file_path: None,
         }
     }
 
@@ -157,18 +162,21 @@ impl App {
     }
 
 
-    pub fn new_from_json(json: &EditorStructure) -> Rc<RefCell<App>> {
+    pub fn new_from_json(json: &EditorStructure, path: Option<&str>) -> Rc<RefCell<App>> {
         let app = Rc::new(RefCell::new(App::new(json.width, json.height, gst::ClockTime::from_mseconds(json.length))));
 
-        {
-            let app = app.clone();
-            json.components.iter().for_each(move |item| {
-                app.borrow_mut().editor.patch_once(Operation::Add(
-                    Pointer::from_str("/components"),
-                    item.clone(),
-                )).unwrap();
-            });
+        let app_ = app.clone();
+        json.components.iter().for_each(move |item| {
+            app_.borrow_mut().editor.patch_once(Operation::Add(
+                Pointer::from_str("/components"),
+                item.clone(),
+            )).unwrap();
+        });
+
+        if let Some(path) = path {
+            app.borrow_mut().project_file_path = Some(PathBuf::from(path));
         }
+
         app
     }
 
@@ -187,6 +195,21 @@ impl App {
         self_.borrow_mut().selected_component_index = None;
         self_.borrow().property.clear();
         self_.borrow().queue_draw();
+    }
+
+    fn save_to_file_with_dialog(self_: Rc<RefCell<App>>) {
+        let dialog = gtk::FileChooserDialog::new(Some("保存先のファイルを指定"), Some(&self_.borrow().window), gtk::FileChooserAction::Save);
+        dialog.add_button("保存", 0);
+        dialog.run();
+        let path = dialog.get_filename().unwrap();
+        dialog.destroy();
+
+        App::save_to_file(self_.clone(), path);
+    }
+
+    fn save_to_file(self_: Rc<RefCell<App>>, path: PathBuf) {
+        let mut buf = BufWriter::new(File::create(path).unwrap());
+        buf.write(&format!("{:#}", self_.borrow().editor.get_by_pointer(Pointer::from_str(""))).as_bytes()).unwrap();
     }
 
     fn select_component(self_: Rc<RefCell<App>>, index: usize) {
@@ -330,22 +353,17 @@ impl App {
 
             let self__ = self_.clone();
             save_as.connect_activate(move |_| {
-                use std::fs::File;
-                use std::io::{BufWriter, Write};
-
-                let dialog = gtk::FileChooserDialog::new(Some("保存先のファイルを指定"), Some(&self__.borrow().window), gtk::FileChooserAction::Save);
-                dialog.add_button("保存", 0);
-                dialog.run();
-                let path = dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string();
-                dialog.destroy();
-
-                let mut buf = BufWriter::new(File::create(path).unwrap());
-                buf.write(&format!("{:#}", self__.borrow().editor.get_by_pointer(Pointer::from_str(""))).as_bytes()).unwrap();
+                App::save_to_file_with_dialog(self__.clone());
             });
 
             let self__ = self_.clone();
             save.connect_activate(move |_| {
-                println!("save");
+                let self___ = self__.clone();
+
+                match self__.borrow().project_file_path {
+                    Some(ref path) => App::save_to_file(self___, path.to_path_buf()),
+                    None => App::save_to_file_with_dialog(self___),
+                }
             });
 
             let self__ = self_.clone();

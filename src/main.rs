@@ -35,15 +35,17 @@ fn main() {
                         "component_type": "Text",
                         "start_time": 0,
                         "length": 100,
-                        "entity": "[ここにテキストを挿入]",
                         "layer_index": 0,
-                        "coordinate": [50,50],
+                        "prop": {
+                            "coordinate": [50,50],
+                            "entity": "[ここにテキストを挿入]",
+                        },
                     })).unwrap()
                 ],
             }
         };
 
-    let app = App::new_from_json(&editor);
+    let app = App::new_from_json(&editor, if args.len() >= 2 { Some(&args[1]) } else { None });
     App::create_ui(app);
 
     gtk::main();
