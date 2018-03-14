@@ -180,7 +180,7 @@ impl BoxViewerWidget {
             let window = canvas.get_window().unwrap();
             let scale = (self__.borrow().cb_get_scale)();
 
-            if event.get_state().contains(gdk::ModifierType::BUTTON1_MASK) {
+            if event.get_state().contains(gdk::ModifierType::BUTTON1_MASK) && self__.borrow().selecting_box_index.is_some() {
                 let distance = ((x - self__.borrow().offset) as f64 * scale) as i32;
                 let layer_index = y / BoxObject::HEIGHT;
 

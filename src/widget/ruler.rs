@@ -11,6 +11,7 @@ use widget::AsWidget;
 pub struct RulerWidget {
     canvas: gtk::DrawingArea,
     cb_get_scale: Box<Fn() -> f64>,
+    pointer: f64,
 }
 
 impl RulerWidget {
@@ -21,6 +22,7 @@ impl RulerWidget {
         let w = Rc::new(RefCell::new(RulerWidget {
             canvas: ruler,
             cb_get_scale: Box::new(|| { 1.0 }),
+            pointer: 0.0,
         }));
         RulerWidget::create_ui(w.clone(), width, height);
 
@@ -66,12 +68,30 @@ impl RulerWidget {
             }
 
             cr.stroke();
+
+            let width = 10.0;
+            let height = 5.0;
+            cr.move_to(self__.borrow().pointer, interval_large_height);
+            cr.rel_line_to(-width/2.0, -height);
+            cr.rel_line_to(width, 0.0);
+            cr.rel_line_to(-width/2.0, height);
+            cr.fill();
+
+            cr.stroke();
             Inhibit(false)
         });
     }
 
     pub fn connect_get_scale(self_: Rc<RefCell<RulerWidget>>, cb: Box<Fn() -> f64>) {
         self_.borrow_mut().cb_get_scale = cb;
+    }
+
+    pub fn send_pointer_position(self_: Rc<RefCell<RulerWidget>>, x: f64) {
+        self_.borrow_mut().pointer = x;
+    }
+
+    pub fn queue_draw(&self) {
+        self.canvas.queue_draw();
     }
 }
 

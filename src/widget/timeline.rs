@@ -73,6 +73,16 @@ impl TimelineWidget {
         });
 
         let self__ = self_.clone();
+        timeline.ruler_box.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
+        timeline.ruler_box.connect_motion_notify_event(move |_,event| {
+            let ruler = self__.borrow().ruler.clone();
+
+            ruler.borrow().queue_draw();
+            RulerWidget::send_pointer_position(ruler, event.get_position().0);
+            Inhibit(false)
+        });
+
+        let self__ = self_.clone();
         timeline.tracker.connect_draw(move |tracker,cr| {
             cr.set_source_rgb(200f64, 0f64, 0f64);
 
