@@ -12,8 +12,8 @@ pub enum Attribute {
     F64(f64),
     Usize(usize),
 
-    #[serde(serialize_with = "gst_clocktime_serialize")]
-    #[serde(deserialize_with = "gst_clocktime_deserialize")]
+    #[serde(serialize_with = "SerTime::serialize_time")]
+    #[serde(deserialize_with = "SerTime::deserialize_time")]
     Time(gst::ClockTime),
 
     Pair(Box<Attribute>, Box<Attribute>),
@@ -27,6 +27,14 @@ pub enum Attribute {
 
     ReadOnly(String),
     Choose(Vec<String>,Option<usize>),
+}
+
+pub trait AsAttribute {
+    fn as_i32(&self) -> Option<i32>;
+    fn as_f64(&self) -> Option<f64>;
+    fn as_usize(&self) -> Option<usize>;
+//    fn as_time(&self) ->
+    fn as_readonly(&self) -> Option<String>;
 }
 
 impl Attribute {
@@ -83,13 +91,5 @@ impl Attribute {
             _ => None,
         }
     }
-}
-
-fn gst_clocktime_serialize<S: serde::Serializer>(g: &gst::ClockTime, serializer: S) -> Result<S::Ok, S::Error> {
-    serializer.serialize_u64(g.mseconds().unwrap())
-}
-
-fn gst_clocktime_deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<gst::ClockTime, D::Error> {
-    serde::Deserialize::deserialize(deserializer).map(gst::ClockTime::from_mseconds)
 }
 

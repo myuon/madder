@@ -5,7 +5,9 @@ extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 extern crate serde;
 extern crate serde_json;
+extern crate madder_util as util;
 
+use util::serde_impl::*;
 use component::effect::*;
 use component::attribute::*;
 use component::property::*;
@@ -66,26 +68,18 @@ pub enum ComponentType {
 pub struct Component {
     pub component_type: ComponentType,
 
-    #[serde(serialize_with = "gst_clocktime_serialize")]
-    #[serde(deserialize_with = "gst_clocktime_deserialize")]
+    #[serde(serialize_with = "SerTime::serialize_time")]
+    #[serde(deserialize_with = "SerTime::deserialize_time")]
     pub start_time: gst::ClockTime,
 
-    #[serde(serialize_with = "gst_clocktime_serialize")]
-    #[serde(deserialize_with = "gst_clocktime_deserialize")]
+    #[serde(serialize_with = "SerTime::serialize_time")]
+    #[serde(deserialize_with = "SerTime::deserialize_time")]
     pub length: gst::ClockTime,
 
     pub layer_index: usize,
 
     #[serde(default = "Vec::new")]
     pub effect: Vec<Effect>,
-}
-
-fn gst_clocktime_serialize<S: serde::Serializer>(g: &gst::ClockTime, serializer: S) -> Result<S::Ok, S::Error> {
-    serializer.serialize_u64(g.mseconds().unwrap())
-}
-
-fn gst_clocktime_deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<gst::ClockTime, D::Error> {
-    serde::Deserialize::deserialize(deserializer).map(gst::ClockTime::from_mseconds)
 }
 
 pub trait ComponentWrapper : AsRef<Component> + AsMut<Component> {

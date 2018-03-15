@@ -25,6 +25,7 @@ use serde_json::Value;
 
 #[macro_use] extern crate madder_util as util;
 use util::gtk_util;
+use util::serde_impl::*;
 
 pub mod component;
 pub use self::component::*;
@@ -57,21 +58,17 @@ pub struct Editor {
     #[serde(rename = "components")]
     pub elements: Vec<Box<ComponentLike>>,
 
-    #[serde(serialize_with = "gst_clocktime_serialize")]
+    #[serde(serialize_with = "SerTime::serialize_time")]
     position: gst::ClockTime,
 
     width: i32,
     height: i32,
 
-    #[serde(serialize_with = "gst_clocktime_serialize")]
+    #[serde(serialize_with = "SerTime::serialize_time")]
     length: gst::ClockTime,
 
     #[serde(skip_serializing)]
     renderer: Option<AviRenderer>,
-}
-
-fn gst_clocktime_serialize<S: serde::Serializer>(g: &gst::ClockTime, serializer: S) -> Result<S::Ok, S::Error> {
-    serializer.serialize_u64(g.mseconds().unwrap())
 }
 
 fn vec_componentlike_serialize<S: serde::Serializer>(g: &Vec<Box<ComponentLike>>, serializer: S) -> Result<S::Ok, S::Error> {
