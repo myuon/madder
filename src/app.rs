@@ -72,8 +72,8 @@ impl App {
             (glsinkbin, widget.get::<gtk::Widget>().unwrap())
         } else { panic!(); };
 
-        let width = self_.borrow().editor.get_by_pointer(Pointer::from_str("/width"), ContentType::Attribute).as_i64().unwrap() as i32;
-        let height = self_.borrow().editor.get_by_pointer(Pointer::from_str("/height"), ContentType::Attribute).as_i64().unwrap() as i32;
+        let width = self_.borrow().editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32;
+        let height = self_.borrow().editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32;
         widget.set_size_request(width, height);
         parent.pack_start(&widget, false, false, 0);
         self_.borrow().canvas.hide();
@@ -85,8 +85,8 @@ impl App {
         let appsrc = appsrc.clone().dynamic_cast::<gsta::AppSrc>().unwrap();
         let info = gstv::VideoInfo::new(
             gstv::VideoFormat::Rgb,
-            self_.borrow().editor.get_by_pointer(Pointer::from_str("/width"), ContentType::Attribute).as_i64().unwrap() as u32 / 2,
-            self_.borrow().editor.get_by_pointer(Pointer::from_str("/height"), ContentType::Attribute).as_i64().unwrap() as u32 / 2,
+            self_.borrow().editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as u32 / 2,
+            self_.borrow().editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as u32 / 2,
         ).fps(gst::Fraction::new(20,1)).build().unwrap();
         appsrc.set_caps(&info.to_caps().unwrap());
         appsrc.set_property_format(gst::Format::Time);
@@ -124,14 +124,14 @@ impl App {
         let mut pos = 0;
         let self__ = self_.clone();
         gtk::idle_add(move || {
-            let width = self_.borrow().editor.get_by_pointer(Pointer::from_str("/width"), ContentType::Attribute).as_i64().unwrap() as i32;
-            let height = self_.borrow().editor.get_by_pointer(Pointer::from_str("/height"), ContentType::Attribute).as_i64().unwrap() as i32;
+            let width = self_.borrow().editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32;
+            let height = self_.borrow().editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32;
             let mut buffer = gst::Buffer::with_size((width*height*3/4) as usize).unwrap();
             {
                 let buffer = buffer.get_mut().unwrap();
 
                 buffer.set_pts(pos * 500 * gst::MSECOND);
-                let position = self__.borrow().editor.get_by_pointer(Pointer::from_str("/position"), ContentType::Attribute).as_u64().unwrap();
+                let position = self__.borrow().editor.get_value(Pointer::from_str("/position")).as_u64().unwrap();
                 self__.borrow_mut().editor.seek_to((position + 500) * gst::MSECOND);
 
                 let mut data = buffer.map_writable().unwrap();
@@ -147,7 +147,7 @@ impl App {
             appsrc.push_buffer(buffer).into_result().unwrap();
             pos += 1;
 
-            let position = gst::ClockTime::from_mseconds(self_.borrow().editor.get_by_pointer(Pointer::from_str("/position"), ContentType::Attribute).as_u64().unwrap());
+            let position = self_.borrow().editor.get_value(Pointer::from_str("/position")).as_time().unwrap();
             let editor = &self__.borrow().editor;
             let elems = editor.elements.iter().filter(|&elem| {
                 elem.component_type == ComponentType::Sound
@@ -214,7 +214,7 @@ impl App {
 
     fn save_to_file(self_: Rc<RefCell<App>>, path: PathBuf) {
         let mut buf = BufWriter::new(File::create(path).unwrap());
-        buf.write(&format!("{:#}", self_.borrow().editor.get_by_pointer(Pointer::from_str(""), ContentType::Value)).as_bytes()).unwrap();
+        buf.write(&format!("{:#}", self_.borrow().editor.get_value(Pointer::from_str(""))).as_bytes()).unwrap();
     }
 
     fn open_with_dialog(self_: Rc<RefCell<App>>) {
@@ -235,14 +235,14 @@ impl App {
         let self__ = self_.clone();
         self_.borrow().property.append_page("component", GridPage::new(
             self_.borrow().property.width,
-            serde_json::from_value(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/", index)), ContentType::Attribute)).unwrap(),
+            serde_json::from_value(self_.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/", index)))).unwrap(),
             Box::new(move |_, prop_name, prop| {
                 let prop_name = Rc::new(prop_name.to_string());
                 let self__ = self__.clone();
 
                 gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
                     // request the property again, since in this callback the value of property might have been changed
-                    let prop = serde_json::from_value::<Attribute>(self__.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/{}", index, *prop_name)), ContentType::Attribute)).unwrap().clone();
+                    let prop = serde_json::from_value::<Attribute>(self__.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/{}", index, *prop_name)))).unwrap().clone();
                     if let Some(new_prop) = new_prop {
                         self__.borrow_mut().editor.patch_once(Operation::Add(
                             Pointer::from_str(&format!("/components/{}/{}", index, prop_name.as_str())),
@@ -258,7 +258,7 @@ impl App {
         let self__ = self_.clone();
         self_.borrow().property.append_page("property", GridPage::new(
             self_.borrow().property.width,
-            serde_json::from_value(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/prop", index)), ContentType::Attribute)).unwrap(),
+            serde_json::from_value(self_.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/prop", index)))).unwrap(),
             Box::new(move |prop_index, prop_name, prop| {
                 let prop_index = Rc::new(prop_index);
                 let prop_name = Rc::new(prop_name.to_string());
@@ -266,7 +266,7 @@ impl App {
 
                 gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
                     // request the property again, since in this callback the value of property might have been changed
-                    let prop = serde_json::from_value::<Vec<(String, Attribute)>>(self__.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/prop", index)), ContentType::Attribute)).unwrap()[*prop_index].1.clone();
+                    let prop = serde_json::from_value::<Vec<(String, Attribute)>>(self__.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/prop", index)))).unwrap()[*prop_index].1.clone();
                     if let Some(new_prop) = new_prop {
                         self__.borrow_mut().editor.patch_once(Operation::Add(
                             Pointer::from_str(&format!("/components/{}/prop/{}", index, prop_name.as_str())),
@@ -284,7 +284,7 @@ impl App {
         let self____ = self_.clone();
         self_.borrow().property.append_page("effect", BoxPage::new(
             self_.borrow().property.width,
-            serde_json::from_value::<Vec<Vec<(String, Attribute)>>>(self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/effect", index)), ContentType::Attribute)).unwrap(),
+            serde_json::from_value::<Vec<Vec<(String, Attribute)>>>(self_.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/effect", index)))).unwrap(),
             Box::new(move |prop_index, prop_vec| {
                 let prop_index = Rc::new(prop_index);
                 let self__ = self__.clone();
@@ -300,7 +300,7 @@ impl App {
 
                     vbox.pack_start(&gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop,tracker| {
                         // request the property again, since in this callback the value of property might have been changed
-                        let prop = serde_json::from_value::<Vec<Vec<(String, Attribute)>>>(self__.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/effect", index)), ContentType::Attribute)).unwrap()[*prop_index][i].1.clone();
+                        let prop = serde_json::from_value::<Vec<Vec<(String, Attribute)>>>(self__.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/effect", index)))).unwrap()[*prop_index][i].1.clone();
                         if let Some(new_prop) = new_prop {
                             self__.borrow_mut().editor.patch_once(Operation::Add(
                                 Pointer::from_str(&format!("/components/{}/effect/{}/{}", index, *prop_index, prop_name.as_str())),
@@ -336,7 +336,7 @@ impl App {
 
         self_.borrow().property.append_page("info", BoxPage::new(
             self_.borrow().property.width,
-            vec![self_.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/info", index)), ContentType::Attribute)],
+            vec![self_.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}/info", index)))],
             Box::new(move |_,t| {
                 gtk::Label::new(t.as_str()).dynamic_cast().unwrap()
             }),
@@ -547,9 +547,9 @@ impl App {
                     gtk::MessageType::Info,
                     gtk::ButtonsType::Ok,
                     &serde_json::to_string(&json!({
-                        "size": (self__.borrow().editor.get_by_pointer(Pointer::from_str("/width"), ContentType::Value),
-                                 self__.borrow().editor.get_by_pointer(Pointer::from_str("/height"), ContentType::Value)),
-                        "components": self__.borrow().editor.get_by_pointer(Pointer::from_str("/components"), ContentType::Value).as_array().unwrap().len(),
+                        "size": (self__.borrow().editor.get_value(Pointer::from_str("/width")),
+                                 self__.borrow().editor.get_value(Pointer::from_str("/height"))),
+                        "components": self__.borrow().editor.get_value(Pointer::from_str("/components")).as_array().unwrap().len(),
                     })).unwrap(),
                 );
 
@@ -581,8 +581,8 @@ impl App {
                 let split_component_here = gtk::MenuItem::new_with_label("オブジェクトをこの位置で分割");
                 let self___ = self___.clone();
                 split_component_here.connect_activate(move |_| {
-                    let this_component = serde_json::from_value::<Component>(self___.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}", index)), ContentType::Value)).unwrap();
-                    let mut this = self___.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}", index)), ContentType::Value);
+                    let this_component = serde_json::from_value::<Component>(self___.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
+                    let mut this = self___.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}", index)));
                     this.as_object_mut().unwrap()["start_time"] = json!(position.mseconds().unwrap());
                     this.as_object_mut().unwrap()["length"] = json!(this_component.length.mseconds().unwrap() - position.mseconds().unwrap());
 
@@ -609,7 +609,7 @@ impl App {
         let self___ = self_.clone();
         app.timeline.borrow().connect_drag_component(
             Box::new(move |index,distance,layer_index| {
-                let props = serde_json::from_value::<Component>(self__.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}", index)), ContentType::Value)).unwrap();
+                let props = serde_json::from_value::<Component>(self__.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
                 let add_time = |a: gst::ClockTime, b: f64| {
                     if b < 0.0 {
                         if a < b.abs() as u64 * gst::MSECOND {
@@ -633,7 +633,7 @@ impl App {
                 self__.borrow().queue_draw();
             }),
             Box::new(move |index,distance| {
-                let props = serde_json::from_value::<Component>(self___.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}", index)), ContentType::Value)).unwrap();
+                let props = serde_json::from_value::<Component>(self___.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
                 let add_time = |a: gst::ClockTime, b: f64| {
                     if b < 0.0 {
                         if a < b.abs() as u64 * gst::MSECOND {
@@ -659,8 +659,8 @@ impl App {
 
         app.timeline.borrow().setup_object_renderer(Box::new(move || {
             let self___ = self__.clone();
-            serde_json::from_value::<Vec<Component>>(self__.borrow().editor.get_by_pointer(Pointer::from_str("/components"), ContentType::Value)).unwrap().iter().enumerate().map(|(i,component)| {
-                let entity = serde_json::from_value::<Attribute>(self___.borrow().editor.get_by_pointer(Pointer::from_str(&format!("/components/{}/prop/entity", i)), ContentType::Value)).unwrap();
+            serde_json::from_value::<Vec<Component>>(self__.borrow().editor.get_value(Pointer::from_str("/components"))).unwrap().iter().enumerate().map(|(i,component)| {
+                let entity = serde_json::from_value::<Attribute>(self___.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
 
                 let obj = BoxObject::new(
                     component.start_time.mseconds().unwrap() as i32,
@@ -716,12 +716,12 @@ impl App {
         });
 
         app.canvas.set_size_request(
-            app.editor.get_by_pointer(Pointer::from_str("/width"), ContentType::Value).as_i64().unwrap() as i32,
-            app.editor.get_by_pointer(Pointer::from_str("/height"), ContentType::Value).as_i64().unwrap() as i32
+            app.editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32,
+            app.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32
         );
         app.window.set_size_request(
-            app.editor.get_by_pointer(Pointer::from_str("/height"), ContentType::Value).as_i64().unwrap() as i32,
-            app.editor.get_by_pointer(Pointer::from_str("/height"), ContentType::Value).as_i64().unwrap() as i32 + 200
+            app.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32,
+            app.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32 + 200
         );
         app.window.set_title("madder");
 

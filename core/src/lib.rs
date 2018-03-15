@@ -279,6 +279,14 @@ impl Editor {
             z => panic!("Call get_by_pointer_as_attr with unexisting path: {:?}", z),
         }
     }
+
+    pub fn get_value(&self, path: Pointer) -> Value {
+        self.get_by_pointer(path, ContentType::Value)
+    }
+
+    pub fn get_attr(&self, path: Pointer) -> Value {
+        self.get_by_pointer(path, ContentType::Attribute)
+    }
 }
 
 #[derive(Clone)]
