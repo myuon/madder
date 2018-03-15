@@ -11,5 +11,5 @@ A Video Editor for the Next Generation
 ## Resources
 
 - [Roadmap](https://github.com/myuon/madder/wiki/Roadmap)
-- [CHANGELOG](https://github.com/myuon/madder/CHANGELOG.md)
+- [CHANGELOG](https://github.com/myuon/madder/blob/master/CHANGELOG.md)
 
