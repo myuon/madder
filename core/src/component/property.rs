@@ -7,6 +7,48 @@ extern crate serde_json;
 use std::marker::PhantomData;
 use component::*;
 
+pub trait HasProperty {
+    fn get_attrs(&self) -> Vec<(String, Attribute)>;
+    fn get_attr(&self, name: &str) -> Attribute;
+    fn set_attr(&mut self, name: &str, attr: Attribute);
+
+    fn get_props(&self) -> Vec<(String, serde_json::Value)>;
+    fn get_prop(&self, name: &str) -> serde_json::Value;
+    fn set_prop(&mut self, name: &str, prop: serde_json::Value);
+}
+
+pub trait HasPropertyBuilder {
+    fn keys(_: PhantomData<Self>) -> Vec<String>;
+    fn setter<T: AsAttribute>(&mut self, name: &str, prop: T);
+    fn getter<T: AsAttribute>(&self, name: &str) -> T;
+}
+
+impl<P: HasPropertyBuilder> HasProperty for P {
+    fn get_attrs(&self) -> Vec<(String, Attribute)> {
+        <P as HasPropertyBuilder>::keys(PhantomData).into_iter().map(|key| (key.clone(), self.getter(&key))).collect()
+    }
+
+    fn get_attr(&self, name: &str) -> Attribute {
+        self.getter(name)
+    }
+
+    fn set_attr(&mut self, name: &str, attr: Attribute) {
+        self.setter(name, attr)
+    }
+
+    fn get_props(&self) -> Vec<(String, serde_json::Value)> {
+        <P as HasPropertyBuilder>::keys(PhantomData).into_iter().map(|key| (key.clone(), self.getter(&key))).collect()
+    }
+
+    fn get_prop(&self, name: &str) -> serde_json::Value {
+        self.getter(name)
+    }
+
+    fn set_prop(&mut self, name: &str, prop: serde_json::Value) {
+        self.setter(name, prop)
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CommonProperty {
     #[serde(default = "coordinate_default")]
@@ -80,6 +122,4 @@ fn coordinate_default() -> (i32, i32) { (0,0) }
 fn rotate_default() -> f64 { 0.0 }
 fn alpha_default() -> i32 { 255 }
 fn scale_default() -> (f64, f64) { (1.0,1.0) }
-
-
 

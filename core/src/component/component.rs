@@ -10,8 +10,8 @@ extern crate madder_util as util;
 
 use util::serde_impl::*;
 use component::effect::*;
-use component::attribute::*;
 use component::property::*;
+use component::attribute::*;
 
 pub trait EffectOn {
     fn effect_on_component(&self, component: CommonProperty, current: f64) -> CommonProperty;
@@ -63,6 +63,14 @@ pub enum ComponentType {
     Image,
     Text,
     Sound,
+}
+
+impl ComponentType {
+    fn types() -> Vec<ComponentType> {
+        use ComponentType::*;
+
+        vec![Video, Image, Text, Sound]
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -124,45 +132,29 @@ impl ComponentWrapper for Component {
     }
 }
 
-pub trait HasProperty {
-    fn get_attrs(&self) -> Vec<(String, Attribute)>;
-    fn get_attr(&self, name: &str) -> Attribute;
-    fn set_attr(&mut self, name: &str, attr: Attribute);
-
-    fn get_props(&self) -> Vec<(String, serde_json::Value)>;
-    fn get_prop(&self, name: &str) -> serde_json::Value;
-    fn set_prop(&mut self, name: &str, prop: serde_json::Value);
-}
-
-pub trait HasPropertyBuilder {
-    fn keys(_: PhantomData<Self>) -> Vec<String>;
-    fn setter<T: AsAttribute>(&mut self, name: &str, prop: T);
-    fn getter<T: AsAttribute>(&self, name: &str) -> T;
-}
-
-impl<P: HasPropertyBuilder> HasProperty for P {
-    fn get_attrs(&self) -> Vec<(String, Attribute)> {
-        <P as HasPropertyBuilder>::keys(PhantomData).into_iter().map(|key| (key.clone(), self.getter(&key))).collect()
+impl HasPropertyBuilder for Component {
+    fn keys(_: PhantomData<Self>) -> Vec<String> {
+        strings!["component_type", "start_time", "length", "layer_index", "effect"]
     }
 
-    fn get_attr(&self, name: &str) -> Attribute {
-        self.getter(name)
+    fn getter<T: AsAttribute>(&self, name: &str) -> T {
+        match name {
+            "component_type" => AsAttribute::from_choose(ComponentType::types().iter().map(|v| format!("{:?}", v)).collect(), ComponentType::types().iter().position(|v| v == &self.component_type)),
+            "start_time" => AsAttribute::from_time(self.start_time),
+            "length" => AsAttribute::from_time(self.length),
+            "layer_index" => AsAttribute::from_usize(self.layer_index),
+            _ => unimplemented!(),
+        }
     }
 
-    fn set_attr(&mut self, name: &str, attr: Attribute) {
-        self.setter(name, attr)
-    }
-
-    fn get_props(&self) -> Vec<(String, serde_json::Value)> {
-        <P as HasPropertyBuilder>::keys(PhantomData).into_iter().map(|key| (key.clone(), self.getter(&key))).collect()
-    }
-
-    fn get_prop(&self, name: &str) -> serde_json::Value {
-        self.getter(name)
-    }
-
-    fn set_prop(&mut self, name: &str, prop: serde_json::Value) {
-        self.setter(name, prop)
+    fn setter<T: AsAttribute>(&mut self, name: &str, prop: T) {
+        match name {
+            "component_type" => self.component_type = ComponentType::types()[prop.as_choose().unwrap()].clone(),
+            "start_time" => self.start_time = prop.as_time().unwrap(),
+            "length" => self.length = prop.as_time().unwrap(),
+            "layer_index" => self.layer_index = prop.as_usize().unwrap(),
+            _ => unimplemented!(),
+        }
     }
 }
 

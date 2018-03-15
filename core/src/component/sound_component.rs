@@ -5,6 +5,7 @@ extern crate glib;
 use gst::prelude::*;
 use std::marker::PhantomData;
 
+use component::property::*;
 use component::attribute::*;
 use component::component::*;
 

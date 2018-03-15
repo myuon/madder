@@ -16,8 +16,8 @@ pub enum Tracker {
     Transition,
 }
 
-pub fn edit_type_as_widget(self_: &Property, tracker: Vec<Tracker>, cont: Rc<Fn(Option<Property>, &Vec<Tracker>) + 'static>) -> gtk::Widget {
-    use Property::*;
+pub fn edit_type_as_widget(self_: &Attribute, tracker: Vec<Tracker>, cont: Rc<Fn(Option<Attribute>, &Vec<Tracker>) + 'static>) -> gtk::Widget {
+    use Attribute::*;
 
     match self_ {
         &ReadOnly(ref s) => {
@@ -137,8 +137,8 @@ pub fn edit_type_as_widget(self_: &Property, tracker: Vec<Tracker>, cont: Rc<Fn(
     }
 }
 
-pub fn recover_property(dynamic_type: Property, tracker: &[Tracker], value: Property) -> Property {
-    use Property::*;
+pub fn recover_property(dynamic_type: Attribute, tracker: &[Tracker], value: Attribute) -> Attribute {
+    use Attribute::*;
 
     match tracker {
         &[] => value,

@@ -267,23 +267,17 @@ impl Editor {
             &["components", ref n, "prop", ref key] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_prop(key)).unwrap()
             },
-            &["components", ref n, key] => {
-                /*
-                match key {
-                    "component_type" => serde_json::to_value(format!("{:?}", self.elements.as_index(IndexRange::from_str(n).unwrap()).component_type)).unwrap(),
-                    "start_time" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).start_time).unwrap(),
-                    "length" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).length).unwrap(),
-                    "layer_index" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).layer_index).unwrap(),
-                    z => panic!("Call get_by_pointer with unexisting path: /components/index/{}", z),
-            }*/
-                unimplemented!()
-            },
-            z => panic!("Call get_by_pointer with unexisting path: {:?}", z),
+            z => panic!("Call get_by_pointer_as_value with unexisting path: {:?}", z),
         }
     }
 
     fn get_by_pointer_as_attr(&self, path: Pointer) -> Attribute {
-        unimplemented!()
+        match path.0.iter().map(|ref x| x.as_str()).collect::<Vec<&str>>().as_slice() {
+            &["components", ref n, key] => {
+                self.elements.as_index(IndexRange::from_str(n).unwrap()).get_attr(key)
+            },
+            z => panic!("Call get_by_pointer_as_attr with unexisting path: {:?}", z),
+        }
     }
 }
 
