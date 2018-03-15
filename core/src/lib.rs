@@ -24,6 +24,7 @@ use serde::ser::SerializeSeq;
 use serde_json::Value;
 
 #[macro_use] extern crate madder_util as util;
+use util::gtk_util;
 
 pub mod component;
 pub use self::component::*;
@@ -146,7 +147,7 @@ impl Editor {
                     cmp::min(dest.get_height(), self.height - common_prop.coordinate.1),
                     common_prop.coordinate.0.into(), common_prop.coordinate.1.into(),
                     common_prop.scale.0, common_prop.scale.1,
-                    GdkInterpType::Nearest.to_i32(), common_prop.alpha);
+                    gtk_util::GdkInterpType::Nearest.to_i32(), common_prop.alpha);
             }
         }
 

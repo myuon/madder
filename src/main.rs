@@ -8,6 +8,7 @@ extern crate gdk;
 #[macro_use] extern crate serde_json;
 
 extern crate madder_core;
+extern crate madder_util as util;
 use madder_core::*;
 
 pub mod widget;

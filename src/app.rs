@@ -26,6 +26,7 @@ extern crate serde_json;
 
 extern crate madder_core;
 use madder_core::*;
+use util::gtk_util;
 
 use widget::*;
 use gtk_impl;
@@ -137,7 +138,7 @@ impl App {
                 let mut data = data.as_mut_slice();
 
                 let pixbuf = self__.borrow().editor.get_current_pixbuf();
-                let pixbuf = pixbuf.scale_simple(width / 2, height / 2, GdkInterpType::Nearest.to_i32()).unwrap();
+                let pixbuf = pixbuf.scale_simple(width / 2, height / 2, gtk_util::GdkInterpType::Nearest.to_i32()).unwrap();
                 let pixels = unsafe { pixbuf.get_pixels() };
 
                 use std::io::Write;
