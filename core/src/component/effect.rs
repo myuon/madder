@@ -1,4 +1,5 @@
 use std::f64::consts::PI;
+use std::marker::PhantomData;
 
 extern crate gdk;
 extern crate gdk_pixbuf;
@@ -130,60 +131,40 @@ pub struct Effect {
     pub end_value: f64,
 }
 
-impl HasProperty for Effect {
-    fn get_attrs(&self) -> Vec<(String, Attribute)> {
-        strings!["effect_type", "transition", "start_value", "end_value"].into_iter().map(|s| (s.clone(), self.get_attr(&s))).collect()
+impl HasPropertyBuilder for Effect {
+    fn keys(_: PhantomData<Self>) -> Vec<String> {
+        strings!["effect_type", "transition", "start_value", "end_value"]
     }
 
-    fn get_attr(&self, name: &str) -> Attribute {
-        use Attribute::*;
-
+    fn getter<T: AsAttribute>(&self, name: &str) -> T {
         match name {
-            "effect_type" => Choose(
+            "effect_type" => AsAttribute::from_choose(
                 EffectType::types().iter().map(|x| format!("{:?}", x)).collect(),
                 EffectType::types().iter().position(|x| x == &self.effect_type),
             ),
-            "transition" => Choose(
+            "transition" => AsAttribute::from_choose(
                 Transition::transitions().iter().map(|x| format!("{:?}", x)).collect(),
                 Transition::transitions().iter().position(|x| x == &self.transition),
             ),
-            "start_value" => F64(self.start_value),
-            "end_value" => F64(self.end_value),
+            "start_value" => AsAttribute::from_f64(self.start_value),
+            "end_value" => AsAttribute::from_f64(self.end_value),
             z => panic!("Effect has no such property: {}", z),
         }
     }
 
-    fn set_attr(&mut self, name: &str, attr: Attribute) {
+    fn setter<T: AsAttribute>(&mut self, name: &str, prop: T) {
         match name {
             "effect_type" => {
-                self.effect_type = EffectType::types()[attr.as_choose().unwrap()].clone();
+                self.effect_type = EffectType::types()[prop.as_choose().unwrap()].clone();
             },
             "transition" => {
-                self.transition = Transition::transitions()[attr.as_choose().unwrap()].clone();
+                self.transition = Transition::transitions()[prop.as_choose().unwrap()].clone();
             },
             "start_value" => {
-                self.start_value = attr.as_f64().unwrap();
+                self.start_value = prop.as_f64().unwrap();
             },
             "end_value" => {
-                self.end_value = attr.as_f64().unwrap();
-            },
-            _ => unimplemented!(),
-        }
-    }
-
-    fn set_prop(&mut self, name: &str, prop: serde_json::Value) {
-        match name {
-            "effect_type" => {
-                self.effect_type = EffectType::types()[serde_json::from_value::<usize>(prop).unwrap()].clone();
-            },
-            "transition" => {
-                self.transition = Transition::transitions()[serde_json::from_value::<usize>(prop).unwrap()].clone();
-            },
-            "start_value" => {
-                self.start_value = serde_json::from_value(prop).unwrap();
-            },
-            "end_value" => {
-                self.end_value = serde_json::from_value(prop).unwrap();
+                self.end_value = prop.as_f64().unwrap();
             },
             _ => unimplemented!(),
         }

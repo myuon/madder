@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 extern crate gdk_pixbuf;
 extern crate glib;
 
@@ -177,45 +179,26 @@ impl ComponentWrapper for VideoFileComponent {
     }
 }
 
-impl VideoFileComponent {
-    fn keys() -> Vec<String> {
-        vec_add!(CommonProperty::keys(), strings!["entity"])
+impl HasPropertyBuilder for VideoFileComponent {
+    fn keys(_: PhantomData<Self>) -> Vec<String> {
+        vec_add!(CommonProperty::keys(PhantomData), strings!["entity"])
     }
-}
 
-impl HasProperty for VideoFileComponent {
-    fn get_attr(&self, name: &str) -> Attribute {
-        use Attribute::*;
-
+    fn getter<T: AsAttribute>(&self, name: &str) -> T {
         match name {
-            "entity" => FilePath(self.prop.entity.clone()),
-            _ => self.prop.common.get_attr(name),
+            "entity" => AsAttribute::from_filepath(self.prop.entity.clone()),
+            _ => self.prop.common.getter(name),
         }
     }
 
-    fn get_attrs(&self) -> Vec<(String, Attribute)> {
-        VideoFileComponent::keys().into_iter().map(|s| (s.clone(), self.get_attr(&s))).collect()
-    }
-
-    fn set_attr(&mut self, name: &str, prop: Attribute) {
-        use Attribute::*;
-
-        match (name, prop) {
-            ("entity", FilePath(uri)) => {
+    fn setter<T: AsAttribute>(&mut self, name: &str, prop: T) {
+        match name {
+            "entity" => {
+                let uri = prop.as_filepath().unwrap();
                 self.reload(&uri);
                 self.prop.entity = uri;
             },
-            (name, prop) => self.prop.common.set_attr(name, prop),
-        }
-    }
-
-    fn set_prop(&mut self, name: &str, prop: serde_json::Value) {
-        match name {
-            "entity" => {
-                self.reload(prop.as_str().unwrap());
-                self.prop.entity = serde_json::from_value(prop).unwrap()
-            },
-            _ => self.prop.common.set_prop(name, prop),
+            name => self.prop.common.setter(name, prop),
         }
     }
 }

@@ -4,6 +4,7 @@ extern crate gstreamer as gst;
 extern crate serde;
 extern crate serde_json;
 
+use std::marker::PhantomData;
 use component::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -21,47 +22,43 @@ pub struct CommonProperty {
     pub scale: (f64, f64),
 }
 
-impl CommonProperty {
-    pub fn keys() -> Vec<String> {
+impl HasPropertyBuilder for CommonProperty {
+    fn keys(_: PhantomData<Self>) -> Vec<String> {
         strings!["coordinate", "rotate", "alpha", "scale"]
     }
-}
 
-impl HasProperty for CommonProperty {
-    fn get_attr(&self, name: &str) -> Attribute {
-        use Attribute::*;
-
+    fn getter<T: AsAttribute>(&self, name: &str) -> T {
         match name {
-            "coordinate" => Pair(box I32(self.coordinate.0), box I32(self.coordinate.1)),
-            "rotate" => F64(self.rotate),
-            "alpha" => I32(self.alpha),
-            "scale" => Pair(box F64(self.scale.0), box F64(self.scale.1)),
+            "coordinate" => {
+                AsAttribute::from_pair(
+                    box AsAttribute::from_i32(self.coordinate.0),
+                    box AsAttribute::from_i32(self.coordinate.1)
+                )
+            },
+            "rotate" => AsAttribute::from_f64(self.rotate),
+            "alpha" => AsAttribute::from_i32(self.alpha),
+            "scale" => {
+                AsAttribute::from_pair(
+                    box AsAttribute::from_f64(self.scale.0),
+                    box AsAttribute::from_f64(self.scale.1)
+                )
+            },
             _ => unimplemented!(),
         }
     }
 
-    fn get_attrs(&self) -> Vec<(String, Attribute)> {
-        CommonProperty::keys().into_iter().map(|s| (s.clone(), self.get_attr(&s))).collect()
-    }
-
-    fn set_attr(&mut self, name: &str, prop: Attribute) {
-        use Attribute::*;
-
-        match (name, prop) {
-            ("coordinate", Pair(box I32(x), box I32(y))) => self.coordinate = (x,y),
-            ("rotate", F64(n)) => self.rotate = n,
-            ("alpha", I32(n)) => self.alpha = n,
-            ("scale", Pair(box F64(x), box F64(y))) => self.scale = (x,y),
-            _ => unimplemented!(),
-        }
-    }
-
-    fn set_prop(&mut self, name: &str, prop: serde_json::Value) {
+    fn setter<T: AsAttribute>(&mut self, name: &str, prop: T) {
         match name {
-            "coordinate" => self.coordinate = serde_json::from_value(prop).unwrap(),
-            "rotate" => self.rotate = serde_json::from_value(prop).unwrap(),
-            "alpha" => self.alpha = serde_json::from_value(prop).unwrap(),
-            "scale" => self.scale = serde_json::from_value(prop).unwrap(),
+            "coordinate" => {
+                let (x,y) = prop.as_pair().unwrap();
+                self.coordinate = (x.as_i32().unwrap(), y.as_i32().unwrap());
+            },
+            "rotate" => self.rotate = prop.as_f64().unwrap(),
+            "alpha" => self.alpha = prop.as_i32().unwrap(),
+            "scale" => {
+                let (x,y) = prop.as_pair().unwrap();
+                self.scale = (x.as_f64().unwrap(), y.as_f64().unwrap());
+            },
             _ => unimplemented!(),
         }
     }

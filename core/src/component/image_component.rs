@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 extern crate gstreamer as gst;
 extern crate gdk_pixbuf;
 extern crate serde_json;
@@ -103,46 +105,27 @@ impl ComponentWrapper for ImageComponent {
     }
 }
 
-impl HasProperty for ImageComponent {
-    fn get_attr(&self, name: &str) -> Attribute {
-        use Attribute::*;
+impl HasPropertyBuilder for ImageComponent {
+    fn keys(_: PhantomData<Self>) -> Vec<String> {
+        vec_add!(CommonProperty::keys(PhantomData), strings!["entity"])
+    }
 
+    fn getter<T: AsAttribute>(&self, name: &str) -> T {
         match name {
-            "entity" => FilePath(self.prop.entity.clone()),
-            _ => self.prop.common.get_attr(name),
+            "entity" => AsAttribute::from_filepath(self.prop.entity.clone()),
+            _ => self.prop.common.getter(name),
         }
     }
 
-    fn get_attrs(&self) -> Vec<(String, Attribute)> {
-        ImageComponent::keys().into_iter().map(|s| (s.clone(), self.get_attr(&s))).collect()
-    }
-
-    fn set_attr(&mut self, name: &str, prop: Attribute) {
-        use Attribute::*;
-
-        match (name, prop) {
-            ("entity", FilePath(uri)) => {
+    fn setter<T: AsAttribute>(&mut self, name: &str, prop: T) {
+        match name {
+            "entity" => {
+                let uri = prop.as_filepath().unwrap();
                 self.reload(&uri);
                 self.prop.entity = uri;
             },
-            (name, prop) => self.prop.common.set_attr(name, prop),
+            _ => self.prop.common.setter(name, prop),
         }
-    }
-
-    fn set_prop(&mut self, name: &str, prop: serde_json::Value) {
-        match name {
-            "entity" => {
-                self.reload(prop.as_str().unwrap());
-                self.prop.entity = serde_json::from_value(prop).unwrap()
-            },
-            _ => self.prop.common.set_prop(name, prop),
-        }
-    }
-}
-
-impl ImageComponent {
-    fn keys() -> Vec<String> {
-        vec_add!(CommonProperty::keys(), strings!["entity"])
     }
 }
 

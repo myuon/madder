@@ -1,4 +1,5 @@
 use std::ops::{Deref, DerefMut};
+use std::marker::PhantomData;
 
 extern crate gdk;
 extern crate gdk_pixbuf;
@@ -128,15 +129,41 @@ pub trait HasProperty {
     fn get_attr(&self, name: &str) -> Attribute;
     fn set_attr(&mut self, name: &str, attr: Attribute);
 
+    fn get_props(&self) -> Vec<(String, serde_json::Value)>;
+    fn get_prop(&self, name: &str) -> serde_json::Value;
+    fn set_prop(&mut self, name: &str, prop: serde_json::Value);
+}
+
+pub trait HasPropertyBuilder {
+    fn keys(_: PhantomData<Self>) -> Vec<String>;
+    fn setter<T: AsAttribute>(&mut self, name: &str, prop: T);
+    fn getter<T: AsAttribute>(&self, name: &str) -> T;
+}
+
+impl<P: HasPropertyBuilder> HasProperty for P {
+    fn get_attrs(&self) -> Vec<(String, Attribute)> {
+        <P as HasPropertyBuilder>::keys(PhantomData).into_iter().map(|key| (key.clone(), self.getter(&key))).collect()
+    }
+
+    fn get_attr(&self, name: &str) -> Attribute {
+        self.getter(name)
+    }
+
+    fn set_attr(&mut self, name: &str, attr: Attribute) {
+        self.setter(name, attr)
+    }
+
     fn get_props(&self) -> Vec<(String, serde_json::Value)> {
-        self.get_attrs().iter().map(|&(ref k, ref attr)| (k.to_string(), serde_json::to_value(attr).unwrap().as_object().unwrap()["value"].clone())).collect()
+        <P as HasPropertyBuilder>::keys(PhantomData).into_iter().map(|key| (key.clone(), self.getter(&key))).collect()
     }
 
     fn get_prop(&self, name: &str) -> serde_json::Value {
-        serde_json::to_value(self.get_attr(name)).unwrap().as_object().unwrap()["value"].clone()
+        self.getter(name)
     }
 
-    fn set_prop(&mut self, name: &str, prop: serde_json::Value);
+    fn set_prop(&mut self, name: &str, prop: serde_json::Value) {
+        self.setter(name, prop)
+    }
 }
 
 pub trait ComponentLike: ComponentWrapper + Peekable + HasProperty {}

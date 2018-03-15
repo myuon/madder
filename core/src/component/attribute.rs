@@ -43,6 +43,18 @@ pub trait AsAttribute {
     fn as_color(self) -> Option<gdk::RGBA>;
     fn as_readonly(self) -> Option<String>;
     fn as_choose(self) -> Option<usize>;
+
+    fn from_i32(arg: i32) -> Self;
+    fn from_f64(arg: f64) -> Self;
+    fn from_usize(arg: usize) -> Self;
+    fn from_time(arg: gst::ClockTime) -> Self;
+    fn from_pair(arg: Box<Self>, arg2: Box<Self>) -> Self where Self: Sized;
+    fn from_filepath(arg: String) -> Self;
+    fn from_document(arg: String) -> Self;
+    fn from_font(arg: String) -> Self;
+    fn from_color(arg: gdk::RGBA) -> Self;
+    fn from_readonly(arg: String) -> Self;
+    fn from_choose(arg: Vec<String>, arg2: Option<usize>) -> Self;
 }
 
 use Attribute::*;
@@ -124,6 +136,18 @@ impl AsAttribute for Attribute {
             _ => None,
         }
     }
+
+    fn from_i32(arg: i32) -> Self { I32(arg) }
+    fn from_f64(arg: f64) -> Self { F64(arg) }
+    fn from_usize(arg: usize) -> Self { Usize(arg) }
+    fn from_time(arg: gst::ClockTime) -> Self { Time(arg) }
+    fn from_pair(arg: Box<Self>, arg2: Box<Self>) -> Self { Pair(arg, arg2) }
+    fn from_filepath(arg: String) -> Self { FilePath(arg) }
+    fn from_document(arg: String) -> Self { Document(arg) }
+    fn from_font(arg: String) -> Self { Font(arg) }
+    fn from_color(arg: gdk::RGBA) -> Self { Color(arg) }
+    fn from_readonly(arg: String) -> Self { ReadOnly(arg) }
+    fn from_choose(arg: Vec<String>, arg2: Option<usize>) -> Self { Choose(arg, arg2) }
 }
 
 
@@ -171,4 +195,16 @@ impl AsAttribute for Value {
     fn as_choose(self) -> Option<usize> {
         self.as_array().and_then(|ref v| from_value(v[1].clone()).ok())
     }
+
+    fn from_i32(arg: i32) -> Self { serde_json::to_value(arg).unwrap() }
+    fn from_f64(arg: f64) -> Self { serde_json::to_value(arg).unwrap() }
+    fn from_usize(arg: usize) -> Self { serde_json::to_value(arg).unwrap() }
+    fn from_time(arg: gst::ClockTime) -> Self { serde_json::to_value(SerTime(arg)).unwrap() }
+    fn from_pair(arg: Box<Self>, arg2: Box<Self>) -> Self { serde_json::to_value([arg, arg2]).unwrap() }
+    fn from_filepath(arg: String) -> Self { serde_json::to_value(arg).unwrap() }
+    fn from_document(arg: String) -> Self { serde_json::to_value(arg).unwrap() }
+    fn from_font(arg: String) -> Self { serde_json::to_value(arg).unwrap() }
+    fn from_color(arg: gdk::RGBA) -> Self { serde_json::to_value(SerRGBA(arg)).unwrap() }
+    fn from_readonly(arg: String) -> Self { serde_json::to_value(arg).unwrap() }
+    fn from_choose(arg: Vec<String>, arg2: Option<usize>) -> Self { serde_json::to_value((arg, arg2)).unwrap() }
 }

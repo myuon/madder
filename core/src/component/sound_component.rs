@@ -3,6 +3,7 @@ extern crate gdk_pixbuf;
 extern crate serde_json;
 extern crate glib;
 use gst::prelude::*;
+use std::marker::PhantomData;
 
 use component::attribute::*;
 use component::component::*;
@@ -104,43 +105,24 @@ impl ComponentWrapper for SoundComponent {
     }
 }
 
-impl SoundComponent {
-    fn keys() -> Vec<String> {
+impl HasPropertyBuilder for SoundComponent {
+    fn keys(_: PhantomData<Self>) -> Vec<String> {
         strings!["entity"]
     }
-}
 
-impl HasProperty for SoundComponent {
-    fn get_attr(&self, name: &str) -> Attribute {
-        use Attribute::*;
-
+    fn getter<T: AsAttribute>(&self, name: &str) -> T {
         match name {
-            "entity" => FilePath(self.prop.entity.clone()),
+            "entity" => AsAttribute::from_filepath(self.prop.entity.clone()),
             _ => unimplemented!(),
         }
     }
 
-    fn get_attrs(&self) -> Vec<(String, Attribute)> {
-        SoundComponent::keys().into_iter().map(|s| (s.clone(), self.get_attr(&s))).collect()
-    }
-
-    fn set_attr(&mut self, name: &str, prop: Attribute) {
-        use Attribute::*;
-
-        match (name, prop) {
-            ("entity", FilePath(uri)) => {
-                self.reload(&uri);
-                self.prop.entity = uri;
-            },
-            _ => unimplemented!(),
-        }
-    }
-
-    fn set_prop(&mut self, name: &str, prop: serde_json::Value) {
+    fn setter<T: AsAttribute>(&mut self, name: &str, prop: T) {
         match name {
             "entity" => {
-                self.reload(prop.as_str().unwrap());
-                self.prop.entity = serde_json::from_value(prop).unwrap()
+                let uri = prop.as_filepath().unwrap();
+                self.reload(&uri);
+                self.prop.entity = uri;
             },
             _ => unimplemented!(),
         }

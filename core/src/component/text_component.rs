@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 extern crate gstreamer as gst;
 extern crate gdk;
 extern crate gdk_pixbuf;
@@ -120,63 +122,35 @@ impl ComponentWrapper for TextComponent {
     }
 }
 
-impl TextComponent {
-    fn keys() -> Vec<String> {
-        vec_add!(CommonProperty::keys(), strings!["entity"])
+impl HasPropertyBuilder for TextComponent {
+    fn keys(_: PhantomData<Self>) -> Vec<String> {
+        vec_add!(CommonProperty::keys(PhantomData), strings!["entity"])
     }
-}
 
-impl HasProperty for TextComponent {
-    fn get_attr(&self, name: &str) -> Attribute {
-        use Attribute::*;
-
+    fn getter<T: AsAttribute>(&self, name: &str) -> T {
         match name {
-            "entity" => Document(self.prop.entity.clone()),
-            "text_color" => Color(self.prop.text_color.clone()),
-            "text_font" => Font(self.prop.text_font.clone()),
-            _ => self.prop.common.get_attr(name),
+            "entity" => AsAttribute::from_document(self.prop.entity.clone()),
+            "text_color" => AsAttribute::from_color(self.prop.text_color.clone()),
+            "text_font" => AsAttribute::from_font(self.prop.text_font.clone()),
+            _ => self.prop.common.getter(name),
         }
     }
 
-    fn get_attrs(&self) -> Vec<(String, Attribute)> {
-        TextComponent::keys().into_iter().map(|s| (s.clone(), self.get_attr(&s))).collect()
-    }
-
-    fn set_attr(&mut self, name: &str, prop: Attribute) {
-        use Attribute::*;
-
-        match (name, prop) {
-            ("entity", Document(doc)) => {
-                self.prop.entity = doc;
-                self.reload();
-            },
-            ("text_color", Color(rgba)) => {
-                self.prop.text_color = rgba;
-                self.reload();
-            },
-            ("text_font", Font(font)) => {
-                self.prop.text_font = font;
-                self.reload();
-            },
-            (name, prop) => self.prop.common.set_attr(name, prop),
-        }
-    }
-
-    fn set_prop(&mut self, name: &str, prop: serde_json::Value) {
+    fn setter<T: AsAttribute>(&mut self, name: &str, prop: T) {
         match name {
             "entity" => {
-                self.prop.entity = serde_json::from_value(prop).unwrap();
+                self.prop.entity = prop.as_document().unwrap();
                 self.reload();
             },
             "text_color" => {
-                self.prop.text_color = serde_json::from_value::<SerRGBA>(prop).unwrap().0;
+                self.prop.text_color = prop.as_color().unwrap();
                 self.reload();
             },
             "text_font" => {
-                self.prop.text_font = serde_json::from_value(prop).unwrap();
+                self.prop.text_font = prop.as_font().unwrap();
                 self.reload();
             },
-            _ => self.prop.common.set_prop(name, prop),
+            name => self.prop.common.setter(name, prop),
         }
     }
 }
