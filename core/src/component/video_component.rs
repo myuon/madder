@@ -76,6 +76,14 @@ struct VideoFileProperty {
     entity: String,
 }
 
+impl VideoFileProperty {
+    fn from_value(mut json: serde_json::Value) -> VideoFileProperty {
+        let json_ = json.clone();
+        json.as_object_mut().unwrap().insert("common".to_string(), json_);
+        serde_json::from_value(json).unwrap()
+    }
+}
+
 pub struct VideoFileComponent {
     component: Component,
     data: gst::Element,
@@ -96,9 +104,7 @@ impl AsMut<Component> for VideoFileComponent {
 
 impl VideoFileComponent {
     pub fn new_from_json(json: serde_json::Value) -> VideoFileComponent {
-        let common = serde_json::from_value::<CommonProperty>(json.clone()).unwrap();
-        let mut prop = serde_json::from_value::<VideoFileProperty>(json.as_object().unwrap()["prop"].clone()).unwrap();
-        prop.common = common;
+        let prop = VideoFileProperty::from_value(json.as_object().unwrap()["prop"].clone());
 
         VideoFileComponent {
             component: serde_json::from_value(json).unwrap(),

@@ -26,6 +26,14 @@ struct TextProperty {
     entity: String,
 }
 
+impl TextProperty {
+    fn from_value(mut json: serde_json::Value) -> TextProperty {
+        let json_ = json.clone();
+        json.as_object_mut().unwrap().insert("common".to_string(), json_);
+        serde_json::from_value(json).unwrap()
+    }
+}
+
 fn default_text_font() -> String {
     "Serif 24".to_string()
 }
@@ -38,9 +46,7 @@ pub struct TextComponent {
 
 impl TextComponent {
     pub fn new_from_json(json: serde_json::Value) -> TextComponent {
-        let common = serde_json::from_value::<CommonProperty>(json.clone()).unwrap();
-        let mut prop = serde_json::from_value::<TextProperty>(json.as_object().unwrap()["prop"].clone()).unwrap();
-        prop.common = common;
+        let prop = TextProperty::from_value(json.as_object().unwrap()["prop"].clone());
 
         TextComponent {
             component: serde_json::from_value(json).unwrap(),

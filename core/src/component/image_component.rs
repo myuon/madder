@@ -13,6 +13,14 @@ struct ImageProperty {
     entity: String,
 }
 
+impl ImageProperty {
+    fn from_value(mut json: serde_json::Value) -> ImageProperty {
+        let json_ = json.clone();
+        json.as_object_mut().unwrap().insert("common".to_string(), json_);
+        serde_json::from_value(json).unwrap()
+    }
+}
+
 pub struct ImageComponent {
     component: Component,
     data: gdk_pixbuf::Pixbuf,
@@ -21,9 +29,7 @@ pub struct ImageComponent {
 
 impl ImageComponent {
     pub fn new_from_json(json: serde_json::Value) -> ImageComponent {
-        let common = serde_json::from_value::<CommonProperty>(json.clone()).unwrap();
-        let mut prop = serde_json::from_value::<ImageProperty>(json.as_object().unwrap()["prop"].clone()).unwrap();
-        prop.common = common;
+        let prop = ImageProperty::from_value(json.as_object().unwrap()["prop"].clone());
 
         ImageComponent {
             component: serde_json::from_value(json).unwrap(),
