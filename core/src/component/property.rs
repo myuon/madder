@@ -85,7 +85,7 @@ impl HasPropertyBuilder for CommonProperty {
                     box AsAttribute::from_f64(self.scale.1)
                 )
             },
-            _ => unimplemented!(),
+            z => panic!("Call getter `{}` but not found", z),
         }
     }
 

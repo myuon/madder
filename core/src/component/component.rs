@@ -94,9 +94,12 @@ pub struct Component {
 pub trait ComponentWrapper : AsRef<Component> + AsMut<Component> {
     fn as_value(&self) -> serde_json::Value;
 
-    fn as_effect(&self) -> &Vec<serde_json::Value> {
-        //        self.as_ref().effect.iter().map(|eff| eff.get_props()).collect()
-        unimplemented!()
+    fn as_effect(&self) -> Vec<Vec<(String, serde_json::Value)>> {
+        self.as_ref().effect.iter().map(|eff| eff.get_props()).collect()
+    }
+
+    fn as_effect_attrs(&self) -> Vec<Vec<(String, Attribute)>> {
+        self.as_ref().effect.iter().map(|eff| eff.get_attrs()).collect()
     }
 
     fn as_effect_mut(&mut self) -> &mut Vec<serde_json::Value> {

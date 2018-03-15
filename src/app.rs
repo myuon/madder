@@ -235,7 +235,7 @@ impl App {
         let self__ = self_.clone();
         self_.borrow().property.append_page("component", GridPage::new(
             self_.borrow().property.width,
-            serde_json::from_value(self_.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/", index)))).unwrap(),
+            serde_json::from_value(self_.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}", index)))).unwrap(),
             Box::new(move |_, prop_name, prop| {
                 let prop_name = Rc::new(prop_name.to_string());
                 let self__ = self__.clone();
@@ -323,13 +323,13 @@ impl App {
                         "start_value": 0.0,
                         "end_value": 0.0,
                     }),
-                ), ContentType::Attribute).unwrap();
+                ), ContentType::Value).unwrap();
                 App::select_component(self___.clone(), index);
             }),
             Box::new(move |i| {
                 self____.borrow_mut().editor.patch_once(Operation::Remove(
                     Pointer::from_str(&format!("/components/{}/effect/{}", index, i)),
-                ), ContentType::Attribute).unwrap();
+                ), ContentType::Value).unwrap();
                 App::select_component(self____.clone(), index);
             }),
         ));
@@ -660,7 +660,7 @@ impl App {
         app.timeline.borrow().setup_object_renderer(Box::new(move || {
             let self___ = self__.clone();
             serde_json::from_value::<Vec<Component>>(self__.borrow().editor.get_value(Pointer::from_str("/components"))).unwrap().iter().enumerate().map(|(i,component)| {
-                let entity = serde_json::from_value::<Attribute>(self___.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
+                let entity = serde_json::from_value::<Attribute>(self___.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
 
                 let obj = BoxObject::new(
                     component.start_time.mseconds().unwrap() as i32,
