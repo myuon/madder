@@ -67,6 +67,7 @@ impl Pointer {
     }
 }
 
+// JSON Patch API
 pub enum Operation {
     Add(Pointer, Value),
     Remove(Pointer),
@@ -120,11 +121,13 @@ pub enum PatchError {
 }
 
 pub trait Patch {
-    fn patch_once(&mut self, op: Operation) -> Result<(), PatchError>;
+    type ContentType : Clone;
 
-    fn patch(&mut self, ops: Vec<Operation>) -> Result<(), PatchError> {
+    fn patch_once(&mut self, op: Operation, content_type: Self::ContentType) -> Result<(), PatchError>;
+
+    fn patch(&mut self, ops: Vec<Operation>, content_type: Self::ContentType) -> Result<(), PatchError> {
         for op in ops {
-            if let Err(err) = self.patch_once(op) {
+            if let Err(err) = self.patch_once(op, content_type.clone()) {
                 return Err(err);
             }
         }
@@ -132,6 +135,6 @@ pub trait Patch {
         Ok(())
     }
 
-    fn get_by_pointer(&self, path: Pointer) -> Value;
+    fn get_by_pointer(&self, path: Pointer, content_type: Self::ContentType) -> Value;
 }
 

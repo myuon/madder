@@ -4,8 +4,9 @@ extern crate gdk;
 extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 extern crate serde;
+extern crate serde_json;
 
-use component::property::*;
+use component::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum EffectType {
@@ -130,12 +131,12 @@ pub struct Effect {
 }
 
 impl HasProperty for Effect {
-    fn get_props(&self) -> Properties {
-        self._make_get_props(strings!["effect_type", "transition", "start_value", "end_value"])
+    fn get_attrs(&self) -> Vec<(String, Attribute)> {
+        strings!["effect_type", "transition", "start_value", "end_value"].into_iter().map(|s| (s.clone(), self.get_attr(&s))).collect()
     }
 
-    fn get_prop(&self, name: &str) -> Property {
-        use Property::*;
+    fn get_attr(&self, name: &str) -> Attribute {
+        use Attribute::*;
 
         match name {
             "effect_type" => Choose(
@@ -152,19 +153,37 @@ impl HasProperty for Effect {
         }
     }
 
-    fn set_prop(&mut self, name: &str, prop: Property) {
+    fn set_attr(&mut self, name: &str, attr: Attribute) {
         match name {
             "effect_type" => {
-                self.effect_type = EffectType::types()[prop.as_choose().unwrap()].clone();
+                self.effect_type = EffectType::types()[attr.as_choose().unwrap()].clone();
             },
             "transition" => {
-                self.transition = Transition::transitions()[prop.as_choose().unwrap()].clone();
+                self.transition = Transition::transitions()[attr.as_choose().unwrap()].clone();
             },
             "start_value" => {
-                self.start_value = prop.as_f64().unwrap();
+                self.start_value = attr.as_f64().unwrap();
             },
             "end_value" => {
-                self.end_value = prop.as_f64().unwrap();
+                self.end_value = attr.as_f64().unwrap();
+            },
+            _ => unimplemented!(),
+        }
+    }
+
+    fn set_prop(&mut self, name: &str, prop: serde_json::Value) {
+        match name {
+            "effect_type" => {
+                self.effect_type = EffectType::types()[serde_json::from_value::<usize>(prop).unwrap()].clone();
+            },
+            "transition" => {
+                self.transition = Transition::transitions()[serde_json::from_value::<usize>(prop).unwrap()].clone();
+            },
+            "start_value" => {
+                self.start_value = serde_json::from_value(prop).unwrap();
+            },
+            "end_value" => {
+                self.end_value = serde_json::from_value(prop).unwrap();
             },
             _ => unimplemented!(),
         }

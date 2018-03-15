@@ -4,7 +4,7 @@ extern crate serde_json;
 extern crate glib;
 use gst::prelude::*;
 
-use component::property::*;
+use component::attribute::*;
 use component::component::*;
 
 #[derive(Deserialize, Debug, Clone)]
@@ -111,26 +111,36 @@ impl SoundComponent {
 }
 
 impl HasProperty for SoundComponent {
-    fn get_props(&self) -> Properties {
-        self._make_get_props(Self::keys())
-    }
-
-    fn get_prop(&self, name: &str) -> Property {
-        use Property::*;
+    fn get_attr(&self, name: &str) -> Attribute {
+        use Attribute::*;
 
         match name {
-            "entity" => Document(self.prop.entity.clone()),
+            "entity" => FilePath(self.prop.entity.clone()),
             _ => unimplemented!(),
         }
     }
 
-    fn set_prop(&mut self, name: &str, prop: Property) {
-        use Property::*;
+    fn get_attrs(&self) -> Vec<(String, Attribute)> {
+        SoundComponent::keys().into_iter().map(|s| (s.clone(), self.get_attr(&s))).collect()
+    }
+
+    fn set_attr(&mut self, name: &str, prop: Attribute) {
+        use Attribute::*;
 
         match (name, prop) {
-            ("entity", FilePath(doc)) => {
-                self.reload(&doc);
-                self.prop.entity = doc;
+            ("entity", FilePath(uri)) => {
+                self.reload(&uri);
+                self.prop.entity = uri;
+            },
+            _ => unimplemented!(),
+        }
+    }
+
+    fn set_prop(&mut self, name: &str, prop: serde_json::Value) {
+        match name {
+            "entity" => {
+                self.reload(prop.as_str().unwrap());
+                self.prop.entity = serde_json::from_value(prop).unwrap()
             },
             _ => unimplemented!(),
         }

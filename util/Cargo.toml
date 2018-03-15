@@ -4,3 +4,6 @@ version = "0.1.0"
 authors = ["myuon <ioi.joi.koi.loi@gmail.com>"]
 
 [dependencies]
+gdk = "0.7.0"
+serde = "1.0.27"
+

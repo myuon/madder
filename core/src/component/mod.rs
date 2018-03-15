@@ -1,3 +1,5 @@
+mod attribute;
+pub use self::attribute::*;
 mod property;
 pub use self::property::*;
 mod effect;

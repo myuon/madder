@@ -7,6 +7,7 @@ extern crate serde;
 extern crate serde_json;
 
 use component::effect::*;
+use component::attribute::*;
 use component::property::*;
 
 pub trait EffectOn {
@@ -90,11 +91,12 @@ fn gst_clocktime_deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) 
 pub trait ComponentWrapper : AsRef<Component> + AsMut<Component> {
     fn as_value(&self) -> serde_json::Value;
 
-    fn as_effect(&self) -> Vec<Properties> {
-        self.as_ref().effect.iter().map(|eff| eff.get_props()).collect()
+    fn as_effect(&self) -> &Vec<serde_json::Value> {
+        //        self.as_ref().effect.iter().map(|eff| eff.get_props()).collect()
+        unimplemented!()
     }
 
-    fn as_effect_mut(&mut self) -> &mut Vec<Properties> {
+    fn as_effect_mut(&mut self) -> &mut Vec<serde_json::Value> {
         unimplemented!()
     }
 
@@ -125,6 +127,22 @@ impl ComponentWrapper for Component {
     fn get_info(&self) -> String {
         format!("Component")
     }
+}
+
+pub trait HasProperty {
+    fn get_attrs(&self) -> Vec<(String, Attribute)>;
+    fn get_attr(&self, name: &str) -> Attribute;
+    fn set_attr(&mut self, name: &str, attr: Attribute);
+
+    fn get_props(&self) -> Vec<(String, serde_json::Value)> {
+        self.get_attrs().iter().map(|&(ref k, ref attr)| (k.to_string(), serde_json::to_value(attr).unwrap().as_object().unwrap()["value"].clone())).collect()
+    }
+
+    fn get_prop(&self, name: &str) -> serde_json::Value {
+        serde_json::to_value(self.get_attr(name)).unwrap().as_object().unwrap()["value"].clone()
+    }
+
+    fn set_prop(&mut self, name: &str, prop: serde_json::Value);
 }
 
 pub trait ComponentLike: ComponentWrapper + Peekable + HasProperty {}

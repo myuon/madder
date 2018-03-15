@@ -6,17 +6,20 @@ extern crate pango;
 extern crate pangocairo;
 extern crate serde;
 extern crate serde_json;
+extern crate madder_util as util;
 
+use component::attribute::*;
 use component::property::*;
 use component::component::*;
+use util::serde_impl::*;
 
 #[derive(Deserialize, Debug, Clone)]
 struct TextProperty {
     #[serde(default)]
     common: CommonProperty,
 
-    #[serde(serialize_with = "gdk_rgba_serialize")]
-    #[serde(deserialize_with = "gdk_rgba_deserialize")]
+    #[serde(serialize_with = "SerRGBA::serialize_rgba")]
+    #[serde(deserialize_with = "SerRGBA::deserialize_rgba")]
     #[serde(default = "gdk::RGBA::white")]
     text_color: gdk::RGBA,
 
@@ -124,41 +127,58 @@ impl TextComponent {
 }
 
 impl HasProperty for TextComponent {
-    fn get_props(&self) -> Properties {
-        self._make_get_props(Self::keys())
-    }
-
-    fn get_prop(&self, name: &str) -> Property {
-        use Property::*;
+    fn get_attr(&self, name: &str) -> Attribute {
+        use Attribute::*;
 
         match name {
             "entity" => Document(self.prop.entity.clone()),
-            "text_font" => Font(self.prop.text_font.clone()),
             "text_color" => Color(self.prop.text_color.clone()),
-            _ => self.prop.common.get_prop(name),
+            "text_font" => Font(self.prop.text_font.clone()),
+            _ => self.prop.common.get_attr(name),
         }
     }
 
-    fn set_prop(&mut self, name: &str, prop: Property) {
-        use Property::*;
+    fn get_attrs(&self) -> Vec<(String, Attribute)> {
+        TextComponent::keys().into_iter().map(|s| (s.clone(), self.get_attr(&s))).collect()
+    }
+
+    fn set_attr(&mut self, name: &str, prop: Attribute) {
+        use Attribute::*;
 
         match (name, prop) {
             ("entity", Document(doc)) => {
                 self.prop.entity = doc;
                 self.reload();
             },
-            ("text_font", Font(font)) => {
-                self.prop.text_font = font;
-                self.reload();
-            },
             ("text_color", Color(rgba)) => {
                 self.prop.text_color = rgba;
                 self.reload();
             },
-            (x,y) => {
-                self.prop.common.set_prop(x,y.clone());
+            ("text_font", Font(font)) => {
+                self.prop.text_font = font;
+                self.reload();
             },
+            (name, prop) => self.prop.common.set_attr(name, prop),
+        }
+    }
+
+    fn set_prop(&mut self, name: &str, prop: serde_json::Value) {
+        match name {
+            "entity" => {
+                self.prop.entity = serde_json::from_value(prop).unwrap();
+                self.reload();
+            },
+            "text_color" => {
+                self.prop.text_color = serde_json::from_value::<SerRGBA>(prop).unwrap().0;
+                self.reload();
+            },
+            "text_font" => {
+                self.prop.text_font = serde_json::from_value(prop).unwrap();
+                self.reload();
+            },
+            _ => self.prop.common.set_prop(name, prop),
         }
     }
 }
+
 

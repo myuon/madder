@@ -228,10 +228,8 @@ impl Editor {
             },
         }
     }
-}
 
-impl Patch for Editor {
-    fn get_by_pointer(&self, path: Pointer) -> Value {
+    fn get_by_pointer_as_value(&self, path: Pointer) -> Value {
         match path.0.iter().map(|ref x| x.as_str()).collect::<Vec<&str>>().as_slice() {
             &[] => {
                 json!(self)
@@ -273,50 +271,80 @@ impl Patch for Editor {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_prop(key)).unwrap()
             },
             &["components", ref n, key] => {
+                /*
                 match key {
-                    "component_type" => serde_json::to_value(Property::ReadOnly(format!("{:?}", self.elements.as_index(IndexRange::from_str(n).unwrap()).component_type))).unwrap(),
-                    "start_time" => serde_json::to_value(Property::Time(self.elements.as_index(IndexRange::from_str(n).unwrap()).start_time)).unwrap(),
-                    "length" => serde_json::to_value(Property::Time(self.elements.as_index(IndexRange::from_str(n).unwrap()).length)).unwrap(),
-                    "layer_index" => serde_json::to_value(Property::Usize(self.elements.as_index(IndexRange::from_str(n).unwrap()).layer_index)).unwrap(),
+                    "component_type" => serde_json::to_value(format!("{:?}", self.elements.as_index(IndexRange::from_str(n).unwrap()).component_type)).unwrap(),
+                    "start_time" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).start_time).unwrap(),
+                    "length" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).length).unwrap(),
+                    "layer_index" => serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).layer_index).unwrap(),
                     z => panic!("Call get_by_pointer with unexisting path: /components/index/{}", z),
-                }
+            }*/
+                unimplemented!()
             },
             z => panic!("Call get_by_pointer with unexisting path: {:?}", z),
         }
     }
 
-    fn patch_once(&mut self, op: Operation) -> Result<(), PatchError> {
+    fn get_by_pointer_as_attr(&self, path: Pointer) -> Attribute {
+        unimplemented!()
+    }
+}
+
+#[derive(Clone)]
+pub enum ContentType {
+    Value,
+    Attribute,
+}
+
+impl Patch for Editor {
+    type ContentType = ContentType;
+
+    fn get_by_pointer(&self, path: Pointer, content_type: ContentType) -> Value {
+        match content_type {
+            ContentType::Value => self.get_by_pointer_as_value(path),
+            ContentType::Attribute => serde_json::to_value(self.get_by_pointer_as_attr(path)).unwrap(),
+        }
+    }
+
+    fn patch_once(&mut self, op: Operation, content_type: ContentType) -> Result<(), PatchError> {
         use Operation::*;
 
-        match op {
-            Add(path, v) => {
-                match path.0.iter().map(|ref x| x.as_str()).collect::<Vec<&str>>().as_slice() {
-                    &[] => panic!("add"),
-                    &["width"] => panic!("update_width"),
-                    &["height"] => panic!("update_height"),
-                    &["components"] => self.add_components(v),
-                    &["components", ref n] => self.add_components_n(IndexRange::from_str(n).unwrap(),v),
-                    &["components", ref n, "effect"] => self.add_components_n_effect(IndexRange::from_str(n).unwrap(), v),
-                    &["components", ref n, "effect", ref m, key] => self.add_components_n_effect_n_key(IndexRange::from_str(n).unwrap(), IndexRange::from_str(m).unwrap(), key, v),
-                    &["components", ref n, "prop", key] => self.add_components_n_prop_key(IndexRange::from_str(n).unwrap(), key, v),
-                    &["components", ref n, key] => {
-                        match key {
-                            "start_time" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).start_time = gst::ClockTime::from_mseconds(v.as_u64().unwrap()),
-                            "length" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).length = gst::ClockTime::from_mseconds(v.as_u64().unwrap()),
-                            "layer_index" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).layer_index = serde_json::from_value::<usize>(v).unwrap(),
+        match content_type {
+            ContentType::Value => {
+                match op {
+                    Add(path, v) => {
+                        match path.0.iter().map(|ref x| x.as_str()).collect::<Vec<&str>>().as_slice() {
+                            &[] => panic!("add"),
+                            &["width"] => panic!("update_width"),
+                            &["height"] => panic!("update_height"),
+                            &["components"] => self.add_components(v),
+                            &["components", ref n] => self.add_components_n(IndexRange::from_str(n).unwrap(),v),
+                            &["components", ref n, "effect"] => self.add_components_n_effect(IndexRange::from_str(n).unwrap(), v),
+                            &["components", ref n, "effect", ref m, key] => self.add_components_n_effect_n_key(IndexRange::from_str(n).unwrap(), IndexRange::from_str(m).unwrap(), key, v),
+                            &["components", ref n, "prop", key] => self.add_components_n_prop_key(IndexRange::from_str(n).unwrap(), key, v),
+                            &["components", ref n, key] => {
+                                match key {
+                                    "start_time" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).start_time = gst::ClockTime::from_mseconds(v.as_u64().unwrap()),
+                                    "length" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).length = gst::ClockTime::from_mseconds(v.as_u64().unwrap()),
+                                    "layer_index" => self.elements.as_index_mut(IndexRange::from_str(n).unwrap()).layer_index = serde_json::from_value::<usize>(v).unwrap(),
+                                    _ => unimplemented!(),
+                                }
+                            },
                             _ => unimplemented!(),
                         }
                     },
+                    Remove(path) => {
+                        match path.0.iter().map(|ref x| x.as_str()).collect::<Vec<&str>>().as_slice() {
+                            &["components", ref n] => self.remove_components_n(IndexRange::from_str(n).unwrap()),
+                            _ => unimplemented!(),
+                        }
+                    }
                     _ => unimplemented!(),
                 }
             },
-            Remove(path) => {
-                match path.0.iter().map(|ref x| x.as_str()).collect::<Vec<&str>>().as_slice() {
-                    &["components", ref n] => self.remove_components_n(IndexRange::from_str(n).unwrap()),
-                    _ => unimplemented!(),
-                }
-            }
-            _ => unimplemented!(),
+            ContentType::Attribute => {
+                unimplemented!()
+            },
         }
 
         Ok(())
