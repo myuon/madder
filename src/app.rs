@@ -660,7 +660,7 @@ impl App {
                 self___.borrow_mut().editor.patch_once(Operation::Add(
                     Pointer::from_str(&format!("/components/{}/length", index)),
                     json!(Attribute::Time(add_time(props.length, distance as f64))),
-                ), ContentType::Value).unwrap();
+                ), ContentType::Attribute).unwrap();
                 self___.borrow().queue_draw();
             }),
         );
