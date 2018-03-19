@@ -118,7 +118,7 @@ impl Editor {
         }
 
         let mut elems = self.elements.iter().filter(|&elem| {
-            elem.as_ref().start_time <= self.position
+            elem.as_component().start_time <= self.position
             && self.position <= elem.start_time + elem.length
         }).collect::<Vec<_>>();
         elems.sort_by_key(|elem| elem.layer_index);
@@ -126,7 +126,7 @@ impl Editor {
         for elem in elems.iter().rev() {
             if let Some(mut dest) = elem.peek(self.position) {
                 let mut common_prop = serde_json::from_value::<CommonProperty>(elem.as_ref().as_value().as_object().unwrap()["prop"].clone()).unwrap_or(std::default::Default::default());
-                let mut elem = elem.as_ref().as_ref().clone();
+                let mut elem = elem.as_component().clone();
                 dest = Effect::get_rotated_pixbuf(dest, common_prop.rotate);
 
                 for eff in elem.effect.clone() {
@@ -209,10 +209,10 @@ impl Editor {
     fn add_components_key(&mut self, n: IndexRange, key: &str, value: Value, content_type: ContentType) {
         match content_type {
             ContentType::Value => {
-                self.elements.as_index_mut(n).as_mut().set_prop(key, serde_json::from_value(value).unwrap());
+                self.elements.as_index_mut(n).as_component_mut().set_prop(key, serde_json::from_value(value).unwrap());
             },
             ContentType::Attribute => {
-                self.elements.as_index_mut(n).as_mut().set_attr(key, serde_json::from_value(value).unwrap());
+                self.elements.as_index_mut(n).as_component_mut().set_attr(key, serde_json::from_value(value).unwrap());
             },
         }
     }
@@ -332,7 +332,7 @@ impl Editor {
     fn get_by_pointer_as_attr(&self, path: Pointer) -> Value {
         match path.0.iter().map(|ref x| x.as_str()).collect::<Vec<&str>>().as_slice() {
             &["components", ref n] => {
-                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_ref().get_attrs()).unwrap()
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().get_attrs()).unwrap()
             },
             &["components", ref n, "effect"] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_effect_attrs()).unwrap()
@@ -350,7 +350,7 @@ impl Editor {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_attr(key)).unwrap()
             },
             &["components", ref n, key] => {
-                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_ref().get_attr(key)).unwrap()
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().get_attr(key)).unwrap()
             },
             z => panic!("Call get_by_pointer_as_attr with unexisting path: {:?}", z),
         }
