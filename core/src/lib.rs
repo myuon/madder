@@ -18,6 +18,7 @@ use avi_renderer::AviRenderer;
 
 extern crate serde;
 use serde::ser::SerializeSeq;
+use serde::de::{Deserialize, Deserializer};
 
 #[macro_use] extern crate serde_derive;
 #[macro_use] extern crate serde_json;
@@ -34,41 +35,30 @@ pub mod json_patch;
 pub use self::json_patch::*;
 
 #[derive(Serialize, Deserialize)]
-pub struct EditorStructure {
-    pub components: Vec<Value>,
-    pub width: i32,
-    pub height: i32,
-    pub length: u64,
-}
-
-impl EditorStructure {
-    pub fn new_from_file(file: &str) -> EditorStructure {
-        let file = File::open(file).unwrap();
-        let mut buf_reader = BufReader::new(file);
-        let mut contents = String::new();
-        buf_reader.read_to_string(&mut contents).unwrap();
-
-        serde_json::from_str(&contents).unwrap()
-    }
-}
-
-#[derive(Serialize)]
 pub struct Editor {
     #[serde(serialize_with = "vec_componentlike_serialize")]
+    #[serde(deserialize_with = "vec_componentlike_deserialize")]
     #[serde(rename = "components")]
     pub elements: Vec<Box<ComponentLike>>,
 
     #[serde(serialize_with = "SerTime::serialize_time")]
+    #[serde(deserialize_with = "SerTime::deserialize_time")]
+    #[serde(default = "position_default")]
     position: gst::ClockTime,
 
     width: i32,
     height: i32,
 
     #[serde(serialize_with = "SerTime::serialize_time")]
+    #[serde(deserialize_with = "SerTime::deserialize_time")]
     length: gst::ClockTime,
 
-    #[serde(skip_serializing)]
+    #[serde(skip)]
     renderer: Option<AviRenderer>,
+}
+
+fn position_default() -> gst::ClockTime {
+    gst::ClockTime::from_mseconds(0)
 }
 
 fn vec_componentlike_serialize<S: serde::Serializer>(g: &Vec<Box<ComponentLike>>, serializer: S) -> Result<S::Ok, S::Error> {
@@ -77,6 +67,12 @@ fn vec_componentlike_serialize<S: serde::Serializer>(g: &Vec<Box<ComponentLike>>
         seq.serialize_element(&c.as_value()).unwrap();
     }
     seq.end()
+}
+
+fn vec_componentlike_deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<Box<ComponentLike>>, D::Error> {
+    Deserialize::deserialize(deserializer).map(|vec: Vec<Value>| {
+        vec.into_iter().map(|json| Component::new_from_json(json.clone())).collect()
+    })
 }
 
 impl Editor {
@@ -91,12 +87,17 @@ impl Editor {
         }
     }
 
-    pub fn new_from_structure(structure: EditorStructure) -> Editor {
-        let mut editor = Editor::new(structure.width, structure.height, gst::ClockTime::from_mseconds(structure.length));
-        structure.components.iter().for_each(|json| {
-            editor.register(Component::new_from_json(json.clone()));
-        });
-        editor
+    pub fn new_from_json(json: Value) -> Editor {
+        serde_json::from_value(json).unwrap()
+    }
+
+    pub fn new_from_file(file: &str) -> Editor {
+        let file = File::open(file).unwrap();
+        let mut buf_reader = BufReader::new(file);
+        let mut contents = String::new();
+        buf_reader.read_to_string(&mut contents).unwrap();
+
+        serde_json::from_str(&contents).unwrap()
     }
 
     fn register(&mut self, component: Box<ComponentLike>) -> usize {

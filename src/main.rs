@@ -1,5 +1,8 @@
 #![feature(box_patterns)]
 #![feature(slice_patterns)]
+use std::rc::Rc;
+use std::cell::RefCell;
+
 extern crate gstreamer as gst;
 extern crate gtk;
 extern crate glib;
@@ -25,16 +28,16 @@ fn main() {
     use std::env;
     let args = env::args().collect::<Vec<String>>();
 
-    let editor =
+    let app =
         if args.len() >= 2 {
-            EditorStructure::new_from_file(&args[1])
+            App::new_from_file(&args[1])
         } else {
-            EditorStructure {
-                width: 640,
-                height: 480,
-                length: 90000,
-                components: vec![
-                    serde_json::from_value(json!({
+            App::new_from_json(serde_json::from_value(json!({
+                "width": 640,
+                "height": 480,
+                "length": 90000,
+                "components": [
+                    {
                         "component_type": "Text",
                         "start_time": 0,
                         "length": 100,
@@ -43,13 +46,12 @@ fn main() {
                             "coordinate": [50,50],
                             "entity": "[ここにテキストを挿入]",
                         },
-                    })).unwrap()
+                    }
                 ],
-            }
+            })).unwrap())
         };
 
-    let app = App::new_from_json(&editor, if args.len() >= 2 { Some(&args[1]) } else { None });
-    App::create_ui(app);
+    App::create_ui(Rc::new(RefCell::new(app)));
 
     gtk::main();
 }

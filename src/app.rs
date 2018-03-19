@@ -58,6 +58,40 @@ impl App {
         }
     }
 
+    pub fn new_from_json(json: serde_json::Value) -> App {
+        let prop_width = 250;
+        let editor = Editor::new_from_json(json);
+        let width = editor.get_value(Pointer::from_str("/width")).as_i32().unwrap();
+        let length = editor.get_value(Pointer::from_str("/length")).as_time().unwrap();
+
+        App {
+            editor: editor,
+            timeline: TimelineWidget::new(width, 130, cmp::max(width + prop_width, length.mseconds().unwrap() as i32)),
+            canvas: gtk::DrawingArea::new(),
+            property: PropertyViewerWidget::new(prop_width),
+            selected_component_index: None,
+            window: gtk::Window::new(gtk::WindowType::Toplevel),
+            project_file_path: None,
+        }
+    }
+
+    pub fn new_from_file(path: &str) -> App {
+        let prop_width = 250;
+        let editor = Editor::new_from_file(path);
+        let width = editor.get_value(Pointer::from_str("/width")).as_i32().unwrap();
+        let length = editor.get_value(Pointer::from_str("/length")).as_time().unwrap();
+
+        App {
+            editor: editor,
+            timeline: TimelineWidget::new(width, 130, cmp::max(width + prop_width, length.mseconds().unwrap() as i32)),
+            canvas: gtk::DrawingArea::new(),
+            property: PropertyViewerWidget::new(prop_width),
+            selected_component_index: None,
+            window: gtk::Window::new(gtk::WindowType::Toplevel),
+            project_file_path: None,
+        }
+    }
+
     pub fn start_instant_preview(self_: Rc<RefCell<App>>, parent: &gtk::Box) {
         let pipeline = gst::Pipeline::new(None);
         let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
@@ -163,28 +197,6 @@ impl App {
         });
     }
 
-
-    pub fn new_from_json(json: &EditorStructure, path: Option<&str>) -> Rc<RefCell<App>> {
-        Rc::new(RefCell::new(App::load(json, path)))
-    }
-
-    fn load(json: &EditorStructure, path: Option<&str>) -> App {
-        let mut app = App::new(json.width, json.height, gst::ClockTime::from_mseconds(json.length));
-
-        json.components.iter().for_each(|item| {
-            app.editor.patch_once(Operation::Add(
-                Pointer::from_str("/components"),
-                item.clone(),
-            ), ContentType::Value).unwrap();
-        });
-
-        if let Some(path) = path {
-            app.project_file_path = Some(PathBuf::from(path));
-        }
-
-        app
-    }
-
     fn queue_draw(&self) {
         self.canvas.queue_draw();
 
@@ -224,9 +236,8 @@ impl App {
         let path = dialog.get_filename().unwrap();
         dialog.destroy();
 
-        let editor = EditorStructure::new_from_file(path.to_str().unwrap());
-        let app = App::new_from_json(&editor, path.to_str());
-        App::create_ui(app);
+        let app = App::new_from_file(path.to_str().unwrap());
+        App::create_ui(Rc::new(RefCell::new(app)));
     }
 
     fn select_component(self_: Rc<RefCell<App>>, index: usize) {
@@ -368,14 +379,14 @@ impl App {
             file_menu.append(&output);
 
             new_project.connect_activate(move |_| {
-                let editor = serde_json::from_value(json!({
+                let editor = json!({
                     "components": [],
                     "width": 640,
                     "height": 480,
                     "length": 900000,
-                })).unwrap();
-                let app = App::new_from_json(&editor, None);
-                App::create_ui(app);
+                });
+                let app = App::new_from_json(editor);
+                App::create_ui(Rc::new(RefCell::new(app)));
             });
 
             let self__ = self_.clone();
