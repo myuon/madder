@@ -44,11 +44,9 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(width: i32, height: i32, length: gst::ClockTime) -> App {
-        let prop_width = 250;
-
+    fn new_with(editor: Editor, width, length) -> App {
         App {
-            editor: Editor::new(width, height, length),
+            editor: editor,
             timeline: TimelineWidget::new(width, 130, cmp::max(width + prop_width, length.mseconds().unwrap() as i32)),
             canvas: gtk::DrawingArea::new(),
             property: PropertyViewerWidget::new(prop_width),
@@ -56,6 +54,12 @@ impl App {
             window: gtk::Window::new(gtk::WindowType::Toplevel),
             project_file_path: None,
         }
+    }
+
+    pub fn new(width: i32, height: i32, length: gst::ClockTime) -> App {
+        let prop_width = 250;
+
+        App::new_with(Editor::new(width, height, length), width, length)
     }
 
     pub fn new_from_json(json: serde_json::Value) -> App {
@@ -64,15 +68,7 @@ impl App {
         let width = editor.get_value(Pointer::from_str("/width")).as_i32().unwrap();
         let length = editor.get_value(Pointer::from_str("/length")).as_time().unwrap();
 
-        App {
-            editor: editor,
-            timeline: TimelineWidget::new(width, 130, cmp::max(width + prop_width, length.mseconds().unwrap() as i32)),
-            canvas: gtk::DrawingArea::new(),
-            property: PropertyViewerWidget::new(prop_width),
-            selected_component_index: None,
-            window: gtk::Window::new(gtk::WindowType::Toplevel),
-            project_file_path: None,
-        }
+        App::new_with(editor, width, length)
     }
 
     pub fn new_from_file(path: &str) -> App {
@@ -81,15 +77,7 @@ impl App {
         let width = editor.get_value(Pointer::from_str("/width")).as_i32().unwrap();
         let length = editor.get_value(Pointer::from_str("/length")).as_time().unwrap();
 
-        App {
-            editor: editor,
-            timeline: TimelineWidget::new(width, 130, cmp::max(width + prop_width, length.mseconds().unwrap() as i32)),
-            canvas: gtk::DrawingArea::new(),
-            property: PropertyViewerWidget::new(prop_width),
-            selected_component_index: None,
-            window: gtk::Window::new(gtk::WindowType::Toplevel),
-            project_file_path: None,
-        }
+        App::new_with(editor, width, length)
     }
 
     pub fn start_instant_preview(self_: Rc<RefCell<App>>, parent: &gtk::Box) {
