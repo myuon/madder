@@ -13,3 +13,6 @@ pub use self::timeline::TimelineWidget;
 mod property_viewer;
 pub use self::property_viewer::*;
 
+mod effect_viewer;
+pub use self::effect_viewer::EffectViewer;
+

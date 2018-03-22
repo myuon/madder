@@ -38,18 +38,22 @@ pub struct App {
     timeline: Rc<RefCell<TimelineWidget>>,
     canvas: gtk::DrawingArea,
     property: PropertyViewerWidget,
+    effect_viewer: EffectViewer,
     selected_component_index: Option<usize>,
     window: gtk::Window,
     project_file_path: Option<PathBuf>,
 }
 
 impl App {
-    fn new_with(editor: Editor, width, length) -> App {
+    fn new_with(editor: Editor, width: i32, length: gst::ClockTime) -> App {
+        let prop_width = 250;
+
         App {
             editor: editor,
             timeline: TimelineWidget::new(width, 130, cmp::max(width + prop_width, length.mseconds().unwrap() as i32)),
             canvas: gtk::DrawingArea::new(),
             property: PropertyViewerWidget::new(prop_width),
+            effect_viewer: EffectViewer::new(),
             selected_component_index: None,
             window: gtk::Window::new(gtk::WindowType::Toplevel),
             project_file_path: None,
@@ -57,13 +61,10 @@ impl App {
     }
 
     pub fn new(width: i32, height: i32, length: gst::ClockTime) -> App {
-        let prop_width = 250;
-
         App::new_with(Editor::new(width, height, length), width, length)
     }
 
     pub fn new_from_json(json: serde_json::Value) -> App {
-        let prop_width = 250;
         let editor = Editor::new_from_json(json);
         let width = editor.get_value(Pointer::from_str("/width")).as_i32().unwrap();
         let length = editor.get_value(Pointer::from_str("/length")).as_time().unwrap();
@@ -72,7 +73,6 @@ impl App {
     }
 
     pub fn new_from_file(path: &str) -> App {
-        let prop_width = 250;
         let editor = Editor::new_from_file(path);
         let width = editor.get_value(Pointer::from_str("/width")).as_i32().unwrap();
         let length = editor.get_value(Pointer::from_str("/length")).as_time().unwrap();
@@ -608,14 +608,13 @@ impl App {
 
                     let self___ = self___.clone();
                     open_effect_window.connect_activate(move |_| {
-                        let window = gtk::Window::new(gtk::WindowType::Toplevel);
-                        let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
+                        self___.borrow_mut().effect_viewer.clear();
+
                         for i in self___.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}/effect", index))).as_array().unwrap() {
-                            container.pack_start(&gtk::Label::new(format!("{:#}", i).as_str()), true, true, 5);
+                            self___.borrow().effect_viewer.pack_start(&gtk::Label::new(format!("{:#}", i).as_str()));
                         }
 
-                        window.add(&container);
-                        window.show_all();
+                        self___.borrow().effect_viewer.popup();
                     });
 
                     open_effect_window
