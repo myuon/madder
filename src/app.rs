@@ -589,29 +589,52 @@ impl App {
             }),
             Box::new(move |index, position| {
                 let menu = gtk::Menu::new();
-                let split_component_here = gtk::MenuItem::new_with_label("オブジェクトをこの位置で分割");
-                let self___ = self___.clone();
-                split_component_here.connect_activate(move |_| {
-                    let this_component = serde_json::from_value::<Component>(self___.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
-                    let mut this = self___.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}", index)));
-                    this.as_object_mut().unwrap()["start_time"] = json!(position.mseconds().unwrap());
-                    this.as_object_mut().unwrap()["length"] = json!(this_component.length.mseconds().unwrap() - position.mseconds().unwrap());
+                let split_component_here = {
+                    let split_component_here = gtk::MenuItem::new_with_label("オブジェクトをこの位置で分割");
 
-                    self___.borrow_mut().editor.patch(vec![
-                        Operation::Add(
-                            Pointer::from_str(&format!("/components/{}/length", index)),
-                            json!((position - this_component.start_time).mseconds().unwrap()),
-                        ),
-                        Operation::Add(
-                            Pointer::from_str("/components"),
-                            this,
-                        ),
-                    ], ContentType::Value).unwrap();
+                    let self___ = self___.clone();
+                    split_component_here.connect_activate(move |_| {
+                        let this_component = serde_json::from_value::<Component>(self___.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
+                        let mut this = self___.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}", index)));
+                        this.as_object_mut().unwrap()["start_time"] = json!(position.mseconds().unwrap());
+                        this.as_object_mut().unwrap()["length"] = json!(this_component.length.mseconds().unwrap() - position.mseconds().unwrap());
 
-                    self___.borrow().queue_draw();
-                });
+                        self___.borrow_mut().editor.patch(vec![
+                            Operation::Add(
+                                Pointer::from_str(&format!("/components/{}/length", index)),
+                                json!((position - this_component.start_time).mseconds().unwrap()),
+                            ),
+                            Operation::Add(
+                                Pointer::from_str("/components"),
+                                this,
+                            ),
+                        ], ContentType::Value).unwrap();
+
+                        self___.borrow().queue_draw();
+                    });
+
+                    split_component_here
+                };
+                let open_effect_window = {
+                    let open_effect_window = gtk::MenuItem::new_with_label("エフェクトウィンドウを開く");
+
+                    let self___ = self___.clone();
+                    open_effect_window.connect_activate(move |_| {
+                        let window = gtk::Window::new(gtk::WindowType::Toplevel);
+                        let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
+                        for i in self___.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}/effect", index))).as_array().unwrap() {
+                            container.pack_start(&gtk::Label::new(format!("{:#}", i).as_str()), true, true, 5);
+                        }
+
+                        window.add(&container);
+                        window.show_all();
+                    });
+
+                    open_effect_window
+                };
 
                 menu.append(&split_component_here);
+                menu.append(&open_effect_window);
                 menu
             })
         );
