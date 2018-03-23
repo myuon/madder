@@ -124,11 +124,22 @@ impl Transition {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct EffectPoint {
+    // transition for the next interval
+    transition: Transition,
+    position: f64,
+    value: f64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Effect {
     pub effect_type: EffectType,
     pub transition: Transition,
     pub start_value: f64,
     pub end_value: f64,
+
+    #[serde(default = "Vec::new")]
+    pub intermeds: Vec<EffectPoint>,
 }
 
 impl HasPropertyBuilder for Effect {
@@ -236,7 +247,24 @@ impl Effect {
     }
 
     pub fn value(&self, current: f64) -> f64 {
-        self.start_value + self.transition.get_in_interval(current) * (self.end_value - self.start_value)
+        let find_corresponding_interval = || -> (f64, f64, f64, Transition) {
+            let mut prev_time = 0.0;
+            let mut prev_value = self.start_value;
+
+            for intermed in &self.intermeds {
+                if current <= intermed.position {
+                    return ((current - prev_time) / (intermed.position - prev_time), prev_value, intermed.value, intermed.transition.clone())
+                }
+
+                prev_time = intermed.position;
+                prev_value = intermed.value;
+            }
+
+            (current, prev_value, self.end_value, self.transition.clone())
+        };
+
+        let (current, start, end, transition) = find_corresponding_interval();
+        start + transition.get_in_interval(current) * (end - start)
     }
 }
 
