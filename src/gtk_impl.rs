@@ -133,6 +133,9 @@ pub fn edit_type_as_widget(self_: &Attribute, tracker: Vec<Tracker>, cont: Rc<Fn
 
             combo.dynamic_cast().unwrap()
         },
+        &Sequence(_) => {
+            gtk::Label::new("sequence here").dynamic_cast().unwrap()
+        }
     }
 }
 

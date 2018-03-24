@@ -29,6 +29,7 @@ pub enum Attribute {
 
     ReadOnly(String),
     Choose(Vec<String>,Option<usize>),
+    Sequence(Vec<Attribute>),
 }
 
 pub trait AsAttribute {
@@ -43,6 +44,7 @@ pub trait AsAttribute {
     fn as_color(self) -> Option<gdk::RGBA>;
     fn as_readonly(self) -> Option<String>;
     fn as_choose(self) -> Option<usize>;
+    fn as_sequence(self) -> Option<Vec<Self>> where Self: Sized;
 
     fn from_i32(arg: i32) -> Self;
     fn from_f64(arg: f64) -> Self;
@@ -55,6 +57,7 @@ pub trait AsAttribute {
     fn from_color(arg: gdk::RGBA) -> Self;
     fn from_readonly(arg: String) -> Self;
     fn from_choose(arg: Vec<String>, arg2: Option<usize>) -> Self;
+    fn from_sequence(arg: Vec<Self>) -> Self where Self: Sized;
 }
 
 use Attribute::*;
@@ -137,6 +140,13 @@ impl AsAttribute for Attribute {
         }
     }
 
+    fn as_sequence(self) -> Option<Vec<Attribute>> {
+        match self {
+            Sequence(t) => Some(t),
+            _ => None,
+        }
+    }
+
     fn from_i32(arg: i32) -> Self { I32(arg) }
     fn from_f64(arg: f64) -> Self { F64(arg) }
     fn from_usize(arg: usize) -> Self { Usize(arg) }
@@ -148,6 +158,7 @@ impl AsAttribute for Attribute {
     fn from_color(arg: gdk::RGBA) -> Self { Color(arg) }
     fn from_readonly(arg: String) -> Self { ReadOnly(arg) }
     fn from_choose(arg: Vec<String>, arg2: Option<usize>) -> Self { Choose(arg, arg2) }
+    fn from_sequence(arg: Vec<Attribute>) -> Self { Sequence(arg) }
 }
 
 
@@ -194,7 +205,10 @@ impl AsAttribute for Value {
 
     fn as_choose(self) -> Option<usize> {
         unimplemented!()
-//        self.as_array().and_then(|ref v| from_value(v[1].clone()).ok())
+    }
+
+    fn as_sequence(self) -> Option<Vec<Value>> {
+        self.as_array().cloned()
     }
 
     fn from_i32(arg: i32) -> Self { serde_json::to_value(arg).unwrap() }
@@ -208,4 +222,5 @@ impl AsAttribute for Value {
     fn from_color(arg: gdk::RGBA) -> Self { serde_json::to_value(SerRGBA(arg)).unwrap() }
     fn from_readonly(arg: String) -> Self { serde_json::to_value(arg).unwrap() }
     fn from_choose(arg: Vec<String>, i: Option<usize>) -> Self { serde_json::to_value(arg[i.unwrap()].clone()).unwrap() }
+    fn from_sequence(arg: Vec<Value>) -> Self { serde_json::to_value(arg).unwrap() }
 }

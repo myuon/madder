@@ -144,7 +144,7 @@ pub struct Effect {
 
 impl HasPropertyBuilder for Effect {
     fn keys(_: PhantomData<Self>) -> Vec<String> {
-        strings!["effect_type", "transition", "start_value", "end_value"]
+        strings!["effect_type", "transition", "start_value", "end_value", "intermeds"]
     }
 
     fn getter<T: AsAttribute>(&self, name: &str) -> T {
@@ -159,6 +159,11 @@ impl HasPropertyBuilder for Effect {
             ),
             "start_value" => AsAttribute::from_f64(self.start_value),
             "end_value" => AsAttribute::from_f64(self.end_value),
+            "intermeds" => AsAttribute::from_sequence(
+                self.intermeds.iter().map(|intermed| {
+                    AsAttribute::from_f64(intermed.position)
+                }).collect()
+            ),
             z => panic!("Effect has no such property: {}", z),
         }
     }
