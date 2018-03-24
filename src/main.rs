@@ -16,6 +16,7 @@ use madder_core::*;
 
 pub mod widget;
 pub mod gtk_impl;
+pub mod ui_impl;
 pub mod app;
 use app::App;
 

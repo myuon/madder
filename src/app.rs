@@ -30,6 +30,7 @@ use util::gtk_util;
 
 use widget::*;
 use gtk_impl;
+use ui_impl;
 
 use WINDOW_NUMBER;
 
@@ -698,7 +699,7 @@ impl App {
                     .selected(Some(i) == self__.borrow().selected_component_index)
                     .layer_index(component.layer_index);
 
-                gtk_impl::ComponentRenderer {
+                ui_impl::ComponentRenderer {
                     object: obj,
                     object_type: component.component_type.clone(),
                 }
