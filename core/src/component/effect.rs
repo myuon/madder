@@ -126,9 +126,9 @@ impl Transition {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EffectPoint {
     // transition for the next interval
-    transition: Transition,
-    position: f64,
-    value: f64,
+    pub transition: Transition,
+    pub position: f64,
+    pub value: f64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

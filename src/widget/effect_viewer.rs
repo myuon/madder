@@ -3,6 +3,7 @@ use std::cell::RefCell;
 
 extern crate gtk;
 extern crate glib;
+extern crate cairo;
 use gtk::prelude::*;
 
 use widget::{AsWidget, BoxObject, BoxViewerWidget};
@@ -23,8 +24,8 @@ impl EffectViewer {
         widget
     }
 
-    pub fn setup<T: 'static + AsRef<BoxObject>>(&self, requester: Box<Fn() -> Vec<T>>) {
-        BoxViewerWidget::setup(self.viewer.clone(), requester, Box::new(|_,_,_| {}));
+    pub fn setup<T: 'static + AsRef<BoxObject>>(&self, requester: Box<Fn() -> Vec<T>>, renderer: Box<Fn(&T, f64, &cairo::Context)>) {
+        BoxViewerWidget::setup(self.viewer.clone(), requester, renderer);
     }
 
     fn create_ui(&self) {

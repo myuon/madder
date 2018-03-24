@@ -617,10 +617,10 @@ impl App {
                                 .iter()
                                 .map(|obj| serde_json::from_value::<Effect>(obj.clone()).unwrap())
                                 .enumerate()
-                                .map(|(i,obj)| {
-                                    Box::new(BoxObject::new(obj.start_value as i32, 200, i).label("piyo".to_string()).layer_index(i))
-                                }).collect()
-                        }));
+                                .map(|(i,obj)| { ui_impl::EffectComponentRenderer::new(i,obj) })
+                                .collect()
+                        }),
+                        Box::new(|t,s,cr| { t.renderer(s,cr); }));
 
                         self___.borrow().effect_viewer.popup();
                     });
@@ -699,7 +699,7 @@ impl App {
                     .selected(Some(i) == self__.borrow().selected_component_index)
                     .layer_index(component.layer_index);
 
-                ui_impl::ComponentRenderer {
+                ui_impl::TimelineComponentRenderer {
                     object: obj,
                     object_type: component.component_type.clone(),
                 }
