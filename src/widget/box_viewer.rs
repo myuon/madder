@@ -13,11 +13,11 @@ use widget::AsWidget;
 #[derive(Clone, Debug)]
 pub struct BoxObject {
     pub index: usize,
-    x: i32,
-    width: i32,
-    label: String,
-    layer_index: usize,
-    selected: bool,
+    pub x: i32,
+    pub width: i32,
+    pub label: String,
+    pub layer_index: usize,
+    pub selected: bool,
 }
 
 impl BoxObject {
@@ -51,37 +51,6 @@ impl BoxObject {
             layer_index: self.layer_index,
             selected: self.selected,
         }
-    }
-
-    fn renderer(&self, cr: &cairo::Context, method: &Fn(&cairo::Context)) {
-        if self.selected {
-            cr.set_source_rgba(0.0, 0.0, 0.0, 0.5);
-            cr.rectangle(self.coordinate().0 as f64 - 2.0, self.coordinate().1 as f64 - 2.0, self.size().0 as f64 + 4.0, self.size().1 as f64 + 4.0);
-            cr.stroke();
-        }
-
-        cr.set_source_rgba(0.0, 0.5, 1.0, 0.5);
-        cr.rectangle(self.coordinate().0 as f64, self.coordinate().1.into(), self.size().0 as f64 - BoxObject::EDGE_WIDTH as f64, self.size().1.into());
-        cr.fill();
-        cr.stroke();
-        cr.set_source_rgba(0.5, 0.5, 0.5, 0.5);
-        cr.rectangle(self.coordinate().0 as f64 + self.size().0 as f64 - BoxObject::EDGE_WIDTH as f64, self.coordinate().1.into(), BoxObject::EDGE_WIDTH as f64, self.size().1.into());
-        cr.fill();
-        method(cr);
-        cr.stroke();
-
-        cr.save();
-        cr.rectangle(self.coordinate().0.into(), self.coordinate().1.into(), self.size().0 as f64, self.size().1.into());
-        cr.clip();
-
-        let font_extent = cr.font_extents();
-        cr.select_font_face("Serif", cairo::FontSlant::Normal, cairo::FontWeight::Normal);
-        cr.set_font_size(15.0);
-        cr.set_source_rgb(0.0, 0.0, 0.0);
-        cr.move_to(self.coordinate().0.into(), self.coordinate().1 as f64 - font_extent.descent + font_extent.height / 2.0 + self.size().1 as f64 / 2.0);
-        cr.show_text(self.label.as_str());
-        cr.stroke();
-        cr.restore();
     }
 
     fn contains(&self, x: i32, y: i32) -> bool {
@@ -136,7 +105,7 @@ impl BoxViewerWidget {
             let scaler = (self__.borrow().cb_get_scale)();
             self__.borrow_mut().objects = objects.into_iter().map(|wrapper| {
                 let object = wrapper.as_ref().clone().hscaled(scaler);
-                object.renderer(cr, &|cr| renderer(&wrapper, scaler, cr));
+                renderer(&wrapper, scaler, cr);
                 object
             }).collect();
 

@@ -707,26 +707,7 @@ impl App {
             }).collect()
         }), Box::new(move |robj, scaler, cr| {
             let self___ = self___.clone();
-            let region = robj.object.clone().hscaled(scaler);
-
-            match robj.object_type {
-                ComponentType::Video => {
-                    for i in 0..(region.size().0 / BoxObject::HEIGHT) {
-                        if let Some(pixbuf) = self___.borrow().editor.elements[robj.object.index].peek((i * BoxObject::HEIGHT) as u64 * gst::MSECOND) {
-                            cr.set_source_pixbuf(&pixbuf.scale_simple(BoxObject::HEIGHT, BoxObject::HEIGHT, 0).unwrap(), (region.coordinate().0 + BoxObject::HEIGHT * i) as f64, region.coordinate().1 as f64);
-                            cr.rectangle((region.coordinate().0 + BoxObject::HEIGHT * i) as f64, region.coordinate().1 as f64, region.size().0 as f64, region.size().1 as f64);
-                            cr.fill();
-                        }
-                    }
-                },
-                ComponentType::Image => {
-                    let pixbuf = self___.borrow().editor.elements[robj.object.index].peek(0 * gst::MSECOND).unwrap();
-                    cr.set_source_pixbuf(&pixbuf.scale_simple(50, 50, 0).unwrap(), region.coordinate().0 as f64, region.coordinate().1 as f64);
-                    cr.rectangle(region.coordinate().0 as f64, region.coordinate().1 as f64, region.size().0 as f64, region.size().1 as f64);
-                    cr.fill();
-                },
-                _ => (),
-            }
+            robj.hscaled(scaler).renderer(cr, &|p| self___.borrow().editor.elements[robj.object.index].peek(p));
         }));
 
         let self__ = self_.clone();

@@ -159,11 +159,6 @@ impl HasPropertyBuilder for Effect {
             ),
             "start_value" => AsAttribute::from_f64(self.start_value),
             "end_value" => AsAttribute::from_f64(self.end_value),
-            "intermeds" => AsAttribute::from_sequence(
-                self.intermeds.iter().map(|intermed| {
-                    AsAttribute::from_f64(intermed.position)
-                }).collect()
-            ),
             z => panic!("Effect has no such property: {}", z),
         }
     }
