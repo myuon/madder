@@ -37,6 +37,7 @@ impl EffectComponentRenderer {
         cr.select_font_face("Serif", cairo::FontSlant::Normal, cairo::FontWeight::Normal);
         cr.set_font_size(15.0);
         cr.set_source_rgb(0.0, 0.0, 0.0);
+
         for intermed in &self.effect.intermeds {
             cr.move_to(intermed.position * Self::WIDTH as f64, (self.index as f64 + 0.5) * BoxObject::HEIGHT as f64 - font_extent.descent + font_extent.height / 2.0);
             cr.show_text("◆");

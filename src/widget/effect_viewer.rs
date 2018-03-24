@@ -34,6 +34,13 @@ impl EffectViewer {
             window.hide();
             gtk::Inhibit(true)
         });
+
+        let viewer_ = self.viewer.clone();
+        BoxViewerWidget::connect_select_box(self.viewer.clone(), Box::new(move |_, event| {
+            if event.get_button() == 3 {
+               println!("{:?}", event.get_position().0 / viewer_.borrow().get_selected_object().unwrap().size().0 as f64);
+            }
+        }));
     }
 
     pub fn popup(&self) {

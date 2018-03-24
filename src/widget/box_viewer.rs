@@ -122,6 +122,10 @@ impl BoxViewerWidget {
         self.objects = objects
     }
 
+    pub fn get_selected_object(&self) -> Option<&BoxObject> {
+        self.selecting_box_index.map(|u| &self.objects[u])
+    }
+
     pub fn setup<T: 'static + AsRef<BoxObject>>(self_: Rc<RefCell<BoxViewerWidget>>, requester: Box<Fn() -> Vec<T>>, renderer: Box<Fn(&T, f64, &cairo::Context)>) {
         let self__ = self_.clone();
         let req = Rc::new(requester);
