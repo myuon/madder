@@ -615,8 +615,9 @@ impl App {
                                 .as_array().unwrap()
                                 .iter()
                                 .map(|obj| serde_json::from_value::<Effect>(obj.clone()).unwrap())
-                                .map(|obj| {
-                                    Box::new(BoxObject::new(obj.start_value as i32, 200, 0).label("piyo".to_string()))
+                                .enumerate()
+                                .map(|(i,obj)| {
+                                    Box::new(BoxObject::new(obj.start_value as i32, 200, i).label("piyo".to_string()).layer_index(i))
                                 }).collect()
                         }));
 
