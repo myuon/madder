@@ -608,11 +608,17 @@ impl App {
 
                     let self___ = self___.clone();
                     open_effect_window.connect_activate(move |_| {
-                        self___.borrow_mut().effect_viewer.clear();
-
-                        for i in self___.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}/effect", index))).as_array().unwrap() {
-                            self___.borrow().effect_viewer.pack_start(&gtk::Label::new(format!("{:#}", i).as_str()));
-                        }
+                        let self____ = self___.clone();
+                        self___.borrow().effect_viewer.setup(Box::new(move || {
+                            self____.borrow().editor
+                                .get_value(Pointer::from_str(&format!("/components/{}/effect", index)))
+                                .as_array().unwrap()
+                                .iter()
+                                .map(|obj| serde_json::from_value::<Effect>(obj.clone()).unwrap())
+                                .map(|obj| {
+                                    Box::new(BoxObject::new(obj.start_value as i32, 200, 0).label("piyo".to_string()))
+                                }).collect()
+                        }));
 
                         self___.borrow().effect_viewer.popup();
                     });

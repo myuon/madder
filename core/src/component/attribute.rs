@@ -193,7 +193,8 @@ impl AsAttribute for Value {
     }
 
     fn as_choose(self) -> Option<usize> {
-        self.as_array().and_then(|ref v| from_value(v[1].clone()).ok())
+        unimplemented!()
+//        self.as_array().and_then(|ref v| from_value(v[1].clone()).ok())
     }
 
     fn from_i32(arg: i32) -> Self { serde_json::to_value(arg).unwrap() }
@@ -206,5 +207,5 @@ impl AsAttribute for Value {
     fn from_font(arg: String) -> Self { serde_json::to_value(arg).unwrap() }
     fn from_color(arg: gdk::RGBA) -> Self { serde_json::to_value(SerRGBA(arg)).unwrap() }
     fn from_readonly(arg: String) -> Self { serde_json::to_value(arg).unwrap() }
-    fn from_choose(arg: Vec<String>, arg2: Option<usize>) -> Self { serde_json::to_value((arg, arg2)).unwrap() }
+    fn from_choose(arg: Vec<String>, i: Option<usize>) -> Self { serde_json::to_value(arg[i.unwrap()].clone()).unwrap() }
 }

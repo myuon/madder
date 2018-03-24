@@ -1,18 +1,23 @@
+use std::rc::Rc;
+use std::cell::RefCell;
+
 extern crate gtk;
 extern crate glib;
 use gtk::prelude::*;
 
-use widget::AsWidget;
+use widget::{AsWidget, BoxObject, BoxViewerWidget};
 
 pub struct EffectViewer {
-    container: gtk::Box,
+    name_box: gtk::Box,
+    viewer: Rc<RefCell<BoxViewerWidget>>,
     window: gtk::Window,
 }
 
 impl EffectViewer {
     pub fn new() -> EffectViewer {
         let widget = EffectViewer {
-            container: gtk::Box::new(gtk::Orientation::Vertical, 0),
+            name_box: gtk::Box::new(gtk::Orientation::Vertical, 0),
+            viewer: BoxViewerWidget::new(200),
             window: gtk::Window::new(gtk::WindowType::Toplevel),
         };
 
@@ -20,18 +25,16 @@ impl EffectViewer {
         widget
     }
 
-    pub fn pack_start<W: glib::IsA<gtk::Widget>>(&self, w: &W) {
-        self.container.pack_start(w, true, true, 0);
-    }
-
-    pub fn clear(&mut self) {
-        for w in self.container.get_children() {
-            self.container.remove(&w);
-        }
+    pub fn setup<T: 'static + AsRef<BoxObject>>(&self, requester: Box<Fn() -> Vec<T>>) {
+        BoxViewerWidget::setup(self.viewer.clone(), requester, Box::new(|_,_,_| {}));
     }
 
     fn create_ui(&self) {
-        self.window.add(&self.container);
+        let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        hbox.pack_start(&self.name_box, true, true, 0);
+        hbox.pack_start(self.viewer.borrow().as_widget(), true, true, 0);
+
+        self.window.add(&hbox);
         self.window.connect_delete_event(move |window,_| {
             window.hide();
             gtk::Inhibit(true)

@@ -309,7 +309,7 @@ impl Editor {
                 self.elements.as_index(IndexRange::from_str(n).unwrap()).as_value()
             },
             &["components", ref n, "effect"] => {
-                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_effect()).unwrap()
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_effect_value()).unwrap()
             },
             &["components", ref n, "effect", ref m] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap())).unwrap()

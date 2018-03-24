@@ -97,6 +97,12 @@ pub trait ComponentWrapper {
     fn as_component(&self) -> &Component;
     fn as_component_mut(&mut self) -> &mut Component;
 
+    fn as_effect_value(&self) -> Vec<serde_json::Value> {
+        self.as_effect().iter().map(|vec| {
+            serde_json::Value::Object(vec.iter().cloned().collect())
+        }).collect()
+    }
+
     fn as_effect(&self) -> Vec<Vec<(String, serde_json::Value)>> {
         self.as_component().effect.iter().map(|eff| eff.get_props()).collect()
     }
