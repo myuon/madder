@@ -39,7 +39,7 @@ pub struct App {
     timeline: Rc<RefCell<TimelineWidget>>,
     canvas: gtk::DrawingArea,
     property: PropertyViewerWidget,
-    effect_viewer: EffectViewer,
+    effect_viewer: Rc<RefCell<EffectViewer>>,
     selected_component_index: Option<usize>,
     window: gtk::Window,
     project_file_path: Option<PathBuf>,
@@ -610,7 +610,9 @@ impl App {
                     let self___ = self___.clone();
                     open_effect_window.connect_activate(move |_| {
                         let self____ = self___.clone();
-                        self___.borrow().effect_viewer.setup(Box::new(move || {
+
+                        let effect_viewer = self___.borrow().effect_viewer.clone();
+                        effect_viewer.borrow().setup(Box::new(move || {
                             self____.borrow().editor
                                 .get_value(Pointer::from_str(&format!("/components/{}/effect", index)))
                                 .as_array().unwrap()
@@ -622,7 +624,7 @@ impl App {
                         }), Box::new(|t,s,cr| { t.renderer(s,cr); }));
 
                         let self____ = self___.clone();
-                        self___.borrow().effect_viewer.connect_new_point(Box::new(move |eff_index, point| {
+                        effect_viewer.borrow().connect_new_point(Box::new(move |eff_index, point| {
                             let current = self____.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}/effect/{}/intermeds/value/{}", index, eff_index, point))).as_f64().unwrap();
                             self____.borrow_mut().editor.patch_once(
                                 Operation::Add(
@@ -635,9 +637,10 @@ impl App {
                                 ), ContentType::Value
                             ).unwrap();
 
-                            self____.borrow().effect_viewer.queue_draw();
+                            let effect_viewer = self____.borrow().effect_viewer.clone();
+                            effect_viewer.borrow().queue_draw();
                         }));
-                        self___.borrow().effect_viewer.popup();
+                        effect_viewer.borrow().popup();
                     });
 
                     open_effect_window

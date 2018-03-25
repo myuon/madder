@@ -144,7 +144,7 @@ pub struct Effect {
 
 impl HasPropertyBuilder for Effect {
     fn keys(_: PhantomData<Self>) -> Vec<String> {
-        strings!["effect_type", "transition", "start_value", "end_value", "intermeds"]
+        strings!["effect_type", "transition", "start_value", "end_value"]
     }
 
     fn getter<T: AsAttribute>(&self, name: &str) -> T {
