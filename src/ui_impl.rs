@@ -97,7 +97,8 @@ pub struct EffectComponentRenderer {
 }
 
 impl EffectComponentRenderer {
-    const WIDTH: i32 = 150;
+    const WIDTH: i32 = 300;
+    const HEIGHT: i32 = 50;
 
     pub fn new(index: usize, effect: Effect) -> EffectComponentRenderer {
         EffectComponentRenderer {
@@ -111,12 +112,26 @@ impl EffectComponentRenderer {
         let font_extent = cr.font_extents();
         cr.select_font_face("Serif", cairo::FontSlant::Normal, cairo::FontWeight::Normal);
         cr.set_font_size(15.0);
-        cr.set_source_rgb(0.0, 0.0, 0.0);
+
+        cr.set_source_rgba(0.0, 0.5, 1.0, 0.5);
+        cr.rectangle(self.object.coordinate().0 as f64, self.object.coordinate().1.into(), self.object.size().0 as f64, self.object.size().1.into());
+        cr.fill();
+        cr.stroke();
+
+        let render_point = move |x: f64, value: f64| {
+            cr.set_source_rgb(0.0, 0.0, 0.0);
+            cr.move_to(x, (self.index as f64 + 0.5) * Self::HEIGHT as f64 - font_extent.descent + font_extent.height / 2.0);
+            cr.show_text("◆");
+            cr.rel_move_to(0.0, font_extent.height);
+            cr.show_text(&format!("{:.*}", 2, value));
+            cr.stroke();
+        };
+
+        render_point(0.0, self.effect.start_value);
+        render_point(Self::WIDTH as f64, self.effect.end_value);
 
         for intermed in &self.effect.intermeds {
-            cr.move_to(intermed.position * Self::WIDTH as f64, (self.index as f64 + 0.5) * BoxObject::HEIGHT as f64 - font_extent.descent + font_extent.height / 2.0);
-            cr.show_text("◆");
-            cr.stroke();
+            render_point(intermed.position * Self::WIDTH as f64, intermed.value);
         }
     }
 }

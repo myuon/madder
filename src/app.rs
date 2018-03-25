@@ -619,9 +619,24 @@ impl App {
                                 .enumerate()
                                 .map(|(i,obj)| { ui_impl::EffectComponentRenderer::new(i,obj) })
                                 .collect()
-                        }),
-                        Box::new(|t,s,cr| { t.renderer(s,cr); }));
+                        }), Box::new(|t,s,cr| { t.renderer(s,cr); }));
 
+                        let self____ = self___.clone();
+                        self___.borrow().effect_viewer.connect_new_point(Box::new(move |eff_index, point| {
+                            let current = self____.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}/effect/{}/intermeds/value/{}", index, eff_index, point))).as_f64().unwrap();
+                            self____.borrow_mut().editor.patch_once(
+                                Operation::Add(
+                                    Pointer::from_str(&format!("/components/{}/effect/{}/intermeds", index, eff_index)),
+                                    json!(EffectPoint {
+                                        transition: Transition::Ease,
+                                        position: point,
+                                        value: current,
+                                    }),
+                                ), ContentType::Value
+                            ).unwrap();
+
+                            self____.borrow().effect_viewer.queue_draw();
+                        }));
                         self___.borrow().effect_viewer.popup();
                     });
 

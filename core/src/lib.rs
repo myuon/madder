@@ -250,6 +250,17 @@ impl Editor {
         }
     }
 
+    fn add_components_n_effect_n_intermeds(&mut self, n: IndexRange, m: IndexRange, value: Value, content_type: ContentType) {
+        match content_type {
+            ContentType::Value => {
+                self.elements.as_index_mut(n).effect.as_index_mut(m).intermeds.push(serde_json::from_value(value).unwrap());
+            },
+            ContentType::Attribute => {
+                unimplemented!();
+            },
+        }
+    }
+
     fn remove_components_n(&mut self, index: IndexRange) {
         use IndexRange::*;
 
@@ -313,6 +324,9 @@ impl Editor {
             },
             &["components", ref n, "effect", ref m] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap())).unwrap()
+            },
+            &["components", ref n, "effect", ref m, "intermeds", "value", ref v] => {
+                json!(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap()).value(v.parse().unwrap()))
             },
             &["components", ref n, "effect", ref m, key] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap())).unwrap().as_object().unwrap()[key].clone()
@@ -394,6 +408,7 @@ impl Patch for Editor {
                     &["components"] => self.add_components(v, content_type),
                     &["components", ref n] => self.add_components_n(IndexRange::from_str(n).unwrap(),v,content_type),
                     &["components", ref n, "effect"] => self.add_components_n_effect(IndexRange::from_str(n).unwrap(), v, content_type),
+                    &["components", ref n, "effect", ref m, "intermeds"] => self.add_components_n_effect_n_intermeds(IndexRange::from_str(n).unwrap(), IndexRange::from_str(m).unwrap(), v, content_type),
                     &["components", ref n, "effect", ref m, key] => self.add_components_n_effect_n_key(IndexRange::from_str(n).unwrap(), IndexRange::from_str(m).unwrap(), key, v, content_type),
                     &["components", ref n, "prop", key] => self.add_components_n_prop_key(IndexRange::from_str(n).unwrap(), key, v, content_type),
                     &["components", ref n, key] => self.add_components_key(IndexRange::from_str(n).unwrap(), key, v, content_type),
