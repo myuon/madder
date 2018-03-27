@@ -123,7 +123,7 @@ impl EffectComponentRenderer {
             cr.move_to(x, (self.index as f64 + 0.5) * Self::HEIGHT as f64 - font_extent.descent + font_extent.height / 2.0);
             cr.show_text("◆");
             cr.rel_move_to(0.0, font_extent.height);
-            cr.show_text(&format!("{:.*}", 2, value));
+            cr.show_text(&format!("{:.*}", 1, value));
             cr.stroke();
         };
 

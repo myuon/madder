@@ -609,9 +609,9 @@ impl App {
 
                     let self___ = self___.clone();
                     open_effect_window.connect_activate(move |_| {
-                        let self____ = self___.clone();
-
                         let effect_viewer = self___.borrow().effect_viewer.clone();
+
+                        let self____ = self___.clone();
                         effect_viewer.borrow().setup(Box::new(move || {
                             self____.borrow().editor
                                 .get_value(Pointer::from_str(&format!("/components/{}/effect", index)))
@@ -640,6 +640,7 @@ impl App {
                             let effect_viewer = self____.borrow().effect_viewer.clone();
                             effect_viewer.borrow().queue_draw();
                         }));
+
                         effect_viewer.borrow().popup();
                     });
 

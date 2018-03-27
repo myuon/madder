@@ -16,6 +16,7 @@ pub struct EffectViewer {
     overlay: gtk::Overlay,
     tracker: gtk::DrawingArea,
     tracking_position: f64,
+    name_list: gtk::Box,
 }
 
 impl EffectViewer {
@@ -26,6 +27,7 @@ impl EffectViewer {
             overlay: gtk::Overlay::new(),
             tracker: gtk::DrawingArea::new(),
             tracking_position: 0.0,
+            name_list: gtk::Box::new(gtk::Orientation::Vertical, 0),
         }));
 
         EffectViewer::create_ui(viewer.clone());
@@ -33,11 +35,23 @@ impl EffectViewer {
     }
 
     pub fn setup<T: 'static + AsRef<BoxObject>>(&self, requester: Box<Fn() -> Vec<T>>, renderer: Box<Fn(&T, f64, &cairo::Context)>) {
+        for child in &self.name_list.get_children() {
+            self.name_list.remove(child);
+        }
+
+        for obj in (requester)() {
+            let label = gtk::Label::new(format!("{}", obj.as_ref().index).as_str());
+            label.set_size_request(-1, BoxObject::HEIGHT);
+            self.name_list.pack_start(&label, false, false, 0);
+        }
+
         BoxViewerWidget::setup(self.viewer.clone(), requester, renderer);
     }
 
     fn create_ui(self_: Rc<RefCell<EffectViewer>>) {
         let this = self_.borrow();
+
+        this.name_list.set_size_request(30,-1);
 
         this.overlay.add(this.viewer.borrow().as_widget());
         this.overlay.add_overlay(&this.tracker);
@@ -49,8 +63,12 @@ impl EffectViewer {
             window.set_pass_through(true);
         });
 
+        let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        hbox.pack_start(&this.name_list, false, false, 0);
+        hbox.pack_start(&this.overlay, true, true, 0);
+
         this.window.set_size_request(500, 200);
-        this.window.add(&this.overlay);
+        this.window.add(&hbox);
         this.window.connect_delete_event(move |window,_| {
             window.hide();
             gtk::Inhibit(true)
@@ -60,7 +78,7 @@ impl EffectViewer {
         this.tracker.connect_draw(move |tracker,cr| {
             cr.set_source_rgb(200f64, 0f64, 0f64);
 
-            cr.move_to(self__.borrow().tracking_position, 0f64);
+            cr.move_to(self__.borrow().tracking_position, 0.0);
             cr.rel_line_to(0.0, tracker.get_allocation().height as f64);
             cr.stroke();
 
