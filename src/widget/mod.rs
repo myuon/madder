@@ -14,5 +14,5 @@ mod property_viewer;
 pub use self::property_viewer::*;
 
 mod effect_viewer;
-pub use self::effect_viewer::EffectViewer;
+pub use self::effect_viewer::*;
 

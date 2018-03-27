@@ -39,10 +39,16 @@ pub struct App {
     timeline: Rc<RefCell<TimelineWidget>>,
     canvas: gtk::DrawingArea,
     property: PropertyViewerWidget,
-    effect_viewer: Rc<RefCell<EffectViewer>>,
+    effect_viewer: Rc<RefCell<EffectViewer<App>>>,
     selected_component_index: Option<usize>,
     window: gtk::Window,
     project_file_path: Option<PathBuf>,
+}
+
+impl EffectViewerI for App {
+    fn get_effect(&self, effect_index: usize) -> component::Effect {
+        serde_json::from_value(self.editor.get_value(Pointer::from_str(&format!("/components/{}/effect/{}", self.selected_component_index.expect("App::selected_component_index is None"), effect_index)))).unwrap()
+    }
 }
 
 impl App {
@@ -571,6 +577,9 @@ impl App {
         let app = self_.borrow();
 
         let self__ = self_.clone();
+        app.effect_viewer.borrow_mut().set_model(self__);
+
+        let self__ = self_.clone();
         let self___ = self_.clone();
         TimelineWidget::connect_select_component(app.timeline.clone(),
             Box::new(move |index| {
@@ -612,6 +621,8 @@ impl App {
                         let effect_viewer = self___.borrow().effect_viewer.clone();
 
                         let self____ = self___.clone();
+                        self____.borrow_mut().selected_component_index = Some(index);
+
                         effect_viewer.borrow().setup(Box::new(move || {
                             self____.borrow().editor
                                 .get_value(Pointer::from_str(&format!("/components/{}/effect", index)))
