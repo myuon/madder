@@ -77,6 +77,33 @@ impl EffectViewerI for App {
     }
 }
 
+impl BoxViewerWidgetI for App {
+    type Renderer = ui_impl::TimelineComponentRenderer;
+
+    fn get_objects(&self) -> Vec<Self::Renderer> {
+        serde_json::from_value::<Vec<Component>>(self.editor.get_value(Pointer::from_str("/components"))).unwrap().iter().enumerate().map(|(i,component)| {
+            let entity = serde_json::from_value::<Attribute>(self.editor.get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
+
+            let obj = BoxObject::new(
+                component.start_time.mseconds().unwrap() as i32,
+                component.length.mseconds().unwrap() as i32,
+                i
+            ).label(format!("{:?}", entity))
+                .selected(Some(i) == self.selected_component_index)
+                .layer_index(component.layer_index);
+
+            ui_impl::TimelineComponentRenderer {
+                object: obj,
+                object_type: component.component_type.clone(),
+            }
+        }).collect()
+    }
+
+    fn do_render(&self, robj: Self::Renderer, scaler: f64, cr: &cairo::Context) {
+        robj.hscaled(scaler).renderer(cr, &|p| self.editor.elements[robj.object.index].peek(p));
+    }
+}
+
 impl App {
     fn new_with(editor: Editor, width: i32, length: gst::ClockTime) -> App {
         let prop_width = 250;
@@ -652,16 +679,7 @@ impl App {
                         let self____ = self___.clone();
                         self____.borrow_mut().selected_component_index = Some(index);
 
-                        effect_viewer.borrow().setup(Box::new(move || {
-                            self____.borrow().editor
-                                .get_value(Pointer::from_str(&format!("/components/{}/effect", index)))
-                                .as_array().unwrap()
-                                .iter()
-                                .map(|obj| serde_json::from_value::<Effect>(obj.clone()).unwrap())
-                                .enumerate()
-                                .map(|(i,obj)| { ui_impl::EffectComponentRenderer::new(i,obj) })
-                                .collect()
-                        }), Box::new(|t,s,cr| { t.renderer(s,cr); }));
+                        EffectViewer::setup(effect_viewer.clone());
 
                         let self____ = self___.clone();
                         effect_viewer.borrow().connect_new_point(Box::new(move |eff_index, point| {
@@ -695,32 +713,7 @@ impl App {
 
         TimelineWidget::connect_drag_component(app.timeline.clone());
 
-        let self__ = self_.clone();
-        let self___ = self_.clone();
-
-        app.timeline.borrow().setup_object_renderer(Box::new(move || {
-            let self___ = self__.clone();
-            serde_json::from_value::<Vec<Component>>(self__.borrow().editor.get_value(Pointer::from_str("/components"))).unwrap().iter().enumerate().map(|(i,component)| {
-                let entity = serde_json::from_value::<Attribute>(self___.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
-
-                let obj = BoxObject::new(
-                    component.start_time.mseconds().unwrap() as i32,
-                    component.length.mseconds().unwrap() as i32,
-                    i
-                ).label(format!("{:?}", entity))
-                    .selected(Some(i) == self__.borrow().selected_component_index)
-                    .layer_index(component.layer_index);
-
-                ui_impl::TimelineComponentRenderer {
-                    object: obj,
-                    object_type: component.component_type.clone(),
-                }
-
-            }).collect()
-        }), Box::new(move |robj, scaler, cr| {
-            let self___ = self___.clone();
-            robj.hscaled(scaler).renderer(cr, &|p| self___.borrow().editor.elements[robj.object.index].peek(p));
-        }));
+        app.timeline.borrow().setup_object_renderer();
 
         let self__ = self_.clone();
         TimelineWidget::connect_ruler_seek_time(app.timeline.clone(), move |time| {

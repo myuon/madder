@@ -20,8 +20,8 @@ pub trait TimelineWidgetI {
     fn set_component_attr(&mut self, usize, &str, Attribute);
 }
 
-pub struct TimelineWidget<M: TimelineWidgetI> {
-    box_viewer: Rc<RefCell<BoxViewerWidget>>,
+pub struct TimelineWidget<M: TimelineWidgetI + BoxViewerWidgetI> {
+    box_viewer: Rc<RefCell<BoxViewerWidget<M>>>,
     ruler: Rc<RefCell<RulerWidget>>,
     ruler_box: gtk::EventBox,
     tracker: gtk::DrawingArea,
@@ -33,7 +33,7 @@ pub struct TimelineWidget<M: TimelineWidgetI> {
 }
 
 // workaround for sharing a variable within callbacks
-impl<M: 'static + TimelineWidgetI> TimelineWidget<M> {
+impl<M: 'static + TimelineWidgetI + BoxViewerWidgetI> TimelineWidget<M> {
     pub fn new(width: i32, height: i32, length: i32) -> Rc<RefCell<TimelineWidget<M>>> {
         let box_viewer = BoxViewerWidget::new(height);
 
@@ -76,6 +76,7 @@ impl<M: 'static + TimelineWidgetI> TimelineWidget<M> {
     }
 
     pub fn set_model(&mut self, model: Rc<RefCell<M>>) {
+        self.box_viewer.borrow_mut().set_model(model.clone());
         self.model = Some(model);
     }
 
@@ -156,8 +157,8 @@ impl<M: 'static + TimelineWidgetI> TimelineWidget<M> {
         }));
     }
 
-    pub fn setup_object_renderer<T: 'static + AsRef<BoxObject>>(&self, cont: Box<Fn() -> Vec<T>>, renderer: Box<Fn(&T, f64, &cairo::Context)>) {
-        BoxViewerWidget::setup(self.box_viewer.clone(), cont, renderer);
+    pub fn setup_object_renderer(&self) {
+        BoxViewerWidget::setup(self.box_viewer.clone());
     }
 
     pub fn connect_select_component(self_: Rc<RefCell<TimelineWidget<M>>>, cont: Box<Fn(usize)>, cont_menu: Box<Fn(usize, gst::ClockTime) -> gtk::Menu>) {
@@ -249,7 +250,7 @@ impl<M: 'static + TimelineWidgetI> TimelineWidget<M> {
     }
 }
 
-impl<M: TimelineWidgetI> AsWidget for TimelineWidget<M> {
+impl<M: TimelineWidgetI + BoxViewerWidgetI> AsWidget for TimelineWidget<M> {
     type T = gtk::Grid;
 
     fn as_widget(&self) -> &Self::T {
