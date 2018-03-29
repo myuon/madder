@@ -59,8 +59,21 @@ impl TimelineWidgetI for App {
 }
 
 impl EffectViewerI for App {
+    type Renderer = ui_impl::EffectComponentRenderer;
+
     fn get_effect(&self, effect_index: usize) -> component::Effect {
         serde_json::from_value(self.editor.get_value(Pointer::from_str(&format!("/components/{}/effect/{}", self.selected_component_index.expect("App::selected_component_index is None"), effect_index)))).unwrap()
+    }
+
+    fn get_renderers(&self) -> Vec<Self::Renderer> {
+        self.editor
+            .get_value(Pointer::from_str(&format!("/components/{}/effect", self.selected_component_index.unwrap())))
+            .as_array().unwrap()
+            .iter()
+            .map(|obj| serde_json::from_value::<Effect>(obj.clone()).unwrap())
+            .enumerate()
+            .map(|(i,obj)| { ui_impl::EffectComponentRenderer::new(i,obj) })
+            .collect()
     }
 }
 

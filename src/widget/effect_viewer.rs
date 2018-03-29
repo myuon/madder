@@ -13,7 +13,10 @@ use madder_core::*;
 use widget::{AsWidget, BoxObject, BoxViewerWidget};
 
 pub trait EffectViewerI {
+    type Renderer : AsRef<BoxObject>;
+
     fn get_effect(&self, usize) -> component::Effect;
+    fn get_renderers(&self) -> Vec<Self::Renderer>;
 }
 
 pub struct EffectViewer<M: EffectViewerI> {
@@ -52,7 +55,7 @@ impl<M: 'static + EffectViewerI> EffectViewer<M> {
         }
 
         let inst = self.model.as_ref().unwrap();
-        for obj in (requester)() {
+        for obj in inst.borrow().get_renderers() {
             let inst = inst.borrow();
             let label = gtk::Label::new(format!("{}: {}", obj.as_ref().index, inst.get_effect(obj.as_ref().index).value(0.75)).as_str());
             label.set_size_request(-1, BoxObject::HEIGHT);
