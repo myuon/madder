@@ -36,13 +36,26 @@ use WINDOW_NUMBER;
 
 pub struct App {
     editor: Editor,
-    timeline: Rc<RefCell<TimelineWidget>>,
+    timeline: Rc<RefCell<TimelineWidget<App>>>,
     canvas: gtk::DrawingArea,
     property: PropertyViewerWidget,
     effect_viewer: Rc<RefCell<EffectViewer<App>>>,
     selected_component_index: Option<usize>,
     window: gtk::Window,
     project_file_path: Option<PathBuf>,
+}
+
+impl TimelineWidgetI for App {
+    fn get_component(&self, index: usize) -> component::Component {
+        serde_json::from_value::<Component>(self.editor.get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap()
+    }
+
+    fn set_component_attr(&mut self, index: usize, attr: &str, value: Attribute) {
+        self.editor.patch_once(Operation::Add(
+            Pointer::from_str(&format!("/components/{}/{}", index, attr)),
+            json!(value),
+        ), ContentType::Value).unwrap();
+    }
 }
 
 impl EffectViewerI for App {
@@ -195,7 +208,7 @@ impl App {
     fn queue_draw(&self) {
         self.canvas.queue_draw();
 
-        let timeline: &TimelineWidget = &self.timeline.borrow();
+        let timeline = &self.timeline.borrow();
         timeline.queue_draw();
     }
 
@@ -580,6 +593,9 @@ impl App {
         app.effect_viewer.borrow_mut().set_model(self__);
 
         let self__ = self_.clone();
+        app.timeline.borrow_mut().set_model(self__);
+
+        let self__ = self_.clone();
         let self___ = self_.clone();
         TimelineWidget::connect_select_component(app.timeline.clone(),
             Box::new(move |index| {
@@ -664,54 +680,7 @@ impl App {
             })
         );
 
-        let self__ = self_.clone();
-        let self___ = self_.clone();
-        app.timeline.borrow().connect_drag_component(
-            Box::new(move |index,distance,layer_index| {
-                let props = serde_json::from_value::<Component>(self__.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
-                let add_time = |a: gst::ClockTime, b: f64| {
-                    if b < 0.0 {
-                        if a < b.abs() as u64 * gst::MSECOND {
-                            0 * gst::MSECOND
-                        } else {
-                            a - b.abs() as u64 * gst::MSECOND
-                        }
-                    } else {
-                        a + b as u64 * gst::MSECOND
-                    }
-                };
-
-                self__.borrow_mut().editor.patch_once(Operation::Add(
-                    Pointer::from_str(&format!("/components/{}/start_time", index)),
-                    json!(Attribute::Time(add_time(props.start_time, distance as f64))),
-                ), ContentType::Value).unwrap();
-                self__.borrow_mut().editor.patch_once(Operation::Add(
-                    Pointer::from_str(&format!("/components/{}/layer_index", index)),
-                    json!(Attribute::Usize(cmp::max(layer_index, 0))),
-                ), ContentType::Value).unwrap();
-                self__.borrow().queue_draw();
-            }),
-            Box::new(move |index,distance| {
-                let props = serde_json::from_value::<Component>(self___.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
-                let add_time = |a: gst::ClockTime, b: f64| {
-                    if b < 0.0 {
-                        if a < b.abs() as u64 * gst::MSECOND {
-                            5 * gst::MSECOND
-                        } else {
-                            cmp::max(a - b.abs() as u64 * gst::MSECOND, 5.0 as u64 * gst::MSECOND)
-                        }
-                    } else {
-                        a + b as u64 * gst::MSECOND
-                    }
-                };
-
-                self___.borrow_mut().editor.patch_once(Operation::Add(
-                    Pointer::from_str(&format!("/components/{}/length", index)),
-                    json!(Attribute::Time(add_time(props.length, distance as f64))),
-                ), ContentType::Attribute).unwrap();
-                self___.borrow().queue_draw();
-            }),
-        );
+        TimelineWidget::connect_drag_component(app.timeline.clone());
 
         let self__ = self_.clone();
         let self___ = self_.clone();

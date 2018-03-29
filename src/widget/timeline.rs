@@ -1,3 +1,4 @@
+use std::cmp;
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -10,9 +11,16 @@ use gdk::prelude::*;
 extern crate cairo;
 extern crate pango;
 
+extern crate madder_core;
+use madder_core::*;
 use widget::*;
 
-pub struct TimelineWidget {
+pub trait TimelineWidgetI {
+    fn get_component(&self, usize) -> component::Component;
+    fn set_component_attr(&mut self, usize, &str, Attribute);
+}
+
+pub struct TimelineWidget<M: TimelineWidgetI> {
     box_viewer: Rc<RefCell<BoxViewerWidget>>,
     ruler: Rc<RefCell<RulerWidget>>,
     ruler_box: gtk::EventBox,
@@ -21,11 +29,12 @@ pub struct TimelineWidget {
     overlay: gtk::Overlay,
     scaler: gtk::Scale,
     tracking_position: i32,
+    model: Option<Rc<RefCell<M>>>
 }
 
 // workaround for sharing a variable within callbacks
-impl TimelineWidget {
-    pub fn new(width: i32, height: i32, length: i32) -> Rc<RefCell<TimelineWidget>> {
+impl<M: 'static + TimelineWidgetI> TimelineWidget<M> {
+    pub fn new(width: i32, height: i32, length: i32) -> Rc<RefCell<TimelineWidget<M>>> {
         let box_viewer = BoxViewerWidget::new(height);
 
         let ruler_box = gtk::EventBox::new();
@@ -59,10 +68,15 @@ impl TimelineWidget {
             overlay: overlay,
             scaler: gtk::Scale::new_with_range(gtk::Orientation::Horizontal, 1.0, 10.0, 0.1),
             tracking_position: 0,
+            model: None,
         }));
         TimelineWidget::create_ui(w.clone(), width, height, length);
 
         w
+    }
+
+    pub fn set_model(&mut self, model: Rc<RefCell<M>>) {
+        self.model = Some(model);
     }
 
     fn notify_pointer_motion(&self, x: f64) {
@@ -71,7 +85,7 @@ impl TimelineWidget {
         RulerWidget::send_pointer_position(ruler, x);
     }
 
-    fn create_ui(self_: Rc<RefCell<TimelineWidget>>, width: i32, height: i32, length: i32) {
+    fn create_ui(self_: Rc<RefCell<TimelineWidget<M>>>, width: i32, height: i32, length: i32) {
         let timeline = self_.borrow();
         timeline.tracker.connect_realize(move |tracker| {
             let window = tracker.get_window().unwrap();
@@ -146,7 +160,7 @@ impl TimelineWidget {
         BoxViewerWidget::setup(self.box_viewer.clone(), cont, renderer);
     }
 
-    pub fn connect_select_component(self_: Rc<RefCell<TimelineWidget>>, cont: Box<Fn(usize)>, cont_menu: Box<Fn(usize, gst::ClockTime) -> gtk::Menu>) {
+    pub fn connect_select_component(self_: Rc<RefCell<TimelineWidget<M>>>, cont: Box<Fn(usize)>, cont_menu: Box<Fn(usize, gst::ClockTime) -> gtk::Menu>) {
         let self__ = self_.clone();
         BoxViewerWidget::connect_select_box(self_.borrow().box_viewer.clone(), Box::new(move |index, event| {
             if event.get_button() == 1 {
@@ -160,11 +174,67 @@ impl TimelineWidget {
         }));
     }
 
-    pub fn connect_drag_component(&self, cont_move: Box<Fn(usize, i32, usize)>, cont_resize: Box<Fn(usize, i32)>) {
-        BoxViewerWidget::connect_drag_box(self.box_viewer.clone(), cont_move, cont_resize);
+    pub fn connect_drag_component(self_: Rc<RefCell<TimelineWidget<M>>>) {
+        let self__ = self_.clone();
+        let self___ = self_.clone();
+        let self____ = self_.clone();
+        let inst = self_.borrow().model.as_ref().unwrap().clone();
+        let inst_ = inst.clone();
+        BoxViewerWidget::connect_drag_box(
+            self__.borrow().box_viewer.clone(),
+            Box::new(move |index,distance,layer_index| {
+                let add_time = |a: gst::ClockTime, b: f64| {
+                    if b < 0.0 {
+                        if a < b.abs() as u64 * gst::MSECOND {
+                            0 * gst::MSECOND
+                        } else {
+                            a - b.abs() as u64 * gst::MSECOND
+                        }
+                    } else {
+                        a + b as u64 * gst::MSECOND
+                    }
+                };
+
+                let component = inst.borrow().get_component(index);
+                inst.borrow_mut().set_component_attr(
+                    index,
+                    "start_time",
+                    Attribute::Time(add_time(component.start_time, distance as f64)),
+                );
+                inst.borrow_mut().set_component_attr(
+                    index,
+                    "layer_index",
+                    Attribute::Usize(cmp::max(layer_index, 0)),
+                );
+
+                self___.borrow().queue_draw();
+            }),
+            Box::new(move |index,distance| {
+                let add_time = |a: gst::ClockTime, b: f64| {
+                    if b < 0.0 {
+                        if a < b.abs() as u64 * gst::MSECOND {
+                            0 * gst::MSECOND
+                        } else {
+                            a - b.abs() as u64 * gst::MSECOND
+                        }
+                    } else {
+                        a + b as u64 * gst::MSECOND
+                    }
+                };
+
+                let component = inst_.borrow().get_component(index);
+                inst_.borrow_mut().set_component_attr(
+                    index,
+                    "length",
+                    Attribute::Time(add_time(component.length, distance as f64)),
+                );
+
+                self____.borrow().queue_draw();
+            }),
+        );
     }
 
-    pub fn connect_ruler_seek_time<F: Fn(gst::ClockTime) -> gtk::Inhibit + 'static>(self_: Rc<RefCell<TimelineWidget>>, cont: F) {
+    pub fn connect_ruler_seek_time<F: Fn(gst::ClockTime) -> gtk::Inhibit + 'static>(self_: Rc<RefCell<TimelineWidget<M>>>, cont: F) {
         let scaler = self_.borrow().scaler.clone();
         let self__ = self_.clone();
         self_.borrow().ruler_box.connect_button_press_event(move |_, event| {
@@ -179,7 +249,7 @@ impl TimelineWidget {
     }
 }
 
-impl AsWidget for TimelineWidget {
+impl<M: TimelineWidgetI> AsWidget for TimelineWidget<M> {
     type T = gtk::Grid;
 
     fn as_widget(&self) -> &Self::T {
