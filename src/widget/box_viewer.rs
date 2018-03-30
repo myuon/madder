@@ -65,6 +65,8 @@ pub trait BoxViewerWidgetI {
 
     fn get_objects(&self) -> Vec<Self::Renderer>;
     fn do_render(&self, Self::Renderer, f64, &cairo::Context);
+    fn connect_select_box(&self, usize, &gdk::EventButton) {}
+    fn connect_select_no_box(&self, &gdk::EventButton) {}
 }
 
 pub struct BoxViewerWidget<M: BoxViewerWidgetI> {
@@ -119,9 +121,7 @@ impl<M: 'static + BoxViewerWidgetI> BoxViewerWidget<M> {
 
             Inhibit(false)
         });
-    }
 
-    pub fn connect_select_box(self_: Rc<RefCell<BoxViewerWidget<M>>>, cont: Box<Fn(usize, &gdk::EventButton)>) {
         let self__ = self_.clone();
         let widget = self_.borrow();
         let inst = widget.model.as_ref().unwrap().clone();
@@ -137,9 +137,9 @@ impl<M: 'static + BoxViewerWidgetI> BoxViewerWidget<M> {
             if let Some(object) = inst.get_objects().into_iter().find(|object| object.as_ref().clone().hscaled(scale).contains(x,y)) {
                 self__.borrow_mut().offset = x;
                 self__.borrow_mut().selecting_box_index = Some(object.as_ref().index);
-                cont(object.as_ref().index, event);
+                inst.connect_select_box(object.as_ref().index, event);
             } else {
-                (self__.borrow().cb_click_no_box)(event);
+                inst.connect_select_no_box(event);
             }
 
             Inhibit(false)

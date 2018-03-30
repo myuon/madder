@@ -46,6 +46,8 @@ pub struct App {
 }
 
 impl TimelineWidgetI for App {
+    type Renderer = ui_impl::TimelineComponentRenderer;
+
     fn get_component(&self, index: usize) -> component::Component {
         serde_json::from_value::<Component>(self.editor.get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap()
     }
@@ -56,6 +58,62 @@ impl TimelineWidgetI for App {
             json!(value),
         ), ContentType::Value).unwrap();
     }
+
+    fn connect_select_component(&self, index: usize) {
+        App::select_component(self, index);
+    }
+
+    fn connect_select_component_menu(&self, index: usize, position: gst::ClockTime) -> gtk::Menu {
+        let self_ = Rc::new(RefCell::new(self));
+        let menu = gtk::Menu::new();
+        let split_component_here = {
+            let split_component_here = gtk::MenuItem::new_with_label("オブジェクトをこの位置で分割");
+
+            let self_ = self_.clone();
+            split_component_here.connect_activate(move |_| {
+                let this_component = serde_json::from_value::<Component>(self_.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
+                let mut this = self_.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}", index)));
+                this.as_object_mut().unwrap()["start_time"] = json!(position.mseconds().unwrap());
+                this.as_object_mut().unwrap()["length"] = json!(this_component.length.mseconds().unwrap() - position.mseconds().unwrap());
+
+                self_.borrow_mut().editor.patch(vec![
+                    Operation::Add(
+                        Pointer::from_str(&format!("/components/{}/length", index)),
+                        json!((position - this_component.start_time).mseconds().unwrap()),
+                    ),
+                    Operation::Add(
+                        Pointer::from_str("/components"),
+                        this,
+                    ),
+                ], ContentType::Value).unwrap();
+
+                self_.borrow().queue_draw();
+            });
+
+            split_component_here
+        };
+        let open_effect_window = {
+            let open_effect_window = gtk::MenuItem::new_with_label("エフェクトウィンドウを開く");
+
+            let self_ = self_.clone();
+            open_effect_window.connect_activate(move |_| {
+                let effect_viewer = self_.borrow().effect_viewer.clone();
+
+                let self____ = self_.clone();
+                self____.borrow_mut().selected_component_index = Some(index);
+
+                EffectViewer::setup(effect_viewer.clone());
+
+                effect_viewer.borrow().popup();
+            });
+
+            open_effect_window
+        };
+
+        menu.append(&split_component_here);
+        menu.append(&open_effect_window);
+        menu
+    }
 }
 
 impl EffectViewerI for App {
@@ -65,7 +123,7 @@ impl EffectViewerI for App {
         serde_json::from_value(self.editor.get_value(Pointer::from_str(&format!("/components/{}/effect/{}", self.selected_component_index.expect("App::selected_component_index is None"), effect_index)))).unwrap()
     }
 
-    fn get_renderers(&self) -> Vec<Self::Renderer> {
+    fn get_effects(&self) -> Vec<Self::Renderer> {
         self.editor
             .get_value(Pointer::from_str(&format!("/components/{}/effect", self.selected_component_index.unwrap())))
             .as_array().unwrap()
@@ -74,6 +132,27 @@ impl EffectViewerI for App {
             .enumerate()
             .map(|(i,obj)| { ui_impl::EffectComponentRenderer::new(i,obj) })
             .collect()
+    }
+
+    fn do_render(&self, renderer: Self::Renderer, scaler: f64, cr: &cairo::Context) {
+        renderer.renderer(scaler, cr)
+    }
+
+    fn connect_new_point(&mut self, eff_index: usize, point: f64) {
+        let index = self.selected_component_index.unwrap();
+        let current = self.editor.get_value(Pointer::from_str(&format!("/components/{}/effect/{}/intermeds/value/{}", index, eff_index, point))).as_f64().unwrap();
+        self.editor.patch_once(
+            Operation::Add(
+                Pointer::from_str(&format!("/components/{}/effect/{}/intermeds", index, eff_index)),
+                json!(EffectPoint {
+                    transition: Transition::Ease,
+                    position: point,
+                    value: current,
+                }),
+            ), ContentType::Value
+        ).unwrap();
+
+        self.effect_viewer.borrow().queue_draw();
     }
 }
 
@@ -635,85 +714,7 @@ impl App {
         let self__ = self_.clone();
         app.timeline.borrow_mut().set_model(self__);
 
-        let self__ = self_.clone();
-        let self___ = self_.clone();
-        TimelineWidget::connect_select_component(app.timeline.clone(),
-            Box::new(move |index| {
-                App::select_component(self__.clone(), index);
-            }),
-            Box::new(move |index, position| {
-                let menu = gtk::Menu::new();
-                let split_component_here = {
-                    let split_component_here = gtk::MenuItem::new_with_label("オブジェクトをこの位置で分割");
-
-                    let self___ = self___.clone();
-                    split_component_here.connect_activate(move |_| {
-                        let this_component = serde_json::from_value::<Component>(self___.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
-                        let mut this = self___.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}", index)));
-                        this.as_object_mut().unwrap()["start_time"] = json!(position.mseconds().unwrap());
-                        this.as_object_mut().unwrap()["length"] = json!(this_component.length.mseconds().unwrap() - position.mseconds().unwrap());
-
-                        self___.borrow_mut().editor.patch(vec![
-                            Operation::Add(
-                                Pointer::from_str(&format!("/components/{}/length", index)),
-                                json!((position - this_component.start_time).mseconds().unwrap()),
-                            ),
-                            Operation::Add(
-                                Pointer::from_str("/components"),
-                                this,
-                            ),
-                        ], ContentType::Value).unwrap();
-
-                        self___.borrow().queue_draw();
-                    });
-
-                    split_component_here
-                };
-                let open_effect_window = {
-                    let open_effect_window = gtk::MenuItem::new_with_label("エフェクトウィンドウを開く");
-
-                    let self___ = self___.clone();
-                    open_effect_window.connect_activate(move |_| {
-                        let effect_viewer = self___.borrow().effect_viewer.clone();
-
-                        let self____ = self___.clone();
-                        self____.borrow_mut().selected_component_index = Some(index);
-
-                        EffectViewer::setup(effect_viewer.clone());
-
-                        let self____ = self___.clone();
-                        effect_viewer.borrow().connect_new_point(Box::new(move |eff_index, point| {
-                            let current = self____.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}/effect/{}/intermeds/value/{}", index, eff_index, point))).as_f64().unwrap();
-                            self____.borrow_mut().editor.patch_once(
-                                Operation::Add(
-                                    Pointer::from_str(&format!("/components/{}/effect/{}/intermeds", index, eff_index)),
-                                    json!(EffectPoint {
-                                        transition: Transition::Ease,
-                                        position: point,
-                                        value: current,
-                                    }),
-                                ), ContentType::Value
-                            ).unwrap();
-
-                            let effect_viewer = self____.borrow().effect_viewer.clone();
-                            effect_viewer.borrow().queue_draw();
-                        }));
-
-                        effect_viewer.borrow().popup();
-                    });
-
-                    open_effect_window
-                };
-
-                menu.append(&split_component_here);
-                menu.append(&open_effect_window);
-                menu
-            })
-        );
-
         TimelineWidget::connect_drag_component(app.timeline.clone());
-
-        app.timeline.borrow().setup_object_renderer();
 
         let self__ = self_.clone();
         TimelineWidget::connect_ruler_seek_time(app.timeline.clone(), move |time| {

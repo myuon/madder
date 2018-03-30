@@ -16,12 +16,44 @@ use madder_core::*;
 use widget::*;
 
 pub trait TimelineWidgetI {
+    type Renderer : AsRef<BoxObject>;
+
     fn get_component(&self, usize) -> component::Component;
     fn set_component_attr(&mut self, usize, &str, Attribute);
+    fn connect_select_component(&self, usize);
+    fn connect_select_component_menu(&self, usize, gst::ClockTime) -> gtk::Menu;
 }
 
-pub struct TimelineWidget<M: TimelineWidgetI + BoxViewerWidgetI> {
-    box_viewer: Rc<RefCell<BoxViewerWidget<M>>>,
+impl<M: TimelineWidgetI> BoxViewerWidgetI for TimelineWidget<M> {
+    type Renderer = <M as TimelineWidgetI>::Renderer;
+
+    fn get_objects(&self) -> Vec<Self::Renderer> {
+        unimplemented!()
+    }
+
+    fn do_render(&self, robj: Self::Renderer, scaler: f64, cr: &cairo::Context) {
+        unimplemented!()
+    }
+
+    fn connect_select_box(&self, index: usize, event: &gdk::EventButton) {
+        let inst = self.model.as_ref().unwrap();
+        let inst = inst.borrow();
+        if event.get_button() == 1 {
+            inst.connect_select_component(index);
+        } else if event.get_button() == 3 {
+            let length = (event.get_position().0 / self.scaler.get_value()) as u64 * gst::MSECOND;
+            let menu = inst.connect_select_component_menu(index, length);
+            menu.popup_easy(0, gtk::get_current_event_time());
+            menu.show_all();
+        }
+    }
+
+    fn connect_select_no_box(&self, event: &gdk::EventButton) {
+    }
+}
+
+pub struct TimelineWidget<M: TimelineWidgetI> {
+    box_viewer: Rc<RefCell<BoxViewerWidget<TimelineWidget<M>>>>,
     ruler: Rc<RefCell<RulerWidget>>,
     ruler_box: gtk::EventBox,
     tracker: gtk::DrawingArea,
@@ -72,11 +104,12 @@ impl<M: 'static + TimelineWidgetI + BoxViewerWidgetI> TimelineWidget<M> {
         }));
         TimelineWidget::create_ui(w.clone(), width, height, length);
 
+        box_viewer.borrow_mut().set_model(w);
+
         w
     }
 
     pub fn set_model(&mut self, model: Rc<RefCell<M>>) {
-        self.box_viewer.borrow_mut().set_model(model.clone());
         self.model = Some(model);
     }
 
@@ -145,30 +178,15 @@ impl<M: 'static + TimelineWidgetI + BoxViewerWidgetI> TimelineWidget<M> {
             self__.borrow().overlay.set_size_request((length as f64 / scaler.get_value()) as i32, -1);
             self__.borrow().as_widget().queue_draw();
         });
+
+        let self__ = self_.clone();
+        BoxViewerWidget::setup(self__.borrow().box_viewer.clone());
     }
 
     pub fn create_menu(&self, menu: &gtk::Menu) {
         let menu = menu.clone();
         BoxViewerWidget::connect_click_no_box(self.box_viewer.clone(), Box::new(move |event| {
             if event.get_button() == 3 {
-                menu.popup_easy(0, gtk::get_current_event_time());
-                menu.show_all();
-            }
-        }));
-    }
-
-    pub fn setup_object_renderer(&self) {
-        BoxViewerWidget::setup(self.box_viewer.clone());
-    }
-
-    pub fn connect_select_component(self_: Rc<RefCell<TimelineWidget<M>>>, cont: Box<Fn(usize)>, cont_menu: Box<Fn(usize, gst::ClockTime) -> gtk::Menu>) {
-        let self__ = self_.clone();
-        BoxViewerWidget::connect_select_box(self_.borrow().box_viewer.clone(), Box::new(move |index, event| {
-            if event.get_button() == 1 {
-                cont(index)
-            } else if event.get_button() == 3 {
-                let length = (event.get_position().0 / self__.borrow().scaler.get_value()) as u64 * gst::MSECOND;
-                let menu = cont_menu(index, length);
                 menu.popup_easy(0, gtk::get_current_event_time());
                 menu.show_all();
             }

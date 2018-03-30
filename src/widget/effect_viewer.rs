@@ -2,6 +2,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 extern crate gtk;
+extern crate gdk;
 extern crate glib;
 extern crate cairo;
 extern crate gstreamer as gst;
@@ -16,11 +17,36 @@ pub trait EffectViewerI {
     type Renderer : AsRef<BoxObject>;
 
     fn get_effect(&self, usize) -> component::Effect;
-    fn get_renderers(&self) -> Vec<Self::Renderer>;
+    fn get_effects(&self) -> Vec<Self::Renderer>;
+    fn do_render(&self, Self::Renderer, f64, &cairo::Context);
+    fn connect_new_point(&mut self, usize, f64) {}
 }
 
-pub struct EffectViewer<M: EffectViewerI + BoxViewerWidgetI> {
-    viewer: Rc<RefCell<BoxViewerWidget<M>>>,
+impl<M: 'static + EffectViewerI> BoxViewerWidgetI for EffectViewer<M> {
+    type Renderer = <M as EffectViewerI>::Renderer;
+
+    fn get_objects(&self) -> Vec<Self::Renderer> {
+        let inst = self.model.as_ref().unwrap().borrow();
+        inst.get_effects()
+    }
+
+    fn do_render(&self, renderer: Self::Renderer, scaler: f64, cr: &cairo::Context) {
+        self.do_render(renderer, scaler, cr)
+    }
+
+    fn connect_select_box(&self, index: usize, event: &gdk::EventButton) {
+        self.tracking_position = (event.get_position().0, index);
+        self.queue_draw();
+
+        let inst = self.model.as_ref().unwrap();
+        if event.get_button() == 3 {
+            inst.borrow().connect_new_point(index, event.get_position().0 / self.viewer.borrow().get_selected_object().unwrap().size().0 as f64);
+        }
+    }
+}
+
+pub struct EffectViewer<M: 'static + EffectViewerI> {
+    viewer: Rc<RefCell<BoxViewerWidget<EffectViewer<M>>>>,
     window: gtk::Window,
     overlay: gtk::Overlay,
     tracker: gtk::DrawingArea,
@@ -29,7 +55,7 @@ pub struct EffectViewer<M: EffectViewerI + BoxViewerWidgetI> {
     model: Option<Rc<RefCell<M>>>,
 }
 
-impl<M: 'static + EffectViewerI + BoxViewerWidgetI> EffectViewer<M> {
+impl<M: 'static + EffectViewerI> EffectViewer<M> {
     pub fn new() -> Rc<RefCell<EffectViewer<M>>> {
         let viewer = Rc::new(RefCell::new(EffectViewer {
             viewer: BoxViewerWidget::new(200),
@@ -46,7 +72,6 @@ impl<M: 'static + EffectViewerI + BoxViewerWidgetI> EffectViewer<M> {
     }
 
     pub fn set_model(&mut self, model: Rc<RefCell<M>>) {
-        self.viewer.borrow_mut().set_model(model.clone());
         self.model = Some(model);
     }
 
@@ -57,7 +82,7 @@ impl<M: 'static + EffectViewerI + BoxViewerWidgetI> EffectViewer<M> {
         }
 
         let inst = this.model.as_ref().unwrap();
-        for obj in inst.borrow().get_renderers() {
+        for obj in inst.borrow().get_effects() {
             let inst = inst.borrow();
             let label = gtk::Label::new(format!("{}: {}", obj.as_ref().index, inst.get_effect(obj.as_ref().index).value(0.75)).as_str());
             label.set_size_request(-1, BoxObject::HEIGHT);
@@ -65,16 +90,13 @@ impl<M: 'static + EffectViewerI + BoxViewerWidgetI> EffectViewer<M> {
         }
 
         BoxViewerWidget::setup(this.viewer.clone());
-
-        let self__ = self_.clone();
-        BoxViewerWidget::connect_select_box(this.viewer.clone(), Box::new(move |selected, event| {
-            self__.borrow_mut().tracking_position = (event.get_position().0, selected);
-            self__.borrow().queue_draw();
-        }));
     }
 
     fn create_ui(self_: Rc<RefCell<EffectViewer<M>>>) {
         let this = self_.borrow();
+
+        let self__ = self_.clone();
+        self_.borrow().viewer.borrow_mut().set_model(self__);
 
         this.name_list.set_size_request(30,-1);
 
@@ -111,15 +133,6 @@ impl<M: 'static + EffectViewerI + BoxViewerWidgetI> EffectViewer<M> {
         });
     }
 
-    pub fn connect_new_point(&self, cont: Box<Fn(usize, f64)>) {
-        let viewer_ = self.viewer.clone();
-        BoxViewerWidget::connect_select_box(self.viewer.clone(), Box::new(move |index, event| {
-            if event.get_button() == 3 {
-                cont(index, event.get_position().0 / viewer_.borrow().get_selected_object().unwrap().size().0 as f64);
-            }
-        }));
-    }
-
     pub fn popup(&self) {
         self.window.show_all();
     }
@@ -129,7 +142,7 @@ impl<M: 'static + EffectViewerI + BoxViewerWidgetI> EffectViewer<M> {
     }
 }
 
-impl<M: EffectViewerI + BoxViewerWidgetI> AsWidget for EffectViewer<M> {
+impl<M: EffectViewerI> AsWidget for EffectViewer<M> {
     type T = gtk::Window;
 
     fn as_widget(&self) -> &Self::T {
