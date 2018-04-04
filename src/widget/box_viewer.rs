@@ -81,11 +81,11 @@ pub struct BoxViewerWidget<M: BoxViewerWidgetI> {
 }
 
 impl<M: 'static + BoxViewerWidgetI> BoxViewerWidget<M> {
-    pub fn new(height: i32) -> Rc<RefCell<BoxViewerWidget<M>>> {
+    pub fn new(height: i32) -> BoxViewerWidget<M> {
         let canvas = gtk::DrawingArea::new();
         canvas.set_size_request(-1, height);
 
-        Rc::new(RefCell::new(BoxViewerWidget {
+        BoxViewerWidget {
             canvas: canvas,
             offset: 0,
             selecting_box_index: None,
@@ -94,7 +94,7 @@ impl<M: 'static + BoxViewerWidgetI> BoxViewerWidget<M> {
             cb_get_scale: Box::new(|| { 1.0 }),
             cb_motion_notify: Box::new(|_| {}),
             model: None,
-        }))
+        }
     }
 
     pub fn set_model(&mut self, model: Rc<RefCell<M>>) {
@@ -147,54 +147,56 @@ impl<M: 'static + BoxViewerWidgetI> BoxViewerWidget<M> {
         });
     }
 
-    pub fn connect_click_no_box(self_: Rc<RefCell<BoxViewerWidget<M>>>, cont: Box<Fn(&gdk::EventButton)>) {
-        self_.borrow_mut().cb_click_no_box = cont;
+    pub fn connect_click_no_box(&mut self, cont: Box<Fn(&gdk::EventButton)>) {
+        self.cb_click_no_box = cont;
     }
 
-    pub fn connect_get_scale(self_: Rc<RefCell<BoxViewerWidget<M>>>, cont: Box<Fn() -> f64>) {
-        self_.borrow_mut().cb_get_scale = cont;
+    pub fn connect_get_scale(&mut self, cont: Box<Fn() -> f64>) {
+        self.cb_get_scale = cont;
     }
 
-    pub fn connect_motion_notify_event(self_: Rc<RefCell<BoxViewerWidget<M>>>, cont: Box<Fn(&gdk::EventMotion)>) {
-        self_.borrow_mut().cb_motion_notify = cont;
+    pub fn connect_motion_notify_event(&mut self, cont: Box<Fn(&gdk::EventMotion)>) {
+        self.cb_motion_notify = cont;
     }
 
-    pub fn connect_drag_box(self_: Rc<RefCell<BoxViewerWidget<M>>>, cont_move: Box<Fn(usize, i32, usize)>, cont_resize: Box<Fn(usize, i32)>) {
-        let self__ = self_.clone();
-        let widget = self_.borrow();
-        let inst = widget.model.as_ref().unwrap().clone();
-        self_.borrow().canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
-        self_.borrow().canvas.connect_motion_notify_event(move |canvas,event| {
-            (self__.borrow().cb_motion_notify)(event);
+    pub fn connect_drag_box(&mut self, cont_move: Box<Fn(usize, i32, usize)>, cont_resize: Box<Fn(usize, i32)>) {
+        let self_ = self as *mut Self;
+        self.canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
+        self.canvas.connect_motion_notify_event(move |canvas,event| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            let inst = self_.model.as_ref().unwrap().clone();
+
+            (self_.cb_motion_notify)(event);
 
             let (x,y) = event.get_position();
             let x = x as i32;
             let y = y as i32;
 
             let window = canvas.get_window().unwrap();
-            let scale = (self__.borrow().cb_get_scale)();
+            let scale = (self_.cb_get_scale)();
 
-            if event.get_state().contains(gdk::ModifierType::BUTTON1_MASK) && self__.borrow().selecting_box_index.is_some() {
-                let distance = ((x - self__.borrow().offset) as f64 * scale) as i32;
+            if event.get_state().contains(gdk::ModifierType::BUTTON1_MASK) && self_.selecting_box_index.is_some() {
+                let distance = ((x - self_.offset) as f64 * scale) as i32;
                 let layer_index = y / BoxObject::HEIGHT;
 
-                if self__.borrow().flag_resize {
-                    cont_resize(self__.borrow().selecting_box_index.unwrap(), distance);
+                if self_.flag_resize {
+                    cont_resize(self_.selecting_box_index.unwrap(), distance);
                 } else {
-                    cont_move(self__.borrow().selecting_box_index.unwrap(), distance, layer_index as usize);
+                    cont_move(self_.selecting_box_index.unwrap(), distance, layer_index as usize);
                 }
-                self__.borrow_mut().offset = event.get_position().0 as i32;
+                self_.offset = event.get_position().0 as i32;
             } else {
                 let objects = inst.borrow().get_objects();
 
                 match objects.iter().find(|object| object.as_ref().contains(x,y)).map(|x| x.as_ref().clone()) {
                     Some(ref object) if object.coordinate().0 + (object.size().0 as f64 / scale) as i32 - BoxObject::EDGE_WIDTH <= x && x <= object.coordinate().0 + (object.size().0 as f64 / scale) as i32 => {
                         window.set_cursor(&gdk::Cursor::new_from_name(&window.get_display(), "e-resize"));
-                        self__.borrow_mut().flag_resize = true;
+                        self_.flag_resize = true;
                     },
                     _ => {
                         window.set_cursor(&gdk::Cursor::new_from_name(&window.get_display(), "default"));
-                        self__.borrow_mut().flag_resize = false;
+                        self_.flag_resize = false;
                     },
                 }
             }

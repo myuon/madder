@@ -42,13 +42,13 @@ impl<M: 'static + EffectViewerI> BoxViewerWidgetI for EffectViewer<M> {
 
         let inst = self.model.as_ref().unwrap();
         if event.get_button() == 3 {
-            inst.borrow_mut().connect_new_point(index, event.get_position().0 / self.viewer.borrow().get_selected_object().unwrap().size().0 as f64);
+            inst.borrow_mut().connect_new_point(index, event.get_position().0 / self.viewer.get_selected_object().unwrap().size().0 as f64);
         }
     }
 }
 
 pub struct EffectViewer<M: 'static + EffectViewerI> {
-    viewer: Rc<RefCell<BoxViewerWidget<EffectViewer<M>>>>,
+    viewer: BoxViewerWidget<EffectViewer<M>>,
     window: gtk::Window,
     overlay: gtk::Overlay,
     tracker: gtk::DrawingArea,
@@ -91,18 +91,19 @@ impl<M: 'static + EffectViewerI> EffectViewer<M> {
             this.name_list.pack_start(&label, false, false, 0);
         }
 
-        this.viewer.borrow_mut().setup();
+        let mut this = self_.borrow_mut();
+        this.viewer.setup();
     }
 
     fn create_ui(self_: Rc<RefCell<EffectViewer<M>>>) {
-        let this = self_.borrow();
+        let mut this = self_.borrow_mut();
 
         let self__ = self_.clone();
-        this.viewer.borrow_mut().set_model(self__);
+        this.viewer.set_model(self__);
 
         this.name_list.set_size_request(30,-1);
 
-        this.overlay.add(this.viewer.borrow().as_widget());
+        this.overlay.add(this.viewer.as_widget());
         this.overlay.add_overlay(&this.tracker);
         this.overlay.set_overlay_pass_through(&this.tracker, true);
 
