@@ -18,37 +18,43 @@ use widget::*;
 pub trait TimelineWidgetI {
     type Renderer : AsRef<BoxObject>;
 
+    fn get_objects(&self) -> Vec<Self::Renderer>;
+    fn do_render(&self, _robj: Self::Renderer, _scaler: f64, _cr: &cairo::Context);
+
     fn get_component(&self, usize) -> component::Component;
     fn set_component_attr(&mut self, usize, &str, Attribute);
-    fn connect_select_component(&self, usize);
-    fn connect_select_component_menu(&self, usize, gst::ClockTime) -> gtk::Menu;
+    fn connect_select_component(Rc<RefCell<Self>>, usize);
+    fn connect_select_component_menu(Rc<RefCell<Self>>, usize, gst::ClockTime) -> gtk::Menu;
 }
 
 impl<M: TimelineWidgetI> BoxViewerWidgetI for TimelineWidget<M> {
     type Renderer = <M as TimelineWidgetI>::Renderer;
 
     fn get_objects(&self) -> Vec<Self::Renderer> {
-        unimplemented!()
+        let model = self.model.as_ref().unwrap().clone();
+        let inst = model.borrow();
+        inst.get_objects()
     }
 
     fn do_render(&self, robj: Self::Renderer, scaler: f64, cr: &cairo::Context) {
-        unimplemented!()
+        let model = self.model.as_ref().unwrap().clone();
+        let inst = model.borrow();
+        inst.do_render(robj, scaler, cr);
     }
 
-    fn connect_select_box(&self, index: usize, event: &gdk::EventButton) {
+    fn connect_select_box(&mut self, index: usize, event: &gdk::EventButton) {
         let inst = self.model.as_ref().unwrap();
-        let inst = inst.borrow();
         if event.get_button() == 1 {
-            inst.connect_select_component(index);
+            TimelineWidgetI::connect_select_component(inst.clone(), index);
         } else if event.get_button() == 3 {
             let length = (event.get_position().0 / self.scaler.get_value()) as u64 * gst::MSECOND;
-            let menu = inst.connect_select_component_menu(index, length);
+            let menu = TimelineWidgetI::connect_select_component_menu(inst.clone(), index, length);
             menu.popup_easy(0, gtk::get_current_event_time());
             menu.show_all();
         }
     }
 
-    fn connect_select_no_box(&self, event: &gdk::EventButton) {
+    fn connect_select_no_box(&self, _event: &gdk::EventButton) {
     }
 }
 
@@ -61,11 +67,14 @@ pub struct TimelineWidget<M: TimelineWidgetI> {
     overlay: gtk::Overlay,
     scaler: gtk::Scale,
     tracking_position: i32,
-    model: Option<Rc<RefCell<M>>>
+    model: Option<Rc<RefCell<M>>>,
+    width: i32,
+    height: i32,
+    length: i32,
 }
 
 // workaround for sharing a variable within callbacks
-impl<M: 'static + TimelineWidgetI + BoxViewerWidgetI> TimelineWidget<M> {
+impl<M: 'static + TimelineWidgetI> TimelineWidget<M> {
     pub fn new(width: i32, height: i32, length: i32) -> Rc<RefCell<TimelineWidget<M>>> {
         let box_viewer = BoxViewerWidget::new(height);
 
@@ -101,10 +110,14 @@ impl<M: 'static + TimelineWidgetI + BoxViewerWidgetI> TimelineWidget<M> {
             scaler: gtk::Scale::new_with_range(gtk::Orientation::Horizontal, 1.0, 10.0, 0.1),
             tracking_position: 0,
             model: None,
+            width: width,
+            height: height,
+            length: length,
         }));
-        TimelineWidget::create_ui(w.clone(), width, height, length);
 
-        box_viewer.borrow_mut().set_model(w);
+        let w_ = w.clone();
+        let w_ = w_.borrow();
+        w_.box_viewer.borrow_mut().set_model(w.clone());
 
         w
     }
@@ -119,8 +132,13 @@ impl<M: 'static + TimelineWidgetI + BoxViewerWidgetI> TimelineWidget<M> {
         RulerWidget::send_pointer_position(ruler, x);
     }
 
-    fn create_ui(self_: Rc<RefCell<TimelineWidget<M>>>, width: i32, height: i32, length: i32) {
+    pub fn create_ui(self_: Rc<RefCell<TimelineWidget<M>>>) {
         let timeline = self_.borrow();
+
+        let width = timeline.width;
+        let height = timeline.height;
+        let length = timeline.length;
+
         timeline.tracker.connect_realize(move |tracker| {
             let window = tracker.get_window().unwrap();
             window.set_pass_through(true);
@@ -268,7 +286,7 @@ impl<M: 'static + TimelineWidgetI + BoxViewerWidgetI> TimelineWidget<M> {
     }
 }
 
-impl<M: TimelineWidgetI + BoxViewerWidgetI> AsWidget for TimelineWidget<M> {
+impl<M: TimelineWidgetI> AsWidget for TimelineWidget<M> {
     type T = gtk::Grid;
 
     fn as_widget(&self) -> &Self::T {

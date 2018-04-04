@@ -65,7 +65,7 @@ pub trait BoxViewerWidgetI {
 
     fn get_objects(&self) -> Vec<Self::Renderer>;
     fn do_render(&self, Self::Renderer, f64, &cairo::Context);
-    fn connect_select_box(&self, usize, &gdk::EventButton) {}
+    fn connect_select_box(&mut self, usize, &gdk::EventButton) {}
     fn connect_select_no_box(&self, &gdk::EventButton) {}
 }
 
@@ -133,7 +133,7 @@ impl<M: 'static + BoxViewerWidgetI> BoxViewerWidget<M> {
 
             let scale = (self__.borrow().cb_get_scale)();
 
-            let inst = inst.borrow();
+            let mut inst = inst.borrow_mut();
             if let Some(object) = inst.get_objects().into_iter().find(|object| object.as_ref().clone().hscaled(scale).contains(x,y)) {
                 self__.borrow_mut().offset = x;
                 self__.borrow_mut().selecting_box_index = Some(object.as_ref().index);

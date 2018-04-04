@@ -52,6 +52,29 @@ impl TimelineWidgetI for App {
         serde_json::from_value::<Component>(self.editor.get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap()
     }
 
+    fn get_objects(&self) -> Vec<Self::Renderer> {
+        serde_json::from_value::<Vec<Component>>(self.editor.get_value(Pointer::from_str("/components"))).unwrap().iter().enumerate().map(|(i,component)| {
+            let entity = serde_json::from_value::<Attribute>(self.editor.get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
+
+            let obj = BoxObject::new(
+                component.start_time.mseconds().unwrap() as i32,
+                component.length.mseconds().unwrap() as i32,
+                i
+            ).label(format!("{:?}", entity))
+                .selected(Some(i) == self.selected_component_index)
+                .layer_index(component.layer_index);
+
+            ui_impl::TimelineComponentRenderer {
+                object: obj,
+                object_type: component.component_type.clone(),
+            }
+        }).collect()
+    }
+
+    fn do_render(&self, robj: Self::Renderer, scaler: f64, cr: &cairo::Context) {
+        robj.hscaled(scaler).renderer(cr, &|p| self.editor.elements[robj.object.index].peek(p));
+    }
+
     fn set_component_attr(&mut self, index: usize, attr: &str, value: Attribute) {
         self.editor.patch_once(Operation::Add(
             Pointer::from_str(&format!("/components/{}/{}", index, attr)),
@@ -59,12 +82,11 @@ impl TimelineWidgetI for App {
         ), ContentType::Value).unwrap();
     }
 
-    fn connect_select_component(&self, index: usize) {
-        App::select_component(self, index);
+    fn connect_select_component(self_: Rc<RefCell<Self>>, index: usize) {
+        App::select_component(self_, index);
     }
 
-    fn connect_select_component_menu(&self, index: usize, position: gst::ClockTime) -> gtk::Menu {
-        let self_ = Rc::new(RefCell::new(self));
+    fn connect_select_component_menu(self_: Rc<RefCell<Self>>, index: usize, position: gst::ClockTime) -> gtk::Menu {
         let menu = gtk::Menu::new();
         let split_component_here = {
             let split_component_here = gtk::MenuItem::new_with_label("オブジェクトをこの位置で分割");
@@ -156,38 +178,11 @@ impl EffectViewerI for App {
     }
 }
 
-impl BoxViewerWidgetI for App {
-    type Renderer = ui_impl::TimelineComponentRenderer;
-
-    fn get_objects(&self) -> Vec<Self::Renderer> {
-        serde_json::from_value::<Vec<Component>>(self.editor.get_value(Pointer::from_str("/components"))).unwrap().iter().enumerate().map(|(i,component)| {
-            let entity = serde_json::from_value::<Attribute>(self.editor.get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
-
-            let obj = BoxObject::new(
-                component.start_time.mseconds().unwrap() as i32,
-                component.length.mseconds().unwrap() as i32,
-                i
-            ).label(format!("{:?}", entity))
-                .selected(Some(i) == self.selected_component_index)
-                .layer_index(component.layer_index);
-
-            ui_impl::TimelineComponentRenderer {
-                object: obj,
-                object_type: component.component_type.clone(),
-            }
-        }).collect()
-    }
-
-    fn do_render(&self, robj: Self::Renderer, scaler: f64, cr: &cairo::Context) {
-        robj.hscaled(scaler).renderer(cr, &|p| self.editor.elements[robj.object.index].peek(p));
-    }
-}
-
 impl App {
-    fn new_with(editor: Editor, width: i32, length: gst::ClockTime) -> App {
+    fn new_with(editor: Editor, width: i32, length: gst::ClockTime) -> Rc<RefCell<App>> {
         let prop_width = 250;
 
-        App {
+        Rc::new(RefCell::new(App {
             editor: editor,
             timeline: TimelineWidget::new(width, 130, cmp::max(width + prop_width, length.mseconds().unwrap() as i32)),
             canvas: gtk::DrawingArea::new(),
@@ -196,14 +191,14 @@ impl App {
             selected_component_index: None,
             window: gtk::Window::new(gtk::WindowType::Toplevel),
             project_file_path: None,
-        }
+        }))
     }
 
-    pub fn new(width: i32, height: i32, length: gst::ClockTime) -> App {
+    pub fn new(width: i32, height: i32, length: gst::ClockTime) -> Rc<RefCell<App>> {
         App::new_with(Editor::new(width, height, length), width, length)
     }
 
-    pub fn new_from_json(json: serde_json::Value) -> App {
+    pub fn new_from_json(json: serde_json::Value) -> Rc<RefCell<App>> {
         let editor = Editor::new_from_json(json);
         let width = editor.get_value(Pointer::from_str("/width")).as_i32().unwrap();
         let length = editor.get_value(Pointer::from_str("/length")).as_time().unwrap();
@@ -211,7 +206,7 @@ impl App {
         App::new_with(editor, width, length)
     }
 
-    pub fn new_from_file(path: &str) -> App {
+    pub fn new_from_file(path: &str) -> Rc<RefCell<App>> {
         let editor = Editor::new_from_file(path);
         let width = editor.get_value(Pointer::from_str("/width")).as_i32().unwrap();
         let length = editor.get_value(Pointer::from_str("/length")).as_time().unwrap();
@@ -364,7 +359,7 @@ impl App {
         dialog.destroy();
 
         let app = App::new_from_file(path.to_str().unwrap());
-        App::create_ui(Rc::new(RefCell::new(app)));
+        App::create_ui(app);
     }
 
     fn select_component(self_: Rc<RefCell<App>>, index: usize) {
@@ -374,11 +369,11 @@ impl App {
         self_.borrow().property.append_page("component", GridPage::new(
             self_.borrow().property.width,
             serde_json::from_value(self__.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}", self__.borrow().selected_component_index.unwrap())))).unwrap(),
-            &|prop_name, prop, index| {
-                let prop_name = Rc::new(prop.0.to_string());
-                let self__ = self_.clone();
+            &|prop_name, prop: Attribute, index| {
+                let prop_name = Rc::new(prop_name.to_string());
+                let self__ = self__.clone();
 
-                gtk_impl::edit_type_as_widget(&prop.1, vec![], Rc::new(move |new_prop, tracker| {
+                gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
                     // request the property again, since in this callback the value of property might have been changed
                     let prop = serde_json::from_value::<Attribute>(self__.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/{}", index, *prop_name)))).unwrap().clone();
                     if let Some(new_prop) = new_prop {
@@ -397,7 +392,7 @@ impl App {
         self_.borrow().property.append_page("property", GridPage::new(
             self_.borrow().property.width,
             serde_json::from_value(self_.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/prop", index)))).unwrap(),
-            Box::new(move |prop_index, prop_name, prop| {
+            &|prop_name, prop, prop_index| {
                 let prop_index = Rc::new(prop_index);
                 let prop_name = Rc::new(prop_name.to_string());
                 let self__ = self__.clone();
@@ -414,7 +409,7 @@ impl App {
 
                     self__.borrow().queue_draw();
                 }))
-            }),
+            },
         ));
 
         let self__ = self_.clone();
@@ -423,7 +418,7 @@ impl App {
         self_.borrow().property.append_page("effect", BoxPage::new(
             self_.borrow().property.width,
             serde_json::from_value::<Vec<Vec<(String, Attribute)>>>(self_.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/effect", index)))).unwrap(),
-            Box::new(move |prop_index, prop_vec| {
+            &|prop_vec: Vec<(String, Attribute)>, prop_index: usize| {
                 let prop_index = Rc::new(prop_index);
                 let self__ = self__.clone();
 
@@ -451,7 +446,7 @@ impl App {
                 }
 
                 expander.dynamic_cast().unwrap()
-            }),
+            },
             Box::new(move || {
                 self___.borrow_mut().editor.patch_once(Operation::Add(
                     Pointer::from_str(&format!("/components/{}/effect", index)),
@@ -475,9 +470,9 @@ impl App {
         self_.borrow().property.append_page("info", BoxPage::new(
             self_.borrow().property.width,
             vec![self_.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}/info", index)))],
-            Box::new(move |_,t| {
+            &|t,_| {
                 gtk::Label::new(t.as_str()).dynamic_cast().unwrap()
-            }),
+            },
             Box::new(|| {}),
             Box::new(|_| {}),
         ));
@@ -513,7 +508,7 @@ impl App {
                     "length": 900000,
                 });
                 let app = App::new_from_json(editor);
-                App::create_ui(Rc::new(RefCell::new(app)));
+                App::create_ui(app);
             });
 
             let self__ = self_.clone();
@@ -713,6 +708,8 @@ impl App {
 
         let self__ = self_.clone();
         app.timeline.borrow_mut().set_model(self__);
+
+        TimelineWidget::create_ui(app.timeline.clone());
 
         TimelineWidget::connect_drag_component(app.timeline.clone());
 

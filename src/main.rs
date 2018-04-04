@@ -1,8 +1,5 @@
 #![feature(box_patterns)]
 #![feature(slice_patterns)]
-use std::rc::Rc;
-use std::cell::RefCell;
-
 extern crate gstreamer as gst;
 extern crate gtk;
 extern crate glib;
@@ -52,7 +49,7 @@ fn main() {
             })).unwrap())
         };
 
-    App::create_ui(Rc::new(RefCell::new(app)));
+    App::create_ui(app);
 
     gtk::main();
 }

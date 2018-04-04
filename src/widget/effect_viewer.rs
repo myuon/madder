@@ -31,16 +31,18 @@ impl<M: 'static + EffectViewerI> BoxViewerWidgetI for EffectViewer<M> {
     }
 
     fn do_render(&self, renderer: Self::Renderer, scaler: f64, cr: &cairo::Context) {
-        self.do_render(renderer, scaler, cr)
+        let inst = self.model.as_ref().unwrap();
+        let inst = inst.borrow();
+        inst.do_render(renderer, scaler, cr);
     }
 
-    fn connect_select_box(&self, index: usize, event: &gdk::EventButton) {
+    fn connect_select_box(&mut self, index: usize, event: &gdk::EventButton) {
         self.tracking_position = (event.get_position().0, index);
         self.queue_draw();
 
         let inst = self.model.as_ref().unwrap();
         if event.get_button() == 3 {
-            inst.borrow().connect_new_point(index, event.get_position().0 / self.viewer.borrow().get_selected_object().unwrap().size().0 as f64);
+            inst.borrow_mut().connect_new_point(index, event.get_position().0 / self.viewer.borrow().get_selected_object().unwrap().size().0 as f64);
         }
     }
 }
@@ -96,7 +98,7 @@ impl<M: 'static + EffectViewerI> EffectViewer<M> {
         let this = self_.borrow();
 
         let self__ = self_.clone();
-        self_.borrow().viewer.borrow_mut().set_model(self__);
+        this.viewer.borrow_mut().set_model(self__);
 
         this.name_list.set_size_request(30,-1);
 
