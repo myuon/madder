@@ -183,6 +183,33 @@ impl BoxViewerWidgetI for App {
     }
 }
 
+impl PageI for App {
+    type PageElement = (String, Attribute);
+
+    fn get_elements(&self) -> Vec<Self::PageElement> {
+        serde_json::from_value(self.editor.get_attr(Pointer::from_str(&format!("/components/{}", self.selected_component_index.unwrap())))).unwrap()
+    }
+
+    fn make_widget(&self, prop: Self::PageElement, index: usize) -> gtk::Widget {
+        let prop_name = Rc::new(prop.0.to_string());
+        let self_ = Rc::new(RefCell::new(self));
+        let self__ = self_.clone();
+
+        gtk_impl::edit_type_as_widget(&prop.1, vec![], Rc::new(move |new_prop, tracker| {
+            // request the property again, since in this callback the value of property might have been changed
+            let prop = serde_json::from_value::<Attribute>(self__.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/{}", index, *prop_name)))).unwrap().clone();
+            if let Some(new_prop) = new_prop {
+                self__.borrow_mut().editor.patch_once(Operation::Add(
+                    Pointer::from_str(&format!("/components/{}/{}", index, prop_name.as_str())),
+                    json!(gtk_impl::recover_property(prop, tracker, new_prop)),
+                ), ContentType::Attribute).unwrap();
+            }
+
+            self__.borrow().queue_draw();
+        }))
+    }
+}
+
 impl App {
     fn new_with(editor: Editor, width: i32, length: gst::ClockTime) -> App {
         let prop_width = 250;
@@ -373,24 +400,6 @@ impl App {
         let self__ = self_.clone();
         self_.borrow().property.append_page("component", GridPage::new(
             self_.borrow().property.width,
-            serde_json::from_value(self_.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}", index)))).unwrap(),
-            Box::new(move |_, prop_name, prop| {
-                let prop_name = Rc::new(prop_name.to_string());
-                let self__ = self__.clone();
-
-                gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
-                    // request the property again, since in this callback the value of property might have been changed
-                    let prop = serde_json::from_value::<Attribute>(self__.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/{}", index, *prop_name)))).unwrap().clone();
-                    if let Some(new_prop) = new_prop {
-                        self__.borrow_mut().editor.patch_once(Operation::Add(
-                            Pointer::from_str(&format!("/components/{}/{}", index, prop_name.as_str())),
-                            json!(gtk_impl::recover_property(prop, tracker, new_prop)),
-                        ), ContentType::Attribute).unwrap();
-                    }
-
-                    self__.borrow().queue_draw();
-                }))
-            }),
         ));
 
         let self__ = self_.clone();

@@ -6,15 +6,40 @@ use gtk::prelude::*;
 
 use widget::AsWidget;
 
-pub struct GridPage(gtk::ScrolledWindow);
+pub trait PageI {
+    type PageElement;
 
-impl GridPage {
-    pub fn new<T: Clone>(width: i32, props: Vec<(String, T)>, renderer: Box<Fn(usize, &str, T) -> gtk::Widget>) -> GridPage {
+    fn get_elements(&self) -> Vec<Self::PageElement>;
+    fn make_widget(&self, Self::PageElement, usize) -> gtk::Widget;
+}
+
+pub struct GridPage<M: PageI> {
+    grid: gtk::Grid,
+    widget: gtk::ScrolledWindow,
+    model: Option<M>,
+}
+
+impl<E, M: PageI<PageElement = (String, E)>> GridPage<M> {
+    pub fn new<T: Clone>(width: i32) -> GridPage<M> {
         let scroll = gtk::ScrolledWindow::new(&gtk::Adjustment::new(0.0, 0.0, width as f64, 1.0, 1.0, width as f64), None);
         let grid = gtk::Grid::new();
         grid.set_column_spacing(10);
         grid.set_row_spacing(5);
         scroll.add(&grid);
+
+        GridPage {
+            widget: scroll,
+            grid: grid,
+            model: None,
+        }
+    }
+
+    pub fn set_model(&mut self, model: M) {
+        self.model = Some(model);
+    }
+
+    pub fn setup(&self) {
+        let model = self.model.unwrap();
 
         let new_label = |label: &str, align: gtk::Align| {
             let w = gtk::Label::new(label);
@@ -22,47 +47,70 @@ impl GridPage {
             w
         };
 
-        for (i, &(ref k, ref v)) in props.iter().enumerate() {
-            grid.attach(&new_label(k, gtk::Align::End), 0, i as i32, 1, 1);
-            grid.attach(&renderer(i, k, v.clone().clone()), 1, i as i32, 1, 1);
+        for (i, &(ref k, ref v)) in model.get_elements().iter().enumerate() {
+            self.grid.attach(&new_label(k, gtk::Align::End), 0, i as i32, 1, 1);
+            self.grid.attach(&model.make_widget((*k,*v), i), 1, i as i32, 1, 1);
         }
-
-        GridPage(scroll)
     }
 }
 
-impl AsWidget for GridPage {
+impl<M: PageI> AsWidget for GridPage<M> {
     type T = gtk::ScrolledWindow;
 
     fn as_widget(&self) -> &Self::T {
-        &self.0
+        &self.widget
     }
 }
 
-pub struct BoxPage(gtk::ScrolledWindow);
+pub trait BoxPageI : PageI {
+    fn add_button_cont(&self);
+    fn remove_button_cont(&self, usize);
+}
 
-impl BoxPage {
-    pub fn new<T: Clone>(width: i32, props: Vec<T>, renderer: Box<Fn(usize, T) -> gtk::Widget>, add_button_cont: Box<Fn()>, remove_button_cont: Box<Fn(usize)>) -> BoxPage {
+pub struct BoxPage<M: BoxPageI> {
+    vbox: gtk::Box,
+    widget: gtk::ScrolledWindow,
+    add_button: gtk::Button,
+    model: Option<M>
+}
+
+impl<E, M: 'static + BoxPageI<PageElement = E>> BoxPage<M> {
+    pub fn new<T: Clone>(width: i32) -> BoxPage<M> {
         let scroll = gtk::ScrolledWindow::new(&gtk::Adjustment::new(0.0, 0.0, width as f64, 1.0, 1.0, width as f64), None);
         let vbox = gtk::Box::new(gtk::Orientation::Vertical, 10);
         scroll.add(&vbox);
 
         let add_button = gtk::Button::new();
         add_button.set_label("Add");
-        add_button.connect_clicked(move |_| {
-            add_button_cont();
-        });
         vbox.pack_start(&add_button, false, false, 0);
 
-        let remove_button_cont = Rc::new(remove_button_cont);
-        for (i,v) in props.iter().enumerate() {
-            let widget = renderer(i, v.clone());
-            let remove_button_cont = remove_button_cont.clone();
+        BoxPage {
+            vbox: vbox,
+            widget: scroll,
+            add_button: add_button,
+            model: None,
+        }
+    }
+
+    pub fn model(&mut self, model: M) {
+        self.model = Some(model);
+    }
+
+    pub fn setup(&self) {
+        let model = self.model.unwrap();
+
+        self.add_button.connect_clicked(move |_| {
+            model.add_button_cont();
+        });
+
+        for (i,v) in model.get_elements().iter().enumerate() {
+            let widget = model.make_widget(*v.clone(), i);
+            let remove_button_cont = Rc::new(|x| model.remove_button_cont(x));
 
             widget.connect_button_press_event(move |_, event| {
-                if event.get_button() == 3 {
-                    let remove_button_cont = remove_button_cont.clone();
+                let remove_button_cont = remove_button_cont.clone();
 
+                if event.get_button() == 3 {
                     let menu = gtk::Menu::new();
                     let remove_item = {
                         let remove_item = gtk::MenuItem::new_with_label("remove");
@@ -92,18 +140,16 @@ impl BoxPage {
                 Inhibit(false)
             });
 
-            vbox.pack_start(&widget, false, false, 0);
+            self.vbox.pack_start(&widget, false, false, 0);
         }
-
-        BoxPage(scroll)
     }
 }
 
-impl AsWidget for BoxPage {
+impl<M: BoxPageI> AsWidget for BoxPage<M> {
     type T = gtk::ScrolledWindow;
 
     fn as_widget(&self) -> &Self::T {
-        &self.0
+        &self.widget
     }
 }
 
