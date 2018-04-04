@@ -91,7 +91,7 @@ impl<M: 'static + EffectViewerI> EffectViewer<M> {
             this.name_list.pack_start(&label, false, false, 0);
         }
 
-        BoxViewerWidget::setup(this.viewer.clone());
+        this.viewer.borrow_mut().setup();
     }
 
     fn create_ui(self_: Rc<RefCell<EffectViewer<M>>>) {

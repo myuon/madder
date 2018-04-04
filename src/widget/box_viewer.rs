@@ -106,14 +106,14 @@ impl<M: 'static + BoxViewerWidgetI> BoxViewerWidget<M> {
         self.selecting_box_index.map(|u| inst.borrow().get_objects()[u].as_ref().clone())
     }
 
-    pub fn setup(self_: Rc<RefCell<BoxViewerWidget<M>>>) {
-        let self__ = self_.clone();
+    pub fn setup(&mut self) {
+        let self_ = self as *mut BoxViewerWidget<M>;
+        self.canvas.connect_draw(move |_,cr| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
 
-        self_.borrow().canvas.connect_draw(move |_,cr| {
-            let widget = self__.borrow();
-            let inst = widget.model.as_ref().unwrap().borrow();
+            let inst = self_.model.as_ref().unwrap().borrow();
             let objects = inst.get_objects();
-            let scaler = (self__.borrow().cb_get_scale)();
+            let scaler = (self_.cb_get_scale)();
 
             for wrapper in objects.into_iter() {
                 inst.do_render(wrapper, scaler, cr);
@@ -122,21 +122,22 @@ impl<M: 'static + BoxViewerWidgetI> BoxViewerWidget<M> {
             Inhibit(false)
         });
 
-        let self__ = self_.clone();
-        let widget = self_.borrow();
-        let inst = widget.model.as_ref().unwrap().clone();
-        self_.borrow().canvas.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
-        self_.borrow().canvas.connect_button_press_event(move |_,event| {
+        let self_ = self as *mut BoxViewerWidget<M>;
+        self.canvas.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
+        self.canvas.connect_button_press_event(move |_,event| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
             let (x,y) = event.get_position();
             let x = x as i32;
             let y = y as i32;
 
-            let scale = (self__.borrow().cb_get_scale)();
+            let scale = (self_.cb_get_scale)();
 
+            let inst = self_.model.as_ref().unwrap().clone();
             let mut inst = inst.borrow_mut();
             if let Some(object) = inst.get_objects().into_iter().find(|object| object.as_ref().clone().hscaled(scale).contains(x,y)) {
-                self__.borrow_mut().offset = x;
-                self__.borrow_mut().selecting_box_index = Some(object.as_ref().index);
+                self_.offset = x;
+                self_.selecting_box_index = Some(object.as_ref().index);
                 inst.connect_select_box(object.as_ref().index, event);
             } else {
                 inst.connect_select_no_box(event);

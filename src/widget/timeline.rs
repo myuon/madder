@@ -197,8 +197,7 @@ impl<M: 'static + TimelineWidgetI> TimelineWidget<M> {
             self__.borrow().as_widget().queue_draw();
         });
 
-        let self__ = self_.clone();
-        BoxViewerWidget::setup(self__.borrow().box_viewer.clone());
+        timeline.box_viewer.borrow_mut().setup();
     }
 
     pub fn create_menu(&self, menu: &gtk::Menu) {
