@@ -83,7 +83,122 @@ impl TimelineWidgetI for App {
     }
 
     fn connect_select_component(self_: Rc<RefCell<Self>>, index: usize) {
-        App::select_component(self_, index);
+        self_.borrow().property.clear();
+
+        let self__ = self_.clone();
+        self_.borrow().property.append_page("component", GridPage::new(
+            self_.borrow().property.width,
+            serde_json::from_value(self__.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}", index)))).unwrap(),
+            &|prop_name, prop: Attribute, index| {
+                let prop_name = Rc::new(prop_name.to_string());
+                let self__ = self__.clone();
+
+                gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
+                    // request the property again, since in this callback the value of property might have been changed
+                    let prop = serde_json::from_value::<Attribute>(self__.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/{}", index, *prop_name)))).unwrap().clone();
+                    if let Some(new_prop) = new_prop {
+                        self__.borrow_mut().editor.patch_once(Operation::Add(
+                            Pointer::from_str(&format!("/components/{}/{}", index, prop_name.as_str())),
+                            json!(gtk_impl::recover_property(prop, tracker, new_prop)),
+                        ), ContentType::Attribute).unwrap();
+                    }
+
+                    self__.borrow().queue_draw();
+                }))
+            },
+        ));
+
+        let self__ = self_.clone();
+        self_.borrow().property.append_page("property", GridPage::new(
+            self_.borrow().property.width,
+            serde_json::from_value(self_.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/prop", index)))).unwrap(),
+            &|prop_name, prop, prop_index| {
+                let prop_index = Rc::new(prop_index);
+                let prop_name = Rc::new(prop_name.to_string());
+                let self__ = self__.clone();
+
+                gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
+                    // request the property again, since in this callback the value of property might have been changed
+                    let prop = serde_json::from_value::<Vec<(String, Attribute)>>(self__.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/prop", index)))).unwrap()[*prop_index].1.clone();
+                    if let Some(new_prop) = new_prop {
+                        self__.borrow_mut().editor.patch_once(Operation::Add(
+                            Pointer::from_str(&format!("/components/{}/prop/{}", index, prop_name.as_str())),
+                            json!(gtk_impl::recover_property(prop, tracker, new_prop)),
+                        ), ContentType::Attribute).unwrap();
+                    }
+
+                    self__.borrow().queue_draw();
+                }))
+            },
+        ));
+
+        let self__ = self_.clone();
+        let self___ = self_.clone();
+        let self____ = self_.clone();
+        self_.borrow().property.append_page("effect", BoxPage::new(
+            self_.borrow().property.width,
+            serde_json::from_value::<Vec<Vec<(String, Attribute)>>>(self_.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/effect", index)))).unwrap(),
+            &|prop_vec: Vec<(String, Attribute)>, prop_index: usize| {
+                let prop_index = Rc::new(prop_index);
+                let self__ = self__.clone();
+
+                let expander = gtk::Expander::new("Effect");
+                let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+                expander.add(&vbox);
+                vbox.set_margin_left(10);
+
+                for (i, (prop_name, prop)) in prop_vec.into_iter().enumerate() {
+                    let prop_index = prop_index.clone();
+                    let self__ = self__.clone();
+
+                    vbox.pack_start(&gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop,tracker| {
+                        // request the property again, since in this callback the value of property might have been changed
+                        let prop = serde_json::from_value::<Vec<Vec<(String, Attribute)>>>(self__.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/effect", index)))).unwrap()[*prop_index][i].1.clone();
+                        if let Some(new_prop) = new_prop {
+                            self__.borrow_mut().editor.patch_once(Operation::Add(
+                                Pointer::from_str(&format!("/components/{}/effect/{}/{}", index, *prop_index, prop_name.as_str())),
+                                json!(gtk_impl::recover_property(prop, tracker, new_prop)),
+                            ), ContentType::Attribute).unwrap();
+                        }
+
+                        self__.borrow().queue_draw();
+                    })), true, true, 0);
+                }
+
+                expander.dynamic_cast().unwrap()
+            },
+            Box::new(move || {
+                self___.borrow_mut().editor.patch_once(Operation::Add(
+                    Pointer::from_str(&format!("/components/{}/effect", index)),
+                    json!({
+                        "effect_type": "CoordinateX",
+                        "transition": "Linear",
+                        "start_value": 0.0,
+                        "end_value": 0.0,
+                    }),
+                ), ContentType::Value).unwrap();
+                TimelineWidgetI::connect_select_component(self___.clone(), index);
+            }),
+            Box::new(move |i| {
+                self____.borrow_mut().editor.patch_once(Operation::Remove(
+                    Pointer::from_str(&format!("/components/{}/effect/{}", index, i)),
+                ), ContentType::Value).unwrap();
+                TimelineWidgetI::connect_select_component(self____.clone(), index);
+            }),
+        ));
+
+        self_.borrow().property.append_page("info", BoxPage::new(
+            self_.borrow().property.width,
+            vec![self_.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}/info", index)))],
+            &|t,_| {
+                gtk::Label::new(t.as_str()).dynamic_cast().unwrap()
+            },
+            Box::new(|| {}),
+            Box::new(|_| {}),
+        ));
+
+        self_.borrow_mut().selected_component_index = Some(index);
+        self_.borrow().queue_draw();
     }
 
     fn connect_select_component_menu(self_: Rc<RefCell<Self>>, index: usize, position: gst::ClockTime) -> gtk::Menu {
@@ -321,9 +436,7 @@ impl App {
 
     fn queue_draw(&self) {
         self.canvas.queue_draw();
-
-        let timeline = &self.timeline.borrow();
-        timeline.queue_draw();
+        self.timeline.borrow().queue_draw();
     }
 
     fn remove_selected(self_: Rc<RefCell<App>>) {
@@ -360,125 +473,6 @@ impl App {
 
         let app = App::new_from_file(path.to_str().unwrap());
         App::create_ui(app);
-    }
-
-    fn select_component(self_: Rc<RefCell<App>>, index: usize) {
-        self_.borrow().property.clear();
-
-        let self__ = self_.clone();
-        self_.borrow().property.append_page("component", GridPage::new(
-            self_.borrow().property.width,
-            serde_json::from_value(self__.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}", self__.borrow().selected_component_index.unwrap())))).unwrap(),
-            &|prop_name, prop: Attribute, index| {
-                let prop_name = Rc::new(prop_name.to_string());
-                let self__ = self__.clone();
-
-                gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
-                    // request the property again, since in this callback the value of property might have been changed
-                    let prop = serde_json::from_value::<Attribute>(self__.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/{}", index, *prop_name)))).unwrap().clone();
-                    if let Some(new_prop) = new_prop {
-                        self__.borrow_mut().editor.patch_once(Operation::Add(
-                            Pointer::from_str(&format!("/components/{}/{}", index, prop_name.as_str())),
-                            json!(gtk_impl::recover_property(prop, tracker, new_prop)),
-                        ), ContentType::Attribute).unwrap();
-                    }
-
-                    self__.borrow().queue_draw();
-                }))
-            },
-        ));
-
-        let self__ = self_.clone();
-        self_.borrow().property.append_page("property", GridPage::new(
-            self_.borrow().property.width,
-            serde_json::from_value(self_.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/prop", index)))).unwrap(),
-            &|prop_name, prop, prop_index| {
-                let prop_index = Rc::new(prop_index);
-                let prop_name = Rc::new(prop_name.to_string());
-                let self__ = self__.clone();
-
-                gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
-                    // request the property again, since in this callback the value of property might have been changed
-                    let prop = serde_json::from_value::<Vec<(String, Attribute)>>(self__.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/prop", index)))).unwrap()[*prop_index].1.clone();
-                    if let Some(new_prop) = new_prop {
-                        self__.borrow_mut().editor.patch_once(Operation::Add(
-                            Pointer::from_str(&format!("/components/{}/prop/{}", index, prop_name.as_str())),
-                            json!(gtk_impl::recover_property(prop, tracker, new_prop)),
-                        ), ContentType::Attribute).unwrap();
-                    }
-
-                    self__.borrow().queue_draw();
-                }))
-            },
-        ));
-
-        let self__ = self_.clone();
-        let self___ = self_.clone();
-        let self____ = self_.clone();
-        self_.borrow().property.append_page("effect", BoxPage::new(
-            self_.borrow().property.width,
-            serde_json::from_value::<Vec<Vec<(String, Attribute)>>>(self_.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/effect", index)))).unwrap(),
-            &|prop_vec: Vec<(String, Attribute)>, prop_index: usize| {
-                let prop_index = Rc::new(prop_index);
-                let self__ = self__.clone();
-
-                let expander = gtk::Expander::new("Effect");
-                let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-                expander.add(&vbox);
-                vbox.set_margin_left(10);
-
-                for (i, (prop_name, prop)) in prop_vec.into_iter().enumerate() {
-                    let prop_index = prop_index.clone();
-                    let self__ = self__.clone();
-
-                    vbox.pack_start(&gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop,tracker| {
-                        // request the property again, since in this callback the value of property might have been changed
-                        let prop = serde_json::from_value::<Vec<Vec<(String, Attribute)>>>(self__.borrow().editor.get_attr(Pointer::from_str(&format!("/components/{}/effect", index)))).unwrap()[*prop_index][i].1.clone();
-                        if let Some(new_prop) = new_prop {
-                            self__.borrow_mut().editor.patch_once(Operation::Add(
-                                Pointer::from_str(&format!("/components/{}/effect/{}/{}", index, *prop_index, prop_name.as_str())),
-                                json!(gtk_impl::recover_property(prop, tracker, new_prop)),
-                            ), ContentType::Attribute).unwrap();
-                        }
-
-                        self__.borrow().queue_draw();
-                    })), true, true, 0);
-                }
-
-                expander.dynamic_cast().unwrap()
-            },
-            Box::new(move || {
-                self___.borrow_mut().editor.patch_once(Operation::Add(
-                    Pointer::from_str(&format!("/components/{}/effect", index)),
-                    json!({
-                        "effect_type": "CoordinateX",
-                        "transition": "Linear",
-                        "start_value": 0.0,
-                        "end_value": 0.0,
-                    }),
-                ), ContentType::Value).unwrap();
-                App::select_component(self___.clone(), index);
-            }),
-            Box::new(move |i| {
-                self____.borrow_mut().editor.patch_once(Operation::Remove(
-                    Pointer::from_str(&format!("/components/{}/effect/{}", index, i)),
-                ), ContentType::Value).unwrap();
-                App::select_component(self____.clone(), index);
-            }),
-        ));
-
-        self_.borrow().property.append_page("info", BoxPage::new(
-            self_.borrow().property.width,
-            vec![self_.borrow().editor.get_value(Pointer::from_str(&format!("/components/{}/info", index)))],
-            &|t,_| {
-                gtk::Label::new(t.as_str()).dynamic_cast().unwrap()
-            },
-            Box::new(|| {}),
-            Box::new(|_| {}),
-        ));
-
-        self_.borrow_mut().selected_component_index = Some(index);
-        self_.borrow().queue_draw();
     }
 
     fn create_menu(self_: Rc<RefCell<App>>) -> gtk::MenuBar {
