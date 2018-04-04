@@ -13,33 +13,17 @@ pub trait PageI {
     fn make_widget(&self, Self::PageElement, usize) -> gtk::Widget;
 }
 
-pub struct GridPage<M: PageI> {
-    grid: gtk::Grid,
+pub struct GridPage {
     widget: gtk::ScrolledWindow,
-    model: Option<M>,
 }
 
-impl<E, M: PageI<PageElement = (String, E)>> GridPage<M> {
-    pub fn new<T: Clone>(width: i32) -> GridPage<M> {
+impl GridPage {
+    pub fn new<T: Clone>(width: i32, get_elements: &Fn() -> Vec<(String, T)>, make_widget: &Fn(&str, T, usize) -> gtk::Widget) -> GridPage {
         let scroll = gtk::ScrolledWindow::new(&gtk::Adjustment::new(0.0, 0.0, width as f64, 1.0, 1.0, width as f64), None);
         let grid = gtk::Grid::new();
         grid.set_column_spacing(10);
         grid.set_row_spacing(5);
         scroll.add(&grid);
-
-        GridPage {
-            widget: scroll,
-            grid: grid,
-            model: None,
-        }
-    }
-
-    pub fn set_model(&mut self, model: M) {
-        self.model = Some(model);
-    }
-
-    pub fn setup(&self) {
-        let model = self.model.unwrap();
 
         let new_label = |label: &str, align: gtk::Align| {
             let w = gtk::Label::new(label);
@@ -47,14 +31,18 @@ impl<E, M: PageI<PageElement = (String, E)>> GridPage<M> {
             w
         };
 
-        for (i, &(ref k, ref v)) in model.get_elements().iter().enumerate() {
-            self.grid.attach(&new_label(k, gtk::Align::End), 0, i as i32, 1, 1);
-            self.grid.attach(&model.make_widget((*k,*v), i), 1, i as i32, 1, 1);
+        for (i, &(ref k, ref v)) in get_elements().iter().enumerate() {
+            grid.attach(&new_label(k, gtk::Align::End), 0, i as i32, 1, 1);
+            grid.attach(&make_widget(&k,*v,i), 1, i as i32, 1, 1);
+        }
+
+        GridPage {
+            widget: scroll,
         }
     }
 }
 
-impl<M: PageI> AsWidget for GridPage<M> {
+impl AsWidget for GridPage {
     type T = gtk::ScrolledWindow;
 
     fn as_widget(&self) -> &Self::T {
