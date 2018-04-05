@@ -2,7 +2,7 @@ mod wrapper;
 pub use self::wrapper::AsWidget;
 
 mod ruler;
-pub use self::ruler::RulerWidget;
+pub use self::ruler::*;
 
 mod box_viewer;
 pub use self::box_viewer::*;

@@ -57,7 +57,7 @@ pub struct EffectViewer<M: 'static + EffectViewerI> {
     model: Option<Rc<RefCell<M>>>,
 }
 
-impl<M: 'static + EffectViewerI> EffectViewer<M> {
+impl<M: EffectViewerI> EffectViewer<M> {
     pub fn new() -> Rc<RefCell<EffectViewer<M>>> {
         let viewer = Rc::new(RefCell::new(EffectViewer {
             viewer: BoxViewerWidget::new(200),

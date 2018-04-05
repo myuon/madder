@@ -58,9 +58,15 @@ impl<M: TimelineWidgetI> BoxViewerWidgetI for TimelineWidget<M> {
     }
 }
 
+impl<M: TimelineWidgetI> RulerWidgetI for TimelineWidget<M> {
+    fn connect_get_scale(&self) -> f64 {
+        self.scaler.get_value()
+    }
+}
+
 pub struct TimelineWidget<M: TimelineWidgetI> {
     box_viewer: BoxViewerWidget<TimelineWidget<M>>,
-    ruler: Rc<RefCell<RulerWidget>>,
+    ruler: RulerWidget<TimelineWidget<M>>,
     ruler_box: gtk::EventBox,
     tracker: gtk::DrawingArea,
     grid: gtk::Grid,
@@ -84,7 +90,7 @@ impl<M: 'static + TimelineWidgetI> TimelineWidget<M> {
         grid.set_column_spacing(4);
 
         let ruler = RulerWidget::new(length, 20);
-        ruler_box.add(ruler.borrow().as_widget());
+        ruler_box.add(ruler.as_widget());
 
         let tracker = gtk::DrawingArea::new();
         tracker.set_size_request(length, -1);
@@ -126,10 +132,9 @@ impl<M: 'static + TimelineWidgetI> TimelineWidget<M> {
         self.model = Some(model);
     }
 
-    fn notify_pointer_motion(&self, x: f64) {
-        let ruler = self.ruler.clone();
-        ruler.borrow().queue_draw();
-        RulerWidget::send_pointer_position(ruler, x);
+    fn notify_pointer_motion(&mut self, x: f64) {
+        self.ruler.queue_draw();
+        self.ruler.send_pointer_position(x);
     }
 
     pub fn create_ui(self_: Rc<RefCell<TimelineWidget<M>>>) {
@@ -149,7 +154,7 @@ impl<M: 'static + TimelineWidgetI> TimelineWidget<M> {
             let self__ = self_.clone();
             timeline.ruler_box.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
             timeline.ruler_box.connect_motion_notify_event(move |_,event| {
-                self__.borrow().notify_pointer_motion(event.get_position().0);
+                self__.borrow_mut().notify_pointer_motion(event.get_position().0);
                 Inhibit(false)
             });
 
@@ -175,24 +180,19 @@ impl<M: 'static + TimelineWidgetI> TimelineWidget<M> {
             timeline.grid.attach(&scroll, 1, 0, 1, 2);
 
             timeline.overlay.set_size_request(length, -1);
-
-            let self__ = self_.clone();
-            let ruler_ = self_.borrow().ruler.clone();
-            RulerWidget::connect_get_scale(ruler_, Box::new(move || {
-                self__.borrow().scaler.get_value()
-            }));
-
-            let self__ = self_.clone();
-            self_.borrow().scaler.connect_value_changed(move |scaler| {
-                self__.borrow().overlay.set_size_request((length as f64 / scaler.get_value()) as i32, -1);
-                self__.borrow().as_widget().queue_draw();
-            });
         }
 
         {
+            let length = self_.borrow().length;
+            let self__ = self_.clone();
+            self_.borrow_mut().scaler.connect_value_changed(move |scaler| {
+                self__.borrow().overlay.set_size_request((length as f64 / scaler.get_value()) as i32, -1);
+                self__.borrow().as_widget().queue_draw();
+            });
+
             let self__ = self_.clone();
             self_.borrow_mut().box_viewer.connect_motion_notify_event(Box::new(move |event| {
-                self__.borrow().notify_pointer_motion(event.get_position().0);
+                self__.borrow_mut().notify_pointer_motion(event.get_position().0);
             }));
 
             let self__ = self_.clone();
