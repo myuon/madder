@@ -1,6 +1,3 @@
-use std::rc::Rc;
-use std::cell::RefCell;
-
 extern crate gtk;
 extern crate gdk;
 extern crate glib;
@@ -11,8 +8,7 @@ use gdk::prelude::*;
 
 extern crate madder_core;
 use madder_core::*;
-use widget::{AsWidget, BoxObject, BoxViewerWidget, BoxViewerWidgetI};
-use util::self_wrapper::*;
+use widget::{AsWidget, BoxObject, BoxViewerWidget};
 
 pub trait EffectViewerI {
     type Renderer : AsRef<BoxObject>;
@@ -23,6 +19,7 @@ pub trait EffectViewerI {
     fn connect_new_point(&mut self, usize, f64) {}
 }
 
+/*
 impl<M: 'static + EffectViewerI> BoxViewerWidgetI for EffectViewer<M> {
     type Renderer = <M as EffectViewerI>::Renderer;
 
@@ -42,89 +39,87 @@ impl<M: 'static + EffectViewerI> BoxViewerWidgetI for EffectViewer<M> {
             self.model.as_ref().unwrap().as_mut().connect_new_point(index, event.get_position().0 / self.viewer.get_selected_object().unwrap().size().0 as f64);
         }
     }
-}
+}*/
 
-pub struct EffectViewer<M: 'static + EffectViewerI> {
-    viewer: BoxViewerWidget<EffectViewer<M>>,
+pub struct EffectViewer<Renderer: AsRef<BoxObject>> {
+    viewer: BoxViewerWidget<Renderer>,
     window: gtk::Window,
     overlay: gtk::Overlay,
     tracker: gtk::DrawingArea,
     tracking_position: (f64, usize),
     name_list: gtk::Box,
-    model: Option<Model<M>>,
+    pub connect_get_effect: Box<Fn(usize) -> component::Effect>,
 }
 
-impl<M: EffectViewerI> EffectViewer<M> {
-    pub fn new() -> Rc<RefCell<EffectViewer<M>>> {
-        let viewer = Rc::new(RefCell::new(EffectViewer {
+impl<Renderer: 'static + AsRef<BoxObject>> EffectViewer<Renderer> {
+    pub fn new() -> EffectViewer<Renderer> {
+        let mut viewer = EffectViewer {
             viewer: BoxViewerWidget::new(200),
             window: gtk::Window::new(gtk::WindowType::Toplevel),
             overlay: gtk::Overlay::new(),
             tracker: gtk::DrawingArea::new(),
             tracking_position: (0.0, 0),
             name_list: gtk::Box::new(gtk::Orientation::Vertical, 0),
-            model: None,
-        }));
+            connect_get_effect: Box::new(|_| unreachable!()),
+        };
 
-        EffectViewer::create_ui(viewer.clone());
+        viewer.create_ui();
         viewer
     }
 
-    pub fn set_model(&mut self, model: &mut M) {
-        self.model = Some(Model::new(model));
+    pub fn get_objects(&self) -> Vec<Renderer> {
+        (self.viewer.connect_get_objects)()
     }
 
-    pub fn setup(self_: Rc<RefCell<EffectViewer<M>>>) {
-        let this = self_.borrow();
-        for child in &this.name_list.get_children() {
-            this.name_list.remove(child);
+    pub fn get_effect(&self, index: usize) -> component::Effect {
+        (self.connect_get_effect)(index)
+    }
+
+    pub fn setup(&mut self) {
+        for child in &self.name_list.get_children() {
+            self.name_list.remove(child);
         }
 
-        let model = this.model.as_ref().unwrap().as_ref();
-        for obj in model.get_effects() {
-            let label = gtk::Label::new(format!("{}: {}", obj.as_ref().index, model.get_effect(obj.as_ref().index).value(0.75)).as_str());
+        for obj in self.get_objects() {
+            let label = gtk::Label::new(format!("{}: {}", obj.as_ref().index, self.get_effect(obj.as_ref().index).value(0.75)).as_str());
             label.set_size_request(-1, BoxObject::HEIGHT);
-            this.name_list.pack_start(&label, false, false, 0);
+            self.name_list.pack_start(&label, false, false, 0);
         }
 
-        let mut this = self_.borrow_mut();
-        this.viewer.setup();
+        self.viewer.setup();
     }
 
-    fn create_ui(self_: Rc<RefCell<EffectViewer<M>>>) {
-        let mut this = self_.borrow_mut();
+    fn create_ui(&mut self) {
+        self.name_list.set_size_request(30,-1);
 
-        let self__ = self_.clone();
-        this.viewer.set_model(&mut self__.borrow_mut());
+        self.overlay.add(self.viewer.as_widget());
+        self.overlay.add_overlay(&self.tracker);
+        self.overlay.set_overlay_pass_through(&self.tracker, true);
 
-        this.name_list.set_size_request(30,-1);
-
-        this.overlay.add(this.viewer.as_widget());
-        this.overlay.add_overlay(&this.tracker);
-        this.overlay.set_overlay_pass_through(&this.tracker, true);
-
-        this.tracker.set_size_request(-1, -1);
-        this.tracker.connect_realize(move |tracker| {
+        self.tracker.set_size_request(-1, -1);
+        self.tracker.connect_realize(move |tracker| {
             let window = tracker.get_window().unwrap();
             window.set_pass_through(true);
         });
 
         let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-        hbox.pack_start(&this.name_list, false, false, 0);
-        hbox.pack_start(&this.overlay, true, true, 0);
+        hbox.pack_start(&self.name_list, false, false, 0);
+        hbox.pack_start(&self.overlay, true, true, 0);
 
-        this.window.set_size_request(500, 200);
-        this.window.add(&hbox);
-        this.window.connect_delete_event(move |window,_| {
+        self.window.set_size_request(500, 200);
+        self.window.add(&hbox);
+        self.window.connect_delete_event(move |window,_| {
             window.hide();
             gtk::Inhibit(true)
         });
 
-        let self__ = self_.clone();
-        this.tracker.connect_draw(move |tracker,cr| {
+        let self_ = self as *mut Self;
+        self.tracker.connect_draw(move |tracker,cr| {
+            let self_ = unsafe { self_.as_ref().unwrap() };
+
             cr.set_source_rgb(200f64, 0f64, 0f64);
 
-            cr.move_to(self__.borrow().tracking_position.0, 0.0);
+            cr.move_to(self_.tracking_position.0, 0.0);
             cr.rel_line_to(0.0, tracker.get_allocation().height as f64);
             cr.stroke();
 
@@ -141,7 +136,7 @@ impl<M: EffectViewerI> EffectViewer<M> {
     }
 }
 
-impl<M: EffectViewerI> AsWidget for EffectViewer<M> {
+impl<M: AsRef<BoxObject>> AsWidget for EffectViewer<M> {
     type T = gtk::Window;
 
     fn as_widget(&self) -> &Self::T {

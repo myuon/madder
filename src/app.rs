@@ -1,6 +1,5 @@
 use std::cmp;
 use std::rc::Rc;
-use std::cell::RefCell;
 use std::path::PathBuf;
 use std::io::{BufWriter, Write};
 use std::fs::File;
@@ -36,16 +35,17 @@ use WINDOW_NUMBER;
 
 pub struct App {
     editor: Editor,
-    timeline: Rc<RefCell<TimelineWidget<App>>>,
+    timeline: TimelineWidget<ui_impl::TimelineComponentRenderer>,
     canvas: gtk::DrawingArea,
     property: PropertyViewerWidget,
-    effect_viewer: Rc<RefCell<EffectViewer<App>>>,
+    effect_viewer: EffectViewer<ui_impl::EffectComponentRenderer>,
     selected_component_index: Option<usize>,
     window: gtk::Window,
     project_file_path: Option<PathBuf>,
     _menu_for_timeline: Option<Rc<gtk::Menu>>,
 }
 
+/*
 impl TimelineWidgetI for App {
     type Renderer = ui_impl::TimelineComponentRenderer;
 
@@ -178,13 +178,13 @@ impl TimelineWidgetI for App {
                         "end_value": 0.0,
                     }),
                 ), ContentType::Value).unwrap();
-                TimelineWidgetI::connect_select_component(self___.clone(), index);
+                self___.borrow().timeline.connect_select_component(self___.clone(), index);
             }),
             Box::new(move |i| {
                 self____.borrow_mut().editor.patch_once(Operation::Remove(
                     Pointer::from_str(&format!("/components/{}/effect/{}", index, i)),
                 ), ContentType::Value).unwrap();
-                TimelineWidgetI::connect_select_component(self____.clone(), index);
+                self____.borrow().timeline.connect_select_component(self____.clone(), index);
             }),
         ));
 
@@ -257,6 +257,7 @@ impl TimelineWidgetI for App {
         self._menu_for_timeline.as_ref().unwrap()
     }
 }
+ */
 
 impl EffectViewerI for App {
     type Renderer = ui_impl::EffectComponentRenderer;
@@ -294,15 +295,15 @@ impl EffectViewerI for App {
             ), ContentType::Value
         ).unwrap();
 
-        self.effect_viewer.borrow().queue_draw();
+        self.effect_viewer.queue_draw();
     }
 }
 
 impl App {
-    fn new_with(editor: Editor, width: i32, length: gst::ClockTime) -> Rc<RefCell<App>> {
+    fn new_with(editor: Editor, width: i32, length: gst::ClockTime) -> App {
         let prop_width = 250;
 
-        Rc::new(RefCell::new(App {
+        App {
             editor: editor,
             timeline: TimelineWidget::new(width, 130, cmp::max(width + prop_width, length.mseconds().unwrap() as i32)),
             canvas: gtk::DrawingArea::new(),
@@ -312,14 +313,14 @@ impl App {
             window: gtk::Window::new(gtk::WindowType::Toplevel),
             project_file_path: None,
             _menu_for_timeline: None,
-        }))
+        }
     }
 
-    pub fn new(width: i32, height: i32, length: gst::ClockTime) -> Rc<RefCell<App>> {
+    pub fn new(width: i32, height: i32, length: gst::ClockTime) -> App {
         App::new_with(Editor::new(width, height, length), width, length)
     }
 
-    pub fn new_from_json(json: serde_json::Value) -> Rc<RefCell<App>> {
+    pub fn new_from_json(json: serde_json::Value) -> App {
         let editor = Editor::new_from_json(json);
         let width = editor.get_value(Pointer::from_str("/width")).as_i32().unwrap();
         let length = editor.get_value(Pointer::from_str("/length")).as_time().unwrap();
@@ -327,7 +328,7 @@ impl App {
         App::new_with(editor, width, length)
     }
 
-    pub fn new_from_file(path: &str) -> Rc<RefCell<App>> {
+    pub fn new_from_file(path: &str) -> App {
         let editor = Editor::new_from_file(path);
         let width = editor.get_value(Pointer::from_str("/width")).as_i32().unwrap();
         let length = editor.get_value(Pointer::from_str("/length")).as_time().unwrap();
@@ -335,7 +336,7 @@ impl App {
         App::new_with(editor, width, length)
     }
 
-    pub fn start_instant_preview(self_: Rc<RefCell<App>>, parent: &gtk::Box) {
+    pub fn start_instant_preview(&mut self, parent: &gtk::Box) {
         let pipeline = gst::Pipeline::new(None);
         let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
         let appsrc = gst::ElementFactory::make("appsrc", None).unwrap();
@@ -349,11 +350,11 @@ impl App {
             (glsinkbin, widget.get::<gtk::Widget>().unwrap())
         } else { panic!(); };
 
-        let width = self_.borrow().editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32;
-        let height = self_.borrow().editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32;
+        let width = self.editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32;
+        let height = self.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32;
         widget.set_size_request(width, height);
         parent.pack_start(&widget, false, false, 0);
-        self_.borrow().canvas.hide();
+        self.canvas.hide();
         widget.show();
 
         pipeline.add_many(&[&appsrc, &videoconvert, &sink]).unwrap();
@@ -362,8 +363,8 @@ impl App {
         let appsrc = appsrc.clone().dynamic_cast::<gsta::AppSrc>().unwrap();
         let info = gstv::VideoInfo::new(
             gstv::VideoFormat::Rgb,
-            self_.borrow().editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as u32 / 2,
-            self_.borrow().editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as u32 / 2,
+            self.editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as u32 / 2,
+            self.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as u32 / 2,
         ).fps(gst::Fraction::new(20,1)).build().unwrap();
         appsrc.set_caps(&info.to_caps().unwrap());
         appsrc.set_property_format(gst::Format::Time);
@@ -399,22 +400,24 @@ impl App {
         pipeline.set_state(gst::State::Playing).into_result().unwrap();
 
         let mut pos = 0;
-        let self__ = self_.clone();
+        let self_ = self as *mut Self;
         gtk::idle_add(move || {
-            let width = self_.borrow().editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32;
-            let height = self_.borrow().editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32;
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            let width = self_.editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32;
+            let height = self_.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32;
             let mut buffer = gst::Buffer::with_size((width*height*3/4) as usize).unwrap();
             {
                 let buffer = buffer.get_mut().unwrap();
 
                 buffer.set_pts(pos * 500 * gst::MSECOND);
-                let position = self__.borrow().editor.get_value(Pointer::from_str("/position")).as_u64().unwrap();
-                self__.borrow_mut().editor.seek_to((position + 500) * gst::MSECOND);
+                let position = self_.editor.get_value(Pointer::from_str("/position")).as_u64().unwrap();
+                self_.editor.seek_to((position + 500) * gst::MSECOND);
 
                 let mut data = buffer.map_writable().unwrap();
                 let mut data = data.as_mut_slice();
 
-                let pixbuf = self__.borrow().editor.get_current_pixbuf();
+                let pixbuf = self_.editor.get_current_pixbuf();
                 let pixbuf = pixbuf.scale_simple(width / 2, height / 2, gtk_util::GdkInterpType::Nearest.to_i32()).unwrap();
                 let pixels = unsafe { pixbuf.get_pixels() };
 
@@ -424,8 +427,8 @@ impl App {
             appsrc.push_buffer(buffer).into_result().unwrap();
             pos += 1;
 
-            let position = self_.borrow().editor.get_value(Pointer::from_str("/position")).as_time().unwrap();
-            let editor = &self__.borrow().editor;
+            let position = self_.editor.get_value(Pointer::from_str("/position")).as_time().unwrap();
+            let editor = &self_.editor;
             let elems = editor.elements.iter().filter(|&elem| {
                 elem.component_type == ComponentType::Sound
                     && elem.as_ref().start_time <= position
@@ -442,46 +445,46 @@ impl App {
 
     fn queue_draw(&self) {
         self.canvas.queue_draw();
-        self.timeline.borrow().queue_draw();
+        self.timeline.queue_draw();
     }
 
-    fn remove_selected(self_: Rc<RefCell<App>>) {
-        let index = self_.borrow().selected_component_index.unwrap();
-        self_.borrow_mut().editor.patch_once(Operation::Remove(
+    fn remove_selected(&mut self) {
+        let index = self.selected_component_index.unwrap();
+        self.editor.patch_once(Operation::Remove(
             Pointer::from_str(&format!("/components/{}", index))
         ), ContentType::Value).unwrap();
-        self_.borrow_mut().selected_component_index = None;
-        self_.borrow().property.clear();
-        self_.borrow().queue_draw();
+        self.selected_component_index = None;
+        self.property.clear();
+        self.queue_draw();
     }
 
-    fn save_to_file_with_dialog(self_: Rc<RefCell<App>>) {
-        let dialog = gtk::FileChooserDialog::new(Some("保存先のファイルを指定"), Some(&self_.borrow().window), gtk::FileChooserAction::Save);
+    fn save_to_file_with_dialog(&self) {
+        let dialog = gtk::FileChooserDialog::new(Some("保存先のファイルを指定"), Some(&self.window), gtk::FileChooserAction::Save);
         dialog.add_button("保存", 0);
         dialog.run();
         let path = dialog.get_filename().unwrap();
         dialog.destroy();
 
-        App::save_to_file(self_.clone(), path);
+        self.save_to_file(path);
     }
 
-    fn save_to_file(self_: Rc<RefCell<App>>, path: PathBuf) {
+    fn save_to_file(&self, path: PathBuf) {
         let mut buf = BufWriter::new(File::create(path).unwrap());
-        buf.write(&format!("{:#}", self_.borrow().editor.get_value(Pointer::from_str(""))).as_bytes()).unwrap();
+        buf.write(&format!("{:#}", self.editor.get_value(Pointer::from_str(""))).as_bytes()).unwrap();
     }
 
-    fn open_with_dialog(self_: Rc<RefCell<App>>) {
-        let dialog = gtk::FileChooserDialog::new(Some("開くファイルを指定"), Some(&self_.borrow().window), gtk::FileChooserAction::Open);
+    fn open_with_dialog(&mut self) {
+        let dialog = gtk::FileChooserDialog::new(Some("開くファイルを指定"), Some(&self.window), gtk::FileChooserAction::Open);
         dialog.add_button("開く", 0);
         dialog.run();
         let path = dialog.get_filename().unwrap();
         dialog.destroy();
 
-        let app = App::new_from_file(path.to_str().unwrap());
-        App::create_ui(app);
+        let mut app = App::new_from_file(path.to_str().unwrap());
+        app.create_ui();
     }
 
-    fn create_menu(self_: Rc<RefCell<App>>) -> gtk::MenuBar {
+    fn create_menu(&mut self) -> gtk::MenuBar {
         let menubar = gtk::MenuBar::new();
         let file_item = {
             let file_item = gtk::MenuItem::new_with_label("ファイル");
@@ -507,45 +510,50 @@ impl App {
                     "height": 480,
                     "length": 900000,
                 });
-                let app = App::new_from_json(editor);
-                App::create_ui(app);
+                let mut app = App::new_from_json(editor);
+                app.create_ui();
             });
 
-            let self__ = self_.clone();
+            let self_ = self as *mut Self;
             open.connect_activate(move |_| {
-                App::open_with_dialog(self__.clone());
+                let self_ = unsafe { self_.as_mut().unwrap() };
+
+                self_.open_with_dialog();
             });
 
-            let self__ = self_.clone();
+            let self_ = self as *mut Self;
             save_as.connect_activate(move |_| {
-                App::save_to_file_with_dialog(self__.clone());
+                let self_ = unsafe { self_.as_mut().unwrap() };
+
+                self_.save_to_file_with_dialog();
             });
 
-            let self__ = self_.clone();
+            let self_ = self as *mut Self;
             save.connect_activate(move |_| {
-                let self___ = self__.clone();
+                let self_ = unsafe { self_.as_mut().unwrap() };
 
-                match self__.borrow().project_file_path {
-                    Some(ref path) => App::save_to_file(self___, path.to_path_buf()),
-                    None => App::save_to_file_with_dialog(self___),
+                match self_.project_file_path {
+                    Some(ref path) => self_.save_to_file(path.to_path_buf()),
+                    None => self_.save_to_file_with_dialog(),
                 }
             });
 
-            let self__ = self_.clone();
+            let self_ = self as *mut Self;
             output.connect_activate(move |_| {
-                let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&self__.borrow().window), gtk::FileChooserAction::Save);
+                let self_ = unsafe { self_.as_mut().unwrap() };
+
+                let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&self_.window), gtk::FileChooserAction::Save);
                 dialog.add_button("出力", 0);
                 dialog.run();
                 let path = dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string();
                 dialog.destroy();
 
-                let self__ = self__.clone();
                 let window = gtk::Window::new(gtk::WindowType::Popup);
                 let progress_bar = gtk::ProgressBar::new();
                 let label = gtk::Label::new("進捗…");
                 let vbox = gtk::Box::new(gtk::Orientation::Vertical, 10);
                 window.add(&vbox);
-                window.set_transient_for(&self__.borrow().window);
+                window.set_transient_for(&self_.window);
                 window.set_position(gtk::WindowPosition::CenterOnParent);
 
                 vbox.pack_start(&label, true, true, 0);
@@ -555,10 +563,10 @@ impl App {
                 window.show_all();
 
                 let progress_bar = progress_bar.clone();
-                self__.borrow_mut().editor.write_init(&path, 100, 5);
+                self_.editor.write_init(&path, 100, 5);
 
                 idle_add(move || {
-                    let (cont, frac) = self__.borrow_mut().editor.write_next();
+                    let (cont, frac) = self_.editor.write_next();
                     progress_bar.set_fraction(frac);
 
                     if cont == false {
@@ -576,8 +584,7 @@ impl App {
             editor_item.set_submenu(&editor_menu);
 
             let rc_editor_menu = Rc::new(editor_menu);
-            let self__ = self_.clone();
-            self__.borrow_mut()._menu_for_timeline = Some(rc_editor_menu.clone());
+            self._menu_for_timeline = Some(rc_editor_menu.clone());
             let editor_menu = rc_editor_menu.as_ref();
 
             let video_item = gtk::MenuItem::new_with_label("動画");
@@ -587,9 +594,11 @@ impl App {
             editor_menu.append(&image_item);
             editor_menu.append(&text_item);
 
-            let self__ = self_.clone();
+            let self_ = self as *mut Self;
             video_item.connect_activate(move |_| {
-                let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&self__.borrow().window), gtk::FileChooserAction::Open);
+                let self_ = unsafe { self_.as_mut().unwrap() };
+
+                let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&self_.window), gtk::FileChooserAction::Open);
                 dialog.add_button("追加", 0);
 
                 {
@@ -599,7 +608,7 @@ impl App {
                 }
                 dialog.run();
 
-                self__.borrow_mut().editor.patch_once(Operation::Add(
+                self_.editor.patch_once(Operation::Add(
                     Pointer::from_str("/components"),
                     json!({
                         "component_type": "Video",
@@ -612,13 +621,15 @@ impl App {
                     }),
                 ), ContentType::Value).unwrap();
 
-                self__.borrow().queue_draw();
+                self_.queue_draw();
                 dialog.destroy();
             });
 
-            let self__ = self_.clone();
+            let self_ = self as *mut Self;
             image_item.connect_activate(move |_| {
-                let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), Some(&self__.borrow().window), gtk::FileChooserAction::Open);
+                let self_ = unsafe { self_.as_mut().unwrap() };
+
+                let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), Some(&self_.window), gtk::FileChooserAction::Open);
                 dialog.add_button("追加", 0);
 
                 {
@@ -628,7 +639,7 @@ impl App {
                 }
                 dialog.run();
 
-                self__.borrow_mut().editor.patch_once(Operation::Add(
+                self_.editor.patch_once(Operation::Add(
                     Pointer::from_str("/components"),
                     json!({
                         "component_type": "Image",
@@ -641,13 +652,15 @@ impl App {
                     }),
                 ), ContentType::Value).unwrap();
 
-                self__.borrow().queue_draw();
+                self_.queue_draw();
                 dialog.destroy();
             });
 
-            let self__ = self_.clone();
+            let self_ = self as *mut Self;
             text_item.connect_activate(move |_| {
-                self__.borrow_mut().editor.patch_once(Operation::Add(
+                let self_ = unsafe { self_.as_mut().unwrap() };
+
+                self_.editor.patch_once(Operation::Add(
                     Pointer::from_str("/components"),
                     json!({
                         "component_type": "Text",
@@ -661,7 +674,7 @@ impl App {
                     }),
                 ), ContentType::Value).unwrap();
 
-                self__.borrow().queue_draw();
+                self_.queue_draw();
             });
 
             editor_item
@@ -674,17 +687,19 @@ impl App {
             let project_info = gtk::MenuItem::new_with_label("情報");
             project_menu.append(&project_info);
 
-            let self__ = self_.clone();
+            let self_ = self as *mut Self;
             project_info.connect_activate(move |_| {
+                let self_ = unsafe { self_.as_mut().unwrap() };
+
                 let dialog = gtk::MessageDialog::new(
-                    Some(&self__.borrow().window),
+                    Some(&self_.window),
                     gtk::DialogFlags::MODAL,
                     gtk::MessageType::Info,
                     gtk::ButtonsType::Ok,
                     &serde_json::to_string(&json!({
-                        "size": (self__.borrow().editor.get_value(Pointer::from_str("/width")),
-                                 self__.borrow().editor.get_value(Pointer::from_str("/height"))),
-                        "components": self__.borrow().editor.get_value(Pointer::from_str("/components")).as_array().unwrap().len(),
+                        "size": (self_.editor.get_value(Pointer::from_str("/width")),
+                                 self_.editor.get_value(Pointer::from_str("/height"))),
+                        "components": self_.editor.get_value(Pointer::from_str("/components")).as_array().unwrap().len(),
                     })).unwrap(),
                 );
 
@@ -702,71 +717,68 @@ impl App {
         menubar
     }
 
-    pub fn create_ui(self_: Rc<RefCell<App>>) {
-        let app = self_.borrow();
+    pub fn create_ui(&mut self) {
+        self.timeline.create_ui();
+        self.timeline.connect_drag_component();
 
-        let self__ = self_.clone();
-        app.effect_viewer.borrow_mut().set_model(self__);
+        let self_ = self as *mut Self;
+        self.timeline.connect_ruler_seek_time(move |time| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
 
-        let self__ = self_.clone();
-        app.timeline.borrow_mut().set_model(self__);
-
-        TimelineWidget::create_ui(app.timeline.clone());
-
-        TimelineWidget::connect_drag_component(app.timeline.clone());
-
-        let self__ = self_.clone();
-        TimelineWidget::connect_ruler_seek_time(app.timeline.clone(), move |time| {
-            self__.borrow_mut().editor.seek_to(time);
-            self__.borrow().queue_draw();
+            self_.editor.seek_to(time);
+            self_.queue_draw();
 
             Inhibit(false)
         });
 
-        let self__ = self_.clone();
-        app.canvas.connect_draw(move |_,cr| {
-            cr.set_source_pixbuf(&self__.borrow().editor.get_current_pixbuf(), 0f64, 0f64);
+        let self_ = self as *mut Self;
+        self.canvas.connect_draw(move |_,cr| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            cr.set_source_pixbuf(&self_.editor.get_current_pixbuf(), 0f64, 0f64);
             cr.paint();
             Inhibit(false)
         });
 
-        app.canvas.set_size_request(
-            app.editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32,
-            app.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32
+        self.canvas.set_size_request(
+            self.editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32,
+            self.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32
         );
-        app.window.set_size_request(
-            app.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32,
-            app.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32 + 200
+        self.window.set_size_request(
+            self.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32,
+            self.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32 + 200
         );
-        app.window.set_title("madder");
+        self.window.set_title("madder");
 
         let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        vbox.pack_start(&App::create_menu(self_.clone()), true, true, 0);
+        vbox.pack_start(&self.create_menu(), true, true, 0);
 
         let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-        hbox.pack_start(&app.canvas, true, true, 0);
-        hbox.pack_end(app.property.as_widget(), true, true, 0);
+        hbox.pack_start(&self.canvas, true, true, 0);
+        hbox.pack_end(self.property.as_widget(), true, true, 0);
 
-        let self__ = self_.clone();
-        app.property.connect_remove(Box::new(move || {
-            App::remove_selected(self__.clone());
+        let self_ = self as *mut Self;
+        self.property.connect_remove(Box::new(move || {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+            self_.remove_selected();
         }));
 
         vbox.pack_start(&hbox, true, true, 0);
-        vbox.pack_start(app.timeline.borrow().as_widget(), true, true, 5);
+        vbox.pack_start(self.timeline.as_widget(), true, true, 5);
 
-        let self__ = self_.clone();
+        let self_ = self as *mut Self;
         let hbox_ = hbox.clone();
         let btn = gtk::Button::new();
         btn.set_label("start preview");
         btn.connect_clicked(move |_| {
-            App::start_instant_preview(self__.clone(), &hbox_);
+            let self_ = unsafe { self_.as_mut().unwrap() };
+            self_.start_instant_preview(&hbox_);
         });
         vbox.pack_start(&btn, false, false, 0);
 
-        app.window.add(&vbox);
-        app.window.show_all();
-        app.window.connect_delete_event(move |window,_| {
+        self.window.add(&vbox);
+        self.window.show_all();
+        self.window.connect_delete_event(move |window,_| {
             window.destroy();
 
             unsafe {

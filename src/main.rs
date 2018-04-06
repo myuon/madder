@@ -26,7 +26,7 @@ fn main() {
     use std::env;
     let args = env::args().collect::<Vec<String>>();
 
-    let app =
+    let mut app =
         if args.len() >= 2 {
             App::new_from_file(&args[1])
         } else {
@@ -49,7 +49,7 @@ fn main() {
             })).unwrap())
         };
 
-    App::create_ui(app);
+    app.create_ui();
 
     gtk::main();
 }
