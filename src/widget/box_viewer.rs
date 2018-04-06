@@ -1,6 +1,3 @@
-use std::rc::Rc;
-use std::cell::RefCell;
-
 extern crate gtk;
 extern crate gdk;
 extern crate gdk_pixbuf;
@@ -10,6 +7,7 @@ use gtk::prelude::*;
 use gdk::prelude::*;
 
 use widget::AsWidget;
+use util::self_wrapper::*;
 
 #[derive(Clone, Debug)]
 pub struct BoxObject {
@@ -67,17 +65,17 @@ pub trait BoxViewerWidgetI {
     fn do_render(&self, Self::Renderer, f64, &cairo::Context);
     fn connect_select_box(&mut self, usize, &gdk::EventButton) {}
     fn connect_select_no_box(&self, &gdk::EventButton) {}
+    fn connect_motion_notify_event(&mut self, &gdk::EventMotion) {}
+    fn connect_get_scale(&self) -> f64 { 1.0 }
 }
 
+#[derive(Clone)]
 pub struct BoxViewerWidget<M: BoxViewerWidgetI> {
     canvas: gtk::DrawingArea,
     offset: i32,
     selecting_box_index: Option<usize>,
     flag_resize: bool,
-    cb_click_no_box: Box<Fn(&gdk::EventButton)>,
-    cb_get_scale: Box<Fn() -> f64>,
-    cb_motion_notify: Box<Fn(&gdk::EventMotion)>,
-    model: Option<Rc<RefCell<M>>>,
+    model: Option<Model<M>>,
 }
 
 impl<M: 'static + BoxViewerWidgetI> BoxViewerWidget<M> {
@@ -90,20 +88,17 @@ impl<M: 'static + BoxViewerWidgetI> BoxViewerWidget<M> {
             offset: 0,
             selecting_box_index: None,
             flag_resize: false,
-            cb_click_no_box: Box::new(|_| {}),
-            cb_get_scale: Box::new(|| { 1.0 }),
-            cb_motion_notify: Box::new(|_| {}),
             model: None,
         }
     }
 
-    pub fn set_model(&mut self, model: Rc<RefCell<M>>) {
-        self.model = Some(model);
+    pub fn set_model(&mut self, model: &mut M) {
+        self.model = Some(Model::new(model));
     }
 
     pub fn get_selected_object(&self) -> Option<BoxObject> {
-        let inst = self.model.as_ref().unwrap();
-        self.selecting_box_index.map(|u| inst.borrow().get_objects()[u].as_ref().clone())
+        let model = self.model.as_ref().unwrap().as_ref();
+        self.selecting_box_index.map(|u| model.get_objects()[u].as_ref().clone())
     }
 
     pub fn setup(&mut self) {
@@ -111,12 +106,12 @@ impl<M: 'static + BoxViewerWidgetI> BoxViewerWidget<M> {
         self.canvas.connect_draw(move |_,cr| {
             let self_ = unsafe { self_.as_mut().unwrap() };
 
-            let inst = self_.model.as_ref().unwrap().borrow();
-            let objects = inst.get_objects();
-            let scaler = (self_.cb_get_scale)();
+            let model = self_.model.as_ref().unwrap().as_ref();
+            let objects = model.get_objects();
+            let scaler = model.connect_get_scale();
 
             for wrapper in objects.into_iter() {
-                inst.do_render(wrapper, scaler, cr);
+                model.do_render(wrapper, scaler, cr);
             }
 
             Inhibit(false)
@@ -131,32 +126,19 @@ impl<M: 'static + BoxViewerWidgetI> BoxViewerWidget<M> {
             let x = x as i32;
             let y = y as i32;
 
-            let scale = (self_.cb_get_scale)();
+            let model = self_.model.as_ref().unwrap().as_ref();
+            let scale = model.connect_get_scale();
 
-            let inst = self_.model.as_ref().unwrap().clone();
-            let mut inst = inst.borrow_mut();
-            if let Some(object) = inst.get_objects().into_iter().find(|object| object.as_ref().clone().hscaled(scale).contains(x,y)) {
+            if let Some(object) = model.get_objects().into_iter().find(|object| object.as_ref().clone().hscaled(scale).contains(x,y)) {
                 self_.offset = x;
                 self_.selecting_box_index = Some(object.as_ref().index);
-                inst.connect_select_box(object.as_ref().index, event);
+                model.connect_select_box(object.as_ref().index, event);
             } else {
-                inst.connect_select_no_box(event);
+                model.connect_select_no_box(event);
             }
 
             Inhibit(false)
         });
-    }
-
-    pub fn connect_click_no_box(&mut self, cont: Box<Fn(&gdk::EventButton)>) {
-        self.cb_click_no_box = cont;
-    }
-
-    pub fn connect_get_scale(&mut self, cont: Box<Fn() -> f64>) {
-        self.cb_get_scale = cont;
-    }
-
-    pub fn connect_motion_notify_event(&mut self, cont: Box<Fn(&gdk::EventMotion)>) {
-        self.cb_motion_notify = cont;
     }
 
     pub fn connect_drag_box(&mut self, cont_move: Box<Fn(usize, i32, usize)>, cont_resize: Box<Fn(usize, i32)>) {
@@ -165,16 +147,15 @@ impl<M: 'static + BoxViewerWidgetI> BoxViewerWidget<M> {
         self.canvas.connect_motion_notify_event(move |canvas,event| {
             let self_ = unsafe { self_.as_mut().unwrap() };
 
-            let inst = self_.model.as_ref().unwrap().clone();
-
-            (self_.cb_motion_notify)(event);
+            let model = self_.model.as_ref().unwrap().as_ref();
+            model.connect_motion_notify_event(event);
 
             let (x,y) = event.get_position();
             let x = x as i32;
             let y = y as i32;
 
             let window = canvas.get_window().unwrap();
-            let scale = (self_.cb_get_scale)();
+            let scale = model.connect_get_scale();
 
             if event.get_state().contains(gdk::ModifierType::BUTTON1_MASK) && self_.selecting_box_index.is_some() {
                 let distance = ((x - self_.offset) as f64 * scale) as i32;
@@ -187,7 +168,7 @@ impl<M: 'static + BoxViewerWidgetI> BoxViewerWidget<M> {
                 }
                 self_.offset = event.get_position().0 as i32;
             } else {
-                let objects = inst.borrow().get_objects();
+                let objects = model.get_objects();
 
                 match objects.iter().find(|object| object.as_ref().contains(x,y)).map(|x| x.as_ref().clone()) {
                     Some(ref object) if object.coordinate().0 + (object.size().0 as f64 / scale) as i32 - BoxObject::EDGE_WIDTH <= x && x <= object.coordinate().0 + (object.size().0 as f64 / scale) as i32 => {

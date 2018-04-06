@@ -25,9 +25,10 @@ pub trait TimelineWidgetI {
     fn set_component_attr(&mut self, usize, &str, Attribute);
     fn connect_select_component(Rc<RefCell<Self>>, usize);
     fn connect_select_component_menu(Rc<RefCell<Self>>, usize, gst::ClockTime) -> gtk::Menu;
+    fn create_timeline_menu(&self) -> &gtk::Menu;
 }
 
-impl<M: TimelineWidgetI> BoxViewerWidgetI for TimelineWidget<M> {
+impl<M: 'static + TimelineWidgetI + Clone> BoxViewerWidgetI for TimelineWidget<M> {
     type Renderer = <M as TimelineWidgetI>::Renderer;
 
     fn get_objects(&self) -> Vec<Self::Renderer> {
@@ -54,17 +55,34 @@ impl<M: TimelineWidgetI> BoxViewerWidgetI for TimelineWidget<M> {
         }
     }
 
-    fn connect_select_no_box(&self, _event: &gdk::EventButton) {
-    }
-}
+    fn connect_select_no_box(&self, event: &gdk::EventButton) {
+        let model = self.model.as_ref().unwrap().clone();
+        let inst = model.borrow();
+        let menu = inst.create_timeline_menu();
 
-impl<M: TimelineWidgetI> RulerWidgetI for TimelineWidget<M> {
+        if event.get_button() == 3 {
+            menu.popup_easy(0, gtk::get_current_event_time());
+            menu.show_all();
+        }
+    }
+
+    fn connect_motion_notify_event(&mut self, event: &gdk::EventMotion) {
+        self.notify_pointer_motion(event.get_position().0);
+    }
+
     fn connect_get_scale(&self) -> f64 {
         self.scaler.get_value()
     }
 }
 
-pub struct TimelineWidget<M: TimelineWidgetI> {
+impl<M: TimelineWidgetI + Clone> RulerWidgetI for TimelineWidget<M> {
+    fn connect_get_scale(&self) -> f64 {
+        self.scaler.get_value()
+    }
+}
+
+#[derive(Clone)]
+pub struct TimelineWidget<M: 'static + TimelineWidgetI + Clone> {
     box_viewer: BoxViewerWidget<TimelineWidget<M>>,
     ruler: RulerWidget<TimelineWidget<M>>,
     ruler_box: gtk::EventBox,
@@ -80,8 +98,8 @@ pub struct TimelineWidget<M: TimelineWidgetI> {
 }
 
 // workaround for sharing a variable within callbacks
-impl<M: 'static + TimelineWidgetI> TimelineWidget<M> {
-    pub fn new(width: i32, height: i32, length: i32) -> Rc<RefCell<TimelineWidget<M>>> {
+impl<M: 'static + TimelineWidgetI + Clone> TimelineWidget<M> {
+    pub fn new(width: i32, height: i32, length: i32) -> TimelineWidget<M> {
         let box_viewer = BoxViewerWidget::new(height);
 
         let ruler_box = gtk::EventBox::new();
@@ -106,7 +124,7 @@ impl<M: 'static + TimelineWidgetI> TimelineWidget<M> {
         vbox.pack_start(box_viewer.as_widget(), true, true, 0);
         overlay.add(&vbox);
 
-        let w = Rc::new(RefCell::new(TimelineWidget {
+        let widget = TimelineWidget {
             box_viewer: box_viewer,
             ruler: ruler,
             ruler_box: ruler_box,
@@ -119,17 +137,16 @@ impl<M: 'static + TimelineWidgetI> TimelineWidget<M> {
             width: width,
             height: height,
             length: length,
-        }));
+        };
 
-        let w_ = w.clone();
-        let mut w_ = w_.borrow_mut();
-        w_.box_viewer.set_model(w.clone());
+        widget.box_viewer.set_model(&mut widget.clone());
 
-        w
+        widget
     }
 
     pub fn set_model(&mut self, model: Rc<RefCell<M>>) {
         self.model = Some(model);
+        self.ruler.set_model(&mut self.clone());
     }
 
     fn notify_pointer_motion(&mut self, x: f64) {
@@ -190,28 +207,8 @@ impl<M: 'static + TimelineWidgetI> TimelineWidget<M> {
                 self__.borrow().as_widget().queue_draw();
             });
 
-            let self__ = self_.clone();
-            self_.borrow_mut().box_viewer.connect_motion_notify_event(Box::new(move |event| {
-                self__.borrow_mut().notify_pointer_motion(event.get_position().0);
-            }));
-
-            let self__ = self_.clone();
-            self_.borrow_mut().box_viewer.connect_get_scale(Box::new(move || {
-                self__.borrow().scaler.get_value()
-            }));
-
             self_.borrow_mut().box_viewer.setup();
         }
-    }
-
-    pub fn create_menu(&mut self, menu: &gtk::Menu) {
-        let menu = menu.clone();
-        self.box_viewer.connect_click_no_box(Box::new(move |event| {
-            if event.get_button() == 3 {
-                menu.popup_easy(0, gtk::get_current_event_time());
-                menu.show_all();
-            }
-        }));
     }
 
     pub fn connect_drag_component(self_: Rc<RefCell<TimelineWidget<M>>>) {
@@ -290,7 +287,7 @@ impl<M: 'static + TimelineWidgetI> TimelineWidget<M> {
     }
 }
 
-impl<M: TimelineWidgetI> AsWidget for TimelineWidget<M> {
+impl<M: TimelineWidgetI + Clone> AsWidget for TimelineWidget<M> {
     type T = gtk::Grid;
 
     fn as_widget(&self) -> &Self::T {

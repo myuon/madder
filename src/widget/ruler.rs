@@ -1,12 +1,10 @@
-use std::rc::Rc;
-use std::cell::RefCell;
-
 extern crate gstreamer as gst;
 extern crate gtk;
 extern crate cairo;
 use gtk::prelude::*;
 
 use widget::AsWidget;
+use util::self_wrapper::Model;
 
 pub trait RulerWidgetI {
     fn connect_get_scale(&self) -> f64 {
@@ -14,10 +12,11 @@ pub trait RulerWidgetI {
     }
 }
 
+#[derive(Clone)]
 pub struct RulerWidget<M: RulerWidgetI> {
     canvas: gtk::DrawingArea,
     pointer: f64,
-    model: Option<Rc<RefCell<M>>>,
+    model: Option<Model<M>>,
     width: i32,
     height: i32,
 }
@@ -36,8 +35,8 @@ impl<M: 'static + RulerWidgetI> RulerWidget<M> {
         }
     }
 
-    pub fn set_model(&mut self, model: Rc<RefCell<M>>) {
-        self.model = Some(model);
+    pub fn set_model(&mut self, model: &mut M) {
+        self.model = Some(Model::new(model));
     }
 
     pub fn create_ui(&mut self, width: i32, height: i32) {
@@ -59,7 +58,7 @@ impl<M: 'static + RulerWidgetI> RulerWidget<M> {
             let interval_small_height = height as f64 * 0.25;
             let interval = 10;
 
-            let scaler = self_.model.as_ref().unwrap().borrow().connect_get_scale();
+            let scaler = self_.model.as_ref().unwrap().as_ref().connect_get_scale();
 
             for x in (0..(((width / interval) as f64) / scaler) as i32).map(|x| x * interval) {
                 cr.move_to(x as f64, interval_large_height);

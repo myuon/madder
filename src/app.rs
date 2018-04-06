@@ -43,6 +43,7 @@ pub struct App {
     selected_component_index: Option<usize>,
     window: gtk::Window,
     project_file_path: Option<PathBuf>,
+    _menu_for_timeline: Option<Rc<gtk::Menu>>,
 }
 
 impl TimelineWidgetI for App {
@@ -251,6 +252,10 @@ impl TimelineWidgetI for App {
         menu.append(&open_effect_window);
         menu
     }
+
+    fn create_timeline_menu(&self) -> &gtk::Menu {
+        self._menu_for_timeline.as_ref().unwrap()
+    }
 }
 
 impl EffectViewerI for App {
@@ -306,6 +311,7 @@ impl App {
             selected_component_index: None,
             window: gtk::Window::new(gtk::WindowType::Toplevel),
             project_file_path: None,
+            _menu_for_timeline: None,
         }))
     }
 
@@ -569,8 +575,10 @@ impl App {
             let editor_menu = gtk::Menu::new();
             editor_item.set_submenu(&editor_menu);
 
-            let app = self_.borrow();
-            app.timeline.borrow_mut().create_menu(&editor_menu);
+            let rc_editor_menu = Rc::new(editor_menu);
+            let self__ = self_.clone();
+            self__.borrow_mut()._menu_for_timeline = Some(rc_editor_menu.clone());
+            let editor_menu = rc_editor_menu.as_ref();
 
             let video_item = gtk::MenuItem::new_with_label("動画");
             let image_item = gtk::MenuItem::new_with_label("画像");
