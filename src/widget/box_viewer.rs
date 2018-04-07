@@ -57,14 +57,26 @@ impl BoxObject {
     }
 }
 
-pub struct BoxViewerWidget<Renderer: AsRef<BoxObject>> {
+pub struct BoxViewerInternal {
     canvas: gtk::DrawingArea,
     offset: i32,
     selecting_box_index: Option<usize>,
     flag_resize: bool,
+}
+
+impl AsWidget for BoxViewerInternal {
+    type T = gtk::DrawingArea;
+
+    fn as_widget(&self) -> &Self::T {
+        &self.canvas
+    }
+}
+
+pub struct BoxViewerWidget<Renderer: AsRef<BoxObject>> {
+    internal: BoxViewerInternal,
     pub connect_get_objects: Box<Fn() -> Vec<Renderer>>,
     pub connect_render_object: Box<Fn(Renderer, f64, &cairo::Context)>,
-    pub connect_select_box: Box<Fn(&gtk::DrawingArea, usize, &gdk::EventButton)>,
+    pub connect_select_box: Box<Fn(&BoxViewerInternal, usize, &gdk::EventButton)>,
     pub connect_select_no_box: Box<Fn(&gdk::EventButton)>,
     pub connect_motion_notify_event: Box<Fn(&gdk::EventMotion)>,
     pub connect_get_scale: Box<Fn() -> f64>,
@@ -76,10 +88,12 @@ impl<Renderer: 'static + AsRef<BoxObject>> BoxViewerWidget<Renderer> {
         canvas.set_size_request(-1, height);
 
         BoxViewerWidget {
-            canvas: canvas,
-            offset: 0,
-            selecting_box_index: None,
-            flag_resize: false,
+            internal: BoxViewerInternal {
+                canvas: canvas,
+                offset: 0,
+                selecting_box_index: None,
+                flag_resize: false,
+            },
             connect_get_objects: Box::new(|| { vec![] }),
             connect_render_object: Box::new(|_,_,_| {}),
             connect_select_box: Box::new(|_,_,_| {}),
@@ -90,12 +104,12 @@ impl<Renderer: 'static + AsRef<BoxObject>> BoxViewerWidget<Renderer> {
     }
 
     pub fn get_selected_object(&self) -> Option<BoxObject> {
-        self.selecting_box_index.map(|u| (self.connect_get_objects)()[u].as_ref().clone())
+        self.internal.selecting_box_index.map(|u| (self.connect_get_objects)()[u].as_ref().clone())
     }
 
     pub fn setup(&mut self) {
         let self_ = self as *mut BoxViewerWidget<_>;
-        self.canvas.connect_draw(move |_,cr| {
+        self.internal.canvas.connect_draw(move |_,cr| {
             let self_ = unsafe { self_.as_mut().unwrap() };
 
             let objects = (self_.connect_get_objects)();
@@ -109,8 +123,8 @@ impl<Renderer: 'static + AsRef<BoxObject>> BoxViewerWidget<Renderer> {
         });
 
         let self_ = self as *mut BoxViewerWidget<Renderer>;
-        self.canvas.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
-        self.canvas.connect_button_press_event(move |_,event| {
+        self.internal.canvas.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
+        self.internal.canvas.connect_button_press_event(move |_,event| {
             let self_ = unsafe { self_.as_mut().unwrap() };
 
             let (x,y) = event.get_position();
@@ -120,9 +134,9 @@ impl<Renderer: 'static + AsRef<BoxObject>> BoxViewerWidget<Renderer> {
             let scale = (self_.connect_get_scale)();
 
             if let Some(object) = (self_.connect_get_objects)().into_iter().find(|object| object.as_ref().clone().hscaled(scale).contains(x,y)) {
-                self_.offset = x;
-                self_.selecting_box_index = Some(object.as_ref().index);
-                (self_.connect_select_box)(&self_.canvas, object.as_ref().index, event);
+                self_.internal.offset = x;
+                self_.internal.selecting_box_index = Some(object.as_ref().index);
+                (self_.connect_select_box)(&self_.internal, object.as_ref().index, event);
             } else {
                 (self_.connect_select_no_box)(event);
             }
@@ -133,8 +147,8 @@ impl<Renderer: 'static + AsRef<BoxObject>> BoxViewerWidget<Renderer> {
 
     pub fn connect_drag_box(&mut self, cont_move: Box<Fn(usize, i32, usize)>, cont_resize: Box<Fn(usize, i32)>) {
         let self_ = self as *mut Self;
-        self.canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
-        self.canvas.connect_motion_notify_event(move |canvas,event| {
+        self.internal.canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
+        self.internal.canvas.connect_motion_notify_event(move |canvas,event| {
             let self_ = unsafe { self_.as_mut().unwrap() };
 
             (self_.connect_motion_notify_event)(event);
@@ -146,27 +160,27 @@ impl<Renderer: 'static + AsRef<BoxObject>> BoxViewerWidget<Renderer> {
             let window = canvas.get_window().unwrap();
             let scale = (self_.connect_get_scale)();
 
-            if event.get_state().contains(gdk::ModifierType::BUTTON1_MASK) && self_.selecting_box_index.is_some() {
-                let distance = ((x - self_.offset) as f64 * scale) as i32;
+            if event.get_state().contains(gdk::ModifierType::BUTTON1_MASK) && self_.internal.selecting_box_index.is_some() {
+                let distance = ((x - self_.internal.offset) as f64 * scale) as i32;
                 let layer_index = y / BoxObject::HEIGHT;
 
-                if self_.flag_resize {
-                    cont_resize(self_.selecting_box_index.unwrap(), distance);
+                if self_.internal.flag_resize {
+                    cont_resize(self_.internal.selecting_box_index.unwrap(), distance);
                 } else {
-                    cont_move(self_.selecting_box_index.unwrap(), distance, layer_index as usize);
+                    cont_move(self_.internal.selecting_box_index.unwrap(), distance, layer_index as usize);
                 }
-                self_.offset = event.get_position().0 as i32;
+                self_.internal.offset = event.get_position().0 as i32;
             } else {
                 let objects = (self_.connect_get_objects)();
 
                 match objects.iter().find(|object| object.as_ref().contains(x,y)).map(|x| x.as_ref().clone()) {
                     Some(ref object) if object.coordinate().0 + (object.size().0 as f64 / scale) as i32 - BoxObject::EDGE_WIDTH <= x && x <= object.coordinate().0 + (object.size().0 as f64 / scale) as i32 => {
                         window.set_cursor(&gdk::Cursor::new_from_name(&window.get_display(), "e-resize"));
-                        self_.flag_resize = true;
+                        self_.internal.flag_resize = true;
                     },
                     _ => {
                         window.set_cursor(&gdk::Cursor::new_from_name(&window.get_display(), "default"));
-                        self_.flag_resize = false;
+                        self_.internal.flag_resize = false;
                     },
                 }
             }
@@ -180,7 +194,7 @@ impl<R: AsRef<BoxObject>> AsWidget for BoxViewerWidget<R> {
     type T = gtk::DrawingArea;
 
     fn as_widget(&self) -> &Self::T {
-        &self.canvas
+        self.internal.as_widget()
     }
 }
 
