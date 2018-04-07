@@ -94,36 +94,43 @@ impl<Renderer: 'static + AsRef<BoxObject>> TimelineWidget<Renderer> {
         self.box_viewer.connect_render_object = cont;
     }
 
-    pub fn on_select_box(&mut self, index: usize, event: &gdk::EventButton) {
-        if event.get_button() == 1 {
-            (self.connect_select_component)(index);
-        } else if event.get_button() == 3 {
-            let length = (event.get_position().0 / self.scaler.get_value()) as u64 * gst::MSECOND;
-            let menu = (self.connect_select_component_menu)(index, length);
-            menu.popup_easy(0, gtk::get_current_event_time());
-            menu.show_all();
-        }
-    }
-
-    pub fn on_select_no_box(&self, event: &gdk::EventButton) {
-        let menu = (self.create_timeline_menu)();
-
-        if event.get_button() == 3 {
-            menu.popup_easy(0, gtk::get_current_event_time());
-            menu.show_all();
-        }
-    }
-
-    fn on_get_scale(&self) -> f64 {
-        self.scaler.get_value()
-    }
-
     fn notify_pointer_motion(&mut self, x: f64) {
         self.ruler.queue_draw();
         self.ruler.send_pointer_position(x);
     }
 
     pub fn create_ui(&mut self) {
+        let self_ = self as *mut Self;
+        self.box_viewer.connect_select_box = Box::new(move |index, event| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            if event.get_button() == 1 {
+                (self_.connect_select_component)(index);
+            } else if event.get_button() == 3 {
+                let length = (event.get_position().0 / self_.scaler.get_value()) as u64 * gst::MSECOND;
+                let menu = (self_.connect_select_component_menu)(index, length);
+                menu.popup_easy(0, gtk::get_current_event_time());
+                menu.show_all();
+            }
+        });
+
+        let self_ = self as *mut Self;
+        self.box_viewer.connect_select_no_box = Box::new(move |event| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+            let menu = (self_.create_timeline_menu)();
+
+            if event.get_button() == 3 {
+                menu.popup_easy(0, gtk::get_current_event_time());
+                menu.show_all();
+            }
+        });
+
+        let self_ = self as *mut Self;
+        self.box_viewer.connect_get_scale = Box::new(move || {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+            self_.scaler.get_value()
+        });
+
         self.ruler.create_ui();
 
         let self_ = self as *mut Self;

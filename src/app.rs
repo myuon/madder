@@ -45,46 +45,6 @@ pub struct App {
     _menu_for_timeline: Option<Rc<gtk::Menu>>,
 }
 
-impl EffectViewerI for App {
-    type Renderer = ui_impl::EffectComponentRenderer;
-
-    fn get_effect(&self, effect_index: usize) -> component::Effect {
-        serde_json::from_value(self.editor.get_value(Pointer::from_str(&format!("/components/{}/effect/{}", self.selected_component_index.expect("App::selected_component_index is None"), effect_index)))).unwrap()
-    }
-
-    fn get_effects(&self) -> Vec<Self::Renderer> {
-        self.editor
-            .get_value(Pointer::from_str(&format!("/components/{}/effect", self.selected_component_index.unwrap())))
-            .as_array().unwrap()
-            .iter()
-            .map(|obj| serde_json::from_value::<Effect>(obj.clone()).unwrap())
-            .enumerate()
-            .map(|(i,obj)| { ui_impl::EffectComponentRenderer::new(i,obj) })
-            .collect()
-    }
-
-    fn do_render(&self, renderer: Self::Renderer, scaler: f64, cr: &cairo::Context) {
-        renderer.renderer(scaler, cr)
-    }
-
-    fn connect_new_point(&mut self, eff_index: usize, point: f64) {
-        let index = self.selected_component_index.unwrap();
-        let current = self.editor.get_value(Pointer::from_str(&format!("/components/{}/effect/{}/intermeds/value/{}", index, eff_index, point))).as_f64().unwrap();
-        self.editor.patch_once(
-            Operation::Add(
-                Pointer::from_str(&format!("/components/{}/effect/{}/intermeds", index, eff_index)),
-                json!(EffectPoint {
-                    transition: Transition::Ease,
-                    position: point,
-                    value: current,
-                }),
-            ), ContentType::Value
-        ).unwrap();
-
-        self.effect_viewer.queue_draw();
-    }
-}
-
 impl App {
     fn new_with(editor: Editor, width: i32, length: gst::ClockTime) -> App {
         let prop_width = 250;
@@ -732,6 +692,50 @@ impl App {
             let self_ = unsafe { self_.as_mut().unwrap() };
 
             self_._menu_for_timeline.as_ref().unwrap().as_ref().clone()
+        });
+
+        let self_ = self as *mut Self;
+        self.effect_viewer.connect_get_effect = Box::new(move |index| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            serde_json::from_value(self_.editor.get_value(Pointer::from_str(&format!("/components/{}/effect/{}", self_.selected_component_index.expect("App::selected_component_index is None"), index)))).unwrap()
+        });
+
+        let self_ = self as *mut Self;
+        self.effect_viewer.connect_get_objects(Box::new(move || {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            self_.editor
+                .get_value(Pointer::from_str(&format!("/components/{}/effect", self_.selected_component_index.unwrap())))
+                .as_array().unwrap()
+                .iter()
+                .map(|obj| serde_json::from_value::<Effect>(obj.clone()).unwrap())
+                .enumerate()
+                .map(|(i,obj)| { ui_impl::EffectComponentRenderer::new(i,obj) })
+                .collect()
+        }));
+
+        self.effect_viewer.connect_render_object(Box::new(move |robj: ui_impl::EffectComponentRenderer, scaler, cr| {
+            robj.renderer(scaler, cr)
+        }));
+
+        let self_ = self as *mut Self;
+        self.effect_viewer.connect_new_point = Box::new(move |eff_index, point| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+            let index = self_.selected_component_index.unwrap();
+            let current = self_.editor.get_value(Pointer::from_str(&format!("/components/{}/effect/{}/intermeds/value/{}", index, eff_index, point))).as_f64().unwrap();
+            self_.editor.patch_once(
+                Operation::Add(
+                    Pointer::from_str(&format!("/components/{}/effect/{}/intermeds", index, eff_index)),
+                    json!(EffectPoint {
+                        transition: Transition::Ease,
+                        position: point,
+                        value: current,
+                    }),
+                ), ContentType::Value
+            ).unwrap();
+
+            self_.effect_viewer.queue_draw();
         });
 
         self.timeline.create_ui();

@@ -10,37 +10,6 @@ extern crate madder_core;
 use madder_core::*;
 use widget::{AsWidget, BoxObject, BoxViewerWidget};
 
-pub trait EffectViewerI {
-    type Renderer : AsRef<BoxObject>;
-
-    fn get_effect(&self, usize) -> component::Effect;
-    fn get_effects(&self) -> Vec<Self::Renderer>;
-    fn do_render(&self, Self::Renderer, f64, &cairo::Context);
-    fn connect_new_point(&mut self, usize, f64) {}
-}
-
-/*
-impl<M: 'static + EffectViewerI> BoxViewerWidgetI for EffectViewer<M> {
-    type Renderer = <M as EffectViewerI>::Renderer;
-
-    fn get_objects(&self) -> Vec<Self::Renderer> {
-        self.model.as_ref().unwrap().as_ref().get_effects()
-    }
-
-    fn do_render(&self, renderer: Self::Renderer, scaler: f64, cr: &cairo::Context) {
-        self.model.as_ref().unwrap().as_ref().do_render(renderer, scaler, cr);
-    }
-
-    fn connect_select_box(&mut self, index: usize, event: &gdk::EventButton) {
-        self.tracking_position = (event.get_position().0, index);
-        self.queue_draw();
-
-        if event.get_button() == 3 {
-            self.model.as_ref().unwrap().as_mut().connect_new_point(index, event.get_position().0 / self.viewer.get_selected_object().unwrap().size().0 as f64);
-        }
-    }
-}*/
-
 pub struct EffectViewer<Renderer: AsRef<BoxObject>> {
     viewer: BoxViewerWidget<Renderer>,
     window: gtk::Window,
@@ -49,6 +18,7 @@ pub struct EffectViewer<Renderer: AsRef<BoxObject>> {
     tracking_position: (f64, usize),
     name_list: gtk::Box,
     pub connect_get_effect: Box<Fn(usize) -> component::Effect>,
+    pub connect_new_point: Box<Fn(usize, f64)>,
 }
 
 impl<Renderer: 'static + AsRef<BoxObject>> EffectViewer<Renderer> {
@@ -61,10 +31,19 @@ impl<Renderer: 'static + AsRef<BoxObject>> EffectViewer<Renderer> {
             tracking_position: (0.0, 0),
             name_list: gtk::Box::new(gtk::Orientation::Vertical, 0),
             connect_get_effect: Box::new(|_| unreachable!()),
+            connect_new_point: Box::new(|_,_| unreachable!()),
         };
 
         viewer.create_ui();
         viewer
+    }
+
+    pub fn connect_get_objects(&mut self, cont: Box<Fn() -> Vec<Renderer>>) {
+        self.viewer.connect_get_objects = cont;
+    }
+
+    pub fn connect_render_object(&mut self, cont: Box<Fn(Renderer, f64, &cairo::Context)>) {
+        self.viewer.connect_render_object = cont;
     }
 
     pub fn get_objects(&self) -> Vec<Renderer> {
@@ -90,6 +69,17 @@ impl<Renderer: 'static + AsRef<BoxObject>> EffectViewer<Renderer> {
     }
 
     fn create_ui(&mut self) {
+        let self_ = self as *mut Self;
+        self.viewer.connect_select_box = Box::new(move |index, event| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+            self_.tracking_position = (event.get_position().0, index);
+            self_.queue_draw();
+
+            if event.get_button() == 3 {
+                (self_.connect_new_point)(index, event.get_position().0 / self_.viewer.get_selected_object().unwrap().size().0 as f64);
+            }
+        });
+
         self.name_list.set_size_request(30,-1);
 
         self.overlay.add(self.viewer.as_widget());
