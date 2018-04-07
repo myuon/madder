@@ -507,7 +507,7 @@ impl App {
             self_.editor.patch_once(Operation::Add(
                 Pointer::from_str(&format!("/components/{}/{}", index, attr)),
                 json!(value),
-            ), ContentType::Value).unwrap();
+            ), ContentType::Attribute).unwrap();
         });
 
         let self_ = self as *mut Self;
@@ -520,7 +520,7 @@ impl App {
             self_.property.append_page("component", GridPage::new(
                 self_.property.width,
                 serde_json::from_value(self_.editor.get_attr(Pointer::from_str(&format!("/components/{}", index)))).unwrap(),
-                &|prop_name, prop: Attribute, index| {
+                &|prop_name, prop: Attribute, _| {
                     let self_ = unsafe { self__.as_mut().unwrap() };
 
                     let prop_name = Rc::new(prop_name.to_string());
