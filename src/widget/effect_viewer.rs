@@ -70,14 +70,14 @@ impl<Renderer: 'static + AsRef<BoxObject>> EffectViewer<Renderer> {
 
     fn create_ui(&mut self) {
         let self_ = self as *mut Self;
-        self.viewer.connect_select_box = Box::new(move |internal, index, event| {
+        self.viewer.connect_select_box = Box::new(move |viewer, index, event| {
             let self_ = unsafe { self_.as_mut().unwrap() };
             self_.tracking_position = (event.get_position().0, index);
-            internal.as_widget().queue_draw();
+            viewer.as_widget().queue_draw();
 
             if event.get_button() == 3 {
+                let ratio = event.get_position().0 / viewer.get_selected_object().unwrap().size().0 as f64;
                 // SEGV
-                let ratio = event.get_position().0 / self_.viewer.get_selected_object().unwrap().size().0 as f64;
                 (self_.connect_new_point)(index, ratio);
             }
         });
