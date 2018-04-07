@@ -64,7 +64,7 @@ pub struct BoxViewerWidget<Renderer: AsRef<BoxObject>> {
     flag_resize: bool,
     pub connect_get_objects: Box<Fn() -> Vec<Renderer>>,
     pub connect_render_object: Box<Fn(Renderer, f64, &cairo::Context)>,
-    pub connect_select_box: Box<Fn(usize, &gdk::EventButton)>,
+    pub connect_select_box: Box<Fn(&gtk::DrawingArea, usize, &gdk::EventButton)>,
     pub connect_select_no_box: Box<Fn(&gdk::EventButton)>,
     pub connect_motion_notify_event: Box<Fn(&gdk::EventMotion)>,
     pub connect_get_scale: Box<Fn() -> f64>,
@@ -82,7 +82,7 @@ impl<Renderer: 'static + AsRef<BoxObject>> BoxViewerWidget<Renderer> {
             flag_resize: false,
             connect_get_objects: Box::new(|| { vec![] }),
             connect_render_object: Box::new(|_,_,_| {}),
-            connect_select_box: Box::new(|_,_| {}),
+            connect_select_box: Box::new(|_,_,_| {}),
             connect_select_no_box: Box::new(|_| {}),
             connect_motion_notify_event: Box::new(|_| {}),
             connect_get_scale: Box::new(|| { 1.0 }),
@@ -122,7 +122,7 @@ impl<Renderer: 'static + AsRef<BoxObject>> BoxViewerWidget<Renderer> {
             if let Some(object) = (self_.connect_get_objects)().into_iter().find(|object| object.as_ref().clone().hscaled(scale).contains(x,y)) {
                 self_.offset = x;
                 self_.selecting_box_index = Some(object.as_ref().index);
-                (self_.connect_select_box)(object.as_ref().index, event);
+                (self_.connect_select_box)(&self_.canvas, object.as_ref().index, event);
             } else {
                 (self_.connect_select_no_box)(event);
             }

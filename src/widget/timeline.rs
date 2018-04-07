@@ -189,12 +189,13 @@ impl<Renderer: 'static + AsRef<BoxObject>> TimelineWidget<Renderer> {
         self.create_menu();
 
         let self_ = self as *mut Self;
-        self.box_viewer.connect_select_box = Box::new(move |index, event| {
+        self.box_viewer.connect_select_box = Box::new(move |_, index, event| {
             let self_ = unsafe { self_.as_mut().unwrap() };
 
             if event.get_button() == 1 {
                 (self_.connect_select_component)(index);
             } else if event.get_button() == 3 {
+                (self_.connect_select_component)(index);
                 let length = (event.get_position().0 / self_.scaler.get_value()) as u64 * gst::MSECOND;
                 let menu = (self_.connect_select_component_menu)(index, length);
                 menu.popup_easy(0, gtk::get_current_event_time());

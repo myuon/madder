@@ -70,10 +70,10 @@ impl<Renderer: 'static + AsRef<BoxObject>> EffectViewer<Renderer> {
 
     fn create_ui(&mut self) {
         let self_ = self as *mut Self;
-        self.viewer.connect_select_box = Box::new(move |index, event| {
+        self.viewer.connect_select_box = Box::new(move |canvas, index, event| {
             let self_ = unsafe { self_.as_mut().unwrap() };
             self_.tracking_position = (event.get_position().0, index);
-            self_.queue_draw();
+            canvas.queue_draw();
 
             if event.get_button() == 3 {
                 (self_.connect_new_point)(index, event.get_position().0 / self_.viewer.get_selected_object().unwrap().size().0 as f64);
@@ -122,7 +122,7 @@ impl<Renderer: 'static + AsRef<BoxObject>> EffectViewer<Renderer> {
     }
 
     pub fn queue_draw(&self) {
-        self.as_widget().queue_draw();
+        self.viewer.as_widget().queue_draw();
     }
 }
 
