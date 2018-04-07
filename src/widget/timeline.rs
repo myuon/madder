@@ -7,6 +7,7 @@ use gdk::prelude::*;
 
 extern crate cairo;
 extern crate pango;
+extern crate serde_json;
 
 extern crate madder_core;
 use madder_core::*;
@@ -27,8 +28,9 @@ pub struct TimelineWidget<Renderer: AsRef<BoxObject>> {
     pub connect_get_component: Box<Fn(usize) -> component::Component>,
     pub connect_select_component: Box<Fn(usize)>,
     pub connect_select_component_menu: Box<Fn(usize, gst::ClockTime) -> gtk::Menu>,
-    pub create_timeline_menu: Box<Fn() -> gtk::Menu>,
     pub connect_set_component_attr: Box<Fn(usize, &str, Attribute)>,
+    pub connect_new_component: Box<Fn(serde_json::Value)>,
+    pub menu: gtk::Menu,
 }
 
 // workaround for sharing a variable within callbacks
@@ -73,8 +75,9 @@ impl<Renderer: 'static + AsRef<BoxObject>> TimelineWidget<Renderer> {
             connect_get_component: Box::new(|_| unreachable!()),
             connect_select_component: Box::new(|_| unreachable!()),
             connect_select_component_menu: Box::new(|_,_| unreachable!()),
-            create_timeline_menu: Box::new(|| unreachable!()),
             connect_set_component_attr: Box::new(|_,_,_| unreachable!()),
+            connect_new_component: Box::new(|_| unreachable!()),
+            menu: gtk::Menu::new(),
         }
     }
 
@@ -99,7 +102,92 @@ impl<Renderer: 'static + AsRef<BoxObject>> TimelineWidget<Renderer> {
         self.ruler.send_pointer_position(x);
     }
 
+    fn create_menu(&mut self) {
+        let video_item = gtk::MenuItem::new_with_label("動画");
+        let image_item = gtk::MenuItem::new_with_label("画像");
+        let text_item = gtk::MenuItem::new_with_label("テキスト");
+        self.menu.append(&video_item);
+        self.menu.append(&image_item);
+        self.menu.append(&text_item);
+
+        let self_ = self as *mut Self;
+        video_item.connect_activate(move |_| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
+            dialog.add_button("追加", 0);
+
+            {
+                let filter = gtk::FileFilter::new();
+                filter.add_pattern("*.mkv");
+                dialog.add_filter(&filter);
+            }
+            dialog.run();
+
+            (self_.connect_new_component)(json!({
+                "component_type": "Video",
+                "start_time": 0,
+                "length": 100,
+                "layer_index": 0,
+                "prop": {
+                    "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                }
+            }));
+
+            self_.queue_draw();
+            dialog.destroy();
+        });
+
+        let self_ = self as *mut Self;
+        image_item.connect_activate(move |_| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
+            dialog.add_button("追加", 0);
+
+            {
+                let filter = gtk::FileFilter::new();
+                filter.add_pattern("*.png");
+                dialog.add_filter(&filter);
+            }
+            dialog.run();
+
+            (self_.connect_new_component)(json!({
+                "component_type": "Image",
+                "start_time": 0,
+                "length": 100,
+                "layer_index": 0,
+                "prop": {
+                    "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                }
+            }));
+
+            self_.queue_draw();
+            dialog.destroy();
+        });
+
+        let self_ = self as *mut Self;
+        text_item.connect_activate(move |_| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            (self_.connect_new_component)(json!({
+                "component_type": "Text",
+                "start_time": 0,
+                "length": 100,
+                "layer_index": 0,
+                "prop": {
+                    "entity": "dummy entity",
+                    "coordinate": [50, 50],
+                }
+            }));
+
+            self_.queue_draw();
+        });
+    }
+
     pub fn create_ui(&mut self) {
+        self.create_menu();
+
         let self_ = self as *mut Self;
         self.box_viewer.connect_select_box = Box::new(move |index, event| {
             let self_ = unsafe { self_.as_mut().unwrap() };
@@ -117,11 +205,10 @@ impl<Renderer: 'static + AsRef<BoxObject>> TimelineWidget<Renderer> {
         let self_ = self as *mut Self;
         self.box_viewer.connect_select_no_box = Box::new(move |event| {
             let self_ = unsafe { self_.as_mut().unwrap() };
-            let menu = (self_.create_timeline_menu)();
 
             if event.get_button() == 3 {
-                menu.popup_easy(0, gtk::get_current_event_time());
-                menu.show_all();
+                self_.menu.popup_easy(0, gtk::get_current_event_time());
+                self_.menu.show_all();
             }
         });
 

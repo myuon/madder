@@ -326,103 +326,7 @@ impl App {
         };
         let editor_item = {
             let editor_item = gtk::MenuItem::new_with_label("タイムライン");
-            let editor_menu = gtk::Menu::new();
-            editor_item.set_submenu(&editor_menu);
-
-            let rc_editor_menu = Rc::new(editor_menu);
-            self._menu_for_timeline = Some(rc_editor_menu.clone());
-            let editor_menu = rc_editor_menu.as_ref();
-
-            let video_item = gtk::MenuItem::new_with_label("動画");
-            let image_item = gtk::MenuItem::new_with_label("画像");
-            let text_item = gtk::MenuItem::new_with_label("テキスト");
-            editor_menu.append(&video_item);
-            editor_menu.append(&image_item);
-            editor_menu.append(&text_item);
-
-            let self_ = self as *mut Self;
-            video_item.connect_activate(move |_| {
-                let self_ = unsafe { self_.as_mut().unwrap() };
-
-                let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), Some(&self_.window), gtk::FileChooserAction::Open);
-                dialog.add_button("追加", 0);
-
-                {
-                    let filter = gtk::FileFilter::new();
-                    filter.add_pattern("*.mkv");
-                    dialog.add_filter(&filter);
-                }
-                dialog.run();
-
-                self_.editor.patch_once(Operation::Add(
-                    Pointer::from_str("/components"),
-                    json!({
-                        "component_type": "Video",
-                        "start_time": 0,
-                        "length": 100,
-                        "layer_index": 0,
-                        "prop": {
-                            "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
-                        }
-                    }),
-                ), ContentType::Value).unwrap();
-
-                self_.queue_draw();
-                dialog.destroy();
-            });
-
-            let self_ = self as *mut Self;
-            image_item.connect_activate(move |_| {
-                let self_ = unsafe { self_.as_mut().unwrap() };
-
-                let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), Some(&self_.window), gtk::FileChooserAction::Open);
-                dialog.add_button("追加", 0);
-
-                {
-                    let filter = gtk::FileFilter::new();
-                    filter.add_pattern("*.png");
-                    dialog.add_filter(&filter);
-                }
-                dialog.run();
-
-                self_.editor.patch_once(Operation::Add(
-                    Pointer::from_str("/components"),
-                    json!({
-                        "component_type": "Image",
-                        "start_time": 0,
-                        "length": 100,
-                        "layer_index": 0,
-                        "prop": {
-                            "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
-                        }
-                    }),
-                ), ContentType::Value).unwrap();
-
-                self_.queue_draw();
-                dialog.destroy();
-            });
-
-            let self_ = self as *mut Self;
-            text_item.connect_activate(move |_| {
-                let self_ = unsafe { self_.as_mut().unwrap() };
-
-                self_.editor.patch_once(Operation::Add(
-                    Pointer::from_str("/components"),
-                    json!({
-                        "component_type": "Text",
-                        "start_time": 0,
-                        "length": 100,
-                        "layer_index": 0,
-                        "prop": {
-                            "entity": "dummy entity",
-                            "coordinate": [50, 50],
-                        }
-                    }),
-                ), ContentType::Value).unwrap();
-
-                self_.queue_draw();
-            });
-
+            editor_item.set_submenu(&self.timeline.menu);
             editor_item
         };
         let project_item = {
@@ -465,6 +369,21 @@ impl App {
 
     pub fn create_ui(&mut self) {
         let self_ = self as *mut Self;
+        self.timeline.connect_get_component = Box::new(move |index| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            serde_json::from_value::<Component>(self_.editor.get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap()
+        });
+
+        let self_ = self as *mut Self;
+        self.timeline.connect_new_component = Box::new(move |value| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            self_.editor.patch_once(Operation::Add(
+                Pointer::from_str("/components"),
+                value,
+            ), ContentType::Value).unwrap();
+        });
         self.timeline.connect_get_component = Box::new(move |index| {
             let self_ = unsafe { self_.as_mut().unwrap() };
 
@@ -685,13 +604,6 @@ impl App {
             menu.append(&split_component_here);
             menu.append(&open_effect_window);
             menu
-        });
-
-        let self_ = self as *mut Self;
-        self.timeline.create_timeline_menu = Box::new(move || {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            self_._menu_for_timeline.as_ref().unwrap().as_ref().clone()
         });
 
         let self_ = self as *mut Self;
