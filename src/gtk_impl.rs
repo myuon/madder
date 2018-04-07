@@ -6,7 +6,6 @@ extern crate gdk;
 use gtk::prelude::*;
 
 use madder_core::*;
-use widget::*;
 
 #[derive(Clone, Debug)]
 pub enum Tracker {
@@ -16,7 +15,7 @@ pub enum Tracker {
     Transition,
 }
 
-pub fn edit_type_as_widget(self_: &Attribute, tracker: Vec<Tracker>, cont: Rc<Fn(Option<Attribute>, &Vec<Tracker>) + 'static>) -> gtk::Widget {
+pub fn edit_type_as_widget(self_: &Attribute, tracker: Vec<Tracker>, cont: Rc<Fn(Option<Attribute>, &Vec<Tracker>)>) -> gtk::Widget {
     use Attribute::*;
 
     match self_ {
@@ -71,7 +70,7 @@ pub fn edit_type_as_widget(self_: &Attribute, tracker: Vec<Tracker>, cont: Rc<Fn
             {
                 let mut tracker = tracker.clone();
                 tracker.push(Tracker::Y);
-                vbox.pack_start(&edit_type_as_widget(&wy, tracker, cont.clone()), true, true, 5);
+                vbox.pack_start(&edit_type_as_widget(&wy, tracker, cont), true, true, 5);
             }
 
             vbox.set_margin_left(20);
@@ -134,6 +133,9 @@ pub fn edit_type_as_widget(self_: &Attribute, tracker: Vec<Tracker>, cont: Rc<Fn
 
             combo.dynamic_cast().unwrap()
         },
+        &Sequence(_) => {
+            gtk::Label::new("sequence here").dynamic_cast().unwrap()
+        }
     }
 }
 
@@ -157,17 +159,6 @@ pub fn recover_property(dynamic_type: Attribute, tracker: &[Tracker], value: Att
         &[Tracker::EffectType] => value,
         &[Tracker::Transition] => value,
         _ => unimplemented!(),
-    }
-}
-
-pub struct ComponentRenderer {
-    pub object: BoxObject,
-    pub object_type: ComponentType,
-}
-
-impl AsRef<BoxObject> for ComponentRenderer {
-    fn as_ref(&self) -> &BoxObject {
-        &self.object
     }
 }
 

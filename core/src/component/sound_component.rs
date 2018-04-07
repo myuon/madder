@@ -69,21 +69,17 @@ impl Peekable for SoundComponent {
     }
 }
 
-impl AsRef<Component> for SoundComponent {
-    fn as_ref(&self) -> &Component {
+impl ComponentWrapper for SoundComponent {
+    fn as_component(&self) -> &Component {
         &self.component
     }
-}
 
-impl AsMut<Component> for SoundComponent {
-    fn as_mut(&mut self) -> &mut Component {
+    fn as_component_mut(&mut self) -> &mut Component {
         &mut self.component
     }
-}
 
-impl ComponentWrapper for SoundComponent {
     fn as_value(&self) -> serde_json::Value {
-        let mut json = serde_json::to_value(self.as_ref()).unwrap();
+        let mut json = serde_json::to_value(self.as_component()).unwrap();
         let props = {
             let mut props = serde_json::Map::new();
             for (k,v) in self.get_props() {

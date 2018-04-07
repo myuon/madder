@@ -1,6 +1,3 @@
-use std::rc::Rc;
-use std::cell::RefCell;
-
 extern crate gstreamer as gst;
 extern crate gtk;
 extern crate cairo;
@@ -10,28 +7,33 @@ use widget::AsWidget;
 
 pub struct RulerWidget {
     canvas: gtk::DrawingArea,
-    cb_get_scale: Box<Fn() -> f64>,
     pointer: f64,
+    width: i32,
+    height: i32,
+    pub connect_get_scale: Box<Fn() -> f64>,
 }
 
 impl RulerWidget {
-    pub fn new(width: i32, height: i32) -> Rc<RefCell<RulerWidget>> {
+    pub fn new(width: i32, height: i32) -> RulerWidget {
         let ruler = gtk::DrawingArea::new();
         ruler.set_size_request(-1, height);
 
-        let w = Rc::new(RefCell::new(RulerWidget {
+        RulerWidget {
             canvas: ruler,
-            cb_get_scale: Box::new(|| { 1.0 }),
             pointer: 0.0,
-        }));
-        RulerWidget::create_ui(w.clone(), width, height);
-
-        w
+            width: width,
+            height: height,
+            connect_get_scale: Box::new(|| { 1.0 }),
+        }
     }
 
-    fn create_ui(self_: Rc<RefCell<RulerWidget>>, width: i32, height: i32) {
-        let self__ = self_.clone();
-        self_.borrow().canvas.connect_draw(move |_, cr| {
+    pub fn create_ui(&mut self) {
+        let self_ = self as *mut Self;
+        self.canvas.connect_draw(move |_, cr| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+            let width = self_.width;
+            let height = self_.height;
+
             cr.set_line_width(1.0);
             cr.set_source_rgb(0f64, 0f64, 0f64);
 
@@ -46,7 +48,7 @@ impl RulerWidget {
             let interval_small_height = height as f64 * 0.25;
             let interval = 10;
 
-            let scaler = (self__.borrow().cb_get_scale)();
+            let scaler = (self_.connect_get_scale)();
 
             for x in (0..(((width / interval) as f64) / scaler) as i32).map(|x| x * interval) {
                 cr.move_to(x as f64, interval_large_height);
@@ -71,7 +73,7 @@ impl RulerWidget {
 
             let width = 10.0;
             let height = 5.0;
-            cr.move_to(self__.borrow().pointer, interval_large_height);
+            cr.move_to(self_.pointer, interval_large_height);
             cr.rel_line_to(-width/2.0, -height);
             cr.rel_line_to(width, 0.0);
             cr.rel_line_to(-width/2.0, height);
@@ -82,12 +84,8 @@ impl RulerWidget {
         });
     }
 
-    pub fn connect_get_scale(self_: Rc<RefCell<RulerWidget>>, cb: Box<Fn() -> f64>) {
-        self_.borrow_mut().cb_get_scale = cb;
-    }
-
-    pub fn send_pointer_position(self_: Rc<RefCell<RulerWidget>>, x: f64) {
-        self_.borrow_mut().pointer = x;
+    pub fn send_pointer_position(&mut self, x: f64) {
+        self.pointer = x;
     }
 
     pub fn queue_draw(&self) {

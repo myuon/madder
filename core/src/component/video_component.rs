@@ -93,18 +93,6 @@ pub struct VideoFileComponent {
     prop: VideoFileProperty,
 }
 
-impl AsRef<Component> for VideoFileComponent {
-    fn as_ref(&self) -> &Component {
-        &self.component
-    }
-}
-
-impl AsMut<Component> for VideoFileComponent {
-    fn as_mut(&mut self) -> &mut Component {
-        &mut self.component
-    }
-}
-
 impl VideoFileComponent {
     pub fn new_from_json(json: serde_json::Value) -> VideoFileComponent {
         let prop = VideoFileProperty::from_value(json.as_object().unwrap()["prop"].clone());
@@ -156,8 +144,16 @@ impl Peekable for VideoFileComponent {
 }
 
 impl ComponentWrapper for VideoFileComponent {
+    fn as_component(&self) -> &Component {
+        &self.component
+    }
+
+    fn as_component_mut(&mut self) -> &mut Component {
+        &mut self.component
+    }
+
     fn as_value(&self) -> serde_json::Value {
-        let mut json = serde_json::to_value(self.as_ref()).unwrap();
+        let mut json = serde_json::to_value(self.as_component()).unwrap();
         let props = {
             let mut props = serde_json::Map::new();
             for (k,v) in self.get_props() {

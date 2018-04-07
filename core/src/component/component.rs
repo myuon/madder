@@ -91,15 +91,24 @@ pub struct Component {
     pub effect: Vec<Effect>,
 }
 
-pub trait ComponentWrapper : AsRef<Component> + AsMut<Component> {
+pub trait ComponentWrapper {
     fn as_value(&self) -> serde_json::Value;
 
+    fn as_component(&self) -> &Component;
+    fn as_component_mut(&mut self) -> &mut Component;
+
+    fn as_effect_value(&self) -> Vec<serde_json::Value> {
+        self.as_effect().iter().map(|vec| {
+            serde_json::Value::Object(vec.iter().cloned().collect())
+        }).collect()
+    }
+
     fn as_effect(&self) -> Vec<Vec<(String, serde_json::Value)>> {
-        self.as_ref().effect.iter().map(|eff| eff.get_props()).collect()
+        self.as_component().effect.iter().map(|eff| eff.get_props()).collect()
     }
 
     fn as_effect_attrs(&self) -> Vec<Vec<(String, Attribute)>> {
-        self.as_ref().effect.iter().map(|eff| eff.get_attrs()).collect()
+        self.as_component().effect.iter().map(|eff| eff.get_attrs()).collect()
     }
 
     fn as_effect_mut(&mut self) -> &mut Vec<serde_json::Value> {
@@ -113,19 +122,15 @@ pub trait ComponentWrapper : AsRef<Component> + AsMut<Component> {
     }
 }
 
-impl AsRef<Component> for Component {
-    fn as_ref(&self) -> &Component {
-        self
-    }
-}
-
-impl AsMut<Component> for Component {
-    fn as_mut(&mut self) -> &mut Component {
-        self
-    }
-}
-
 impl ComponentWrapper for Component {
+    fn as_component(&self) -> &Component {
+        self
+    }
+
+    fn as_component_mut(&mut self) -> &mut Component {
+        self
+    }
+
     fn as_value(&self) -> serde_json::Value {
         serde_json::to_value(self).unwrap()
     }
@@ -137,7 +142,7 @@ impl ComponentWrapper for Component {
 
 impl HasPropertyBuilder for Component {
     fn keys(_: PhantomData<Self>) -> Vec<String> {
-        strings!["component_type", "start_time", "length", "layer_index", "effect"]
+        strings!["component_type", "start_time", "length", "layer_index"]
     }
 
     fn getter<T: AsAttribute>(&self, name: &str) -> T {
@@ -168,13 +173,13 @@ impl Deref for ComponentLike {
     type Target = Component;
 
     fn deref(&self) -> &Component {
-        self.as_ref()
+        self.as_component()
     }
 }
 
 impl DerefMut for ComponentLike {
     fn deref_mut(&mut self) -> &mut Component {
-        self.as_mut()
+        self.as_component_mut()
     }
 }
 

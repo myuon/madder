@@ -1,6 +1,4 @@
-use std::rc::Rc;
-use std::cell::RefCell;
-
+use std::cmp;
 extern crate gstreamer as gst;
 extern crate gtk;
 extern crate gdk;
@@ -10,23 +8,33 @@ use gdk::prelude::*;
 extern crate cairo;
 extern crate pango;
 
+extern crate madder_core;
+use madder_core::*;
 use widget::*;
 
-pub struct TimelineWidget {
-    box_viewer: Rc<RefCell<BoxViewerWidget>>,
-    ruler: Rc<RefCell<RulerWidget>>,
+pub struct TimelineWidget<Renderer: AsRef<BoxObject>> {
+    box_viewer: BoxViewerWidget<Renderer>,
+    ruler: RulerWidget,
     ruler_box: gtk::EventBox,
     tracker: gtk::DrawingArea,
     grid: gtk::Grid,
     overlay: gtk::Overlay,
     scaler: gtk::Scale,
     tracking_position: i32,
+    width: i32,
+    height: i32,
+    length: i32,
+    pub connect_get_component: Box<Fn(usize) -> component::Component>,
+    pub connect_select_component: Box<Fn(usize)>,
+    pub connect_select_component_menu: Box<Fn(usize, gst::ClockTime) -> gtk::Menu>,
+    pub create_timeline_menu: Box<Fn() -> gtk::Menu>,
+    pub connect_set_component_attr: Box<Fn(usize, &str, Attribute)>,
 }
 
 // workaround for sharing a variable within callbacks
-impl TimelineWidget {
-    pub fn new(width: i32, height: i32, length: i32) -> Rc<RefCell<TimelineWidget>> {
-        let box_viewer = BoxViewerWidget::new(height);
+impl<Renderer: 'static + AsRef<BoxObject>> TimelineWidget<Renderer> {
+    pub fn new(width: i32, height: i32, length: i32) -> TimelineWidget<Renderer> {
+        let box_viewer: BoxViewerWidget<Renderer> = BoxViewerWidget::new(height);
 
         let ruler_box = gtk::EventBox::new();
 
@@ -34,7 +42,7 @@ impl TimelineWidget {
         grid.set_column_spacing(4);
 
         let ruler = RulerWidget::new(length, 20);
-        ruler_box.add(ruler.borrow().as_widget());
+        ruler_box.add(ruler.as_widget());
 
         let tracker = gtk::DrawingArea::new();
         tracker.set_size_request(length, -1);
@@ -47,10 +55,10 @@ impl TimelineWidget {
         };
         let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
         vbox.pack_start(&ruler_box, true, true, 10);
-        vbox.pack_start(box_viewer.borrow().as_widget(), true, true, 0);
+        vbox.pack_start(box_viewer.as_widget(), true, true, 0);
         overlay.add(&vbox);
 
-        let w = Rc::new(RefCell::new(TimelineWidget {
+        TimelineWidget {
             box_viewer: box_viewer,
             ruler: ruler,
             ruler_box: ruler_box,
@@ -59,37 +67,100 @@ impl TimelineWidget {
             overlay: overlay,
             scaler: gtk::Scale::new_with_range(gtk::Orientation::Horizontal, 1.0, 10.0, 0.1),
             tracking_position: 0,
-        }));
-        TimelineWidget::create_ui(w.clone(), width, height, length);
-
-        w
+            width: width,
+            height: height,
+            length: length,
+            connect_get_component: Box::new(|_| unreachable!()),
+            connect_select_component: Box::new(|_| unreachable!()),
+            connect_select_component_menu: Box::new(|_,_| unreachable!()),
+            create_timeline_menu: Box::new(|| unreachable!()),
+            connect_set_component_attr: Box::new(|_,_,_| unreachable!()),
+        }
     }
 
-    fn notify_pointer_motion(&self, x: f64) {
-        let ruler = self.ruler.clone();
-        ruler.borrow().queue_draw();
-        RulerWidget::send_pointer_position(ruler, x);
+    pub fn set_component_attr(&mut self, index: usize, name: &str, value: Attribute) {
+        (self.connect_set_component_attr)(index, name, value);
     }
 
-    fn create_ui(self_: Rc<RefCell<TimelineWidget>>, width: i32, height: i32, length: i32) {
-        let timeline = self_.borrow();
-        timeline.tracker.connect_realize(move |tracker| {
+    pub fn get_component(&self, index: usize) -> component::Component {
+        (self.connect_get_component)(index)
+    }
+
+    pub fn connect_get_objects(&mut self, cont: Box<Fn() -> Vec<Renderer>>) {
+        self.box_viewer.connect_get_objects = cont;
+    }
+
+    pub fn connect_render_object(&mut self, cont: Box<Fn(Renderer, f64, &cairo::Context)>) {
+        self.box_viewer.connect_render_object = cont;
+    }
+
+    fn notify_pointer_motion(&mut self, x: f64) {
+        self.ruler.queue_draw();
+        self.ruler.send_pointer_position(x);
+    }
+
+    pub fn create_ui(&mut self) {
+        let self_ = self as *mut Self;
+        self.box_viewer.connect_select_box = Box::new(move |index, event| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            if event.get_button() == 1 {
+                (self_.connect_select_component)(index);
+            } else if event.get_button() == 3 {
+                let length = (event.get_position().0 / self_.scaler.get_value()) as u64 * gst::MSECOND;
+                let menu = (self_.connect_select_component_menu)(index, length);
+                menu.popup_easy(0, gtk::get_current_event_time());
+                menu.show_all();
+            }
+        });
+
+        let self_ = self as *mut Self;
+        self.box_viewer.connect_select_no_box = Box::new(move |event| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+            let menu = (self_.create_timeline_menu)();
+
+            if event.get_button() == 3 {
+                menu.popup_easy(0, gtk::get_current_event_time());
+                menu.show_all();
+            }
+        });
+
+        let self_ = self as *mut Self;
+        self.box_viewer.connect_get_scale = Box::new(move || {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+            self_.scaler.get_value()
+        });
+
+        self.ruler.create_ui();
+
+        let self_ = self as *mut Self;
+        self.ruler.connect_get_scale = Box::new(move || {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            self_.scaler.get_value()
+        });
+
+        self.tracker.connect_realize(move |tracker| {
             let window = tracker.get_window().unwrap();
             window.set_pass_through(true);
         });
 
-        let self__ = self_.clone();
-        timeline.ruler_box.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
-        timeline.ruler_box.connect_motion_notify_event(move |_,event| {
-            self__.borrow().notify_pointer_motion(event.get_position().0);
+        let self_ = self as *mut Self;
+        self.ruler_box.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
+        self.ruler_box.connect_motion_notify_event(move |_,event| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            self_.notify_pointer_motion(event.get_position().0);
             Inhibit(false)
         });
 
-        let self__ = self_.clone();
-        timeline.tracker.connect_draw(move |tracker,cr| {
+        let self_ = self as *mut Self;
+        self.tracker.connect_draw(move |tracker,cr| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
             cr.set_source_rgb(200f64, 0f64, 0f64);
 
-            cr.move_to(self__.borrow().tracking_position as f64, 0f64);
+            cr.move_to(self_.tracking_position as f64, 0f64);
             cr.rel_line_to(0.0, tracker.get_allocation().height as f64);
             cr.stroke();
 
@@ -97,89 +168,105 @@ impl TimelineWidget {
         });
 
         let scroll = gtk::ScrolledWindow::new(None, None);
-        scroll.set_size_request(width, height);
+        scroll.set_size_request(self.width, self.height);
         scroll.set_hexpand(true);
         scroll.set_vexpand(true);
-        scroll.add(&timeline.overlay);
+        scroll.add(&self.overlay);
 
-        timeline.grid.attach(&timeline.scaler,0,0,1,1);
-        timeline.grid.attach(&gtk::Label::new("layers here"),0,1,1,1);
-        timeline.grid.attach(&scroll, 1, 0, 1, 2);
+        self.grid.attach(&self.scaler,0,0,1,1);
+        self.grid.attach(&gtk::Label::new("layers here"),0,1,1,1);
+        self.grid.attach(&scroll, 1, 0, 1, 2);
 
-        timeline.overlay.set_size_request(length, -1);
+        self.overlay.set_size_request(self.length, -1);
 
-        let self__ = self_.clone();
-        let ruler_ = self_.borrow().ruler.clone();
-        RulerWidget::connect_get_scale(ruler_, Box::new(move || {
-            self__.borrow().scaler.get_value()
-        }));
+        let length = self.length;
+        let self_ = self as *mut Self;
+        self.scaler.connect_value_changed(move |scaler| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
 
-        let self__ = self_.clone();
-        BoxViewerWidget::connect_motion_notify_event(timeline.box_viewer.clone(), Box::new(move |event| {
-            self__.borrow().notify_pointer_motion(event.get_position().0);
-        }));
-
-        let self__ = self_.clone();
-        let box_viewer_ = self__.borrow().box_viewer.clone();
-        BoxViewerWidget::connect_get_scale(box_viewer_, Box::new(move || {
-            self__.borrow().scaler.get_value()
-        }));
-
-        let self__ = self_.clone();
-        self_.borrow().scaler.connect_value_changed(move |scaler| {
-            self__.borrow().overlay.set_size_request((length as f64 / scaler.get_value()) as i32, -1);
-            self__.borrow().as_widget().queue_draw();
+            self_.overlay.set_size_request((length as f64 / scaler.get_value()) as i32, -1);
+            self_.as_widget().queue_draw();
         });
+
+        self.box_viewer.setup();
     }
 
-    pub fn create_menu(&self, menu: &gtk::Menu) {
-        let menu = menu.clone();
-        BoxViewerWidget::connect_click_no_box(self.box_viewer.clone(), Box::new(move |event| {
-            if event.get_button() == 3 {
-                menu.popup_easy(0, gtk::get_current_event_time());
-                menu.show_all();
-            }
-        }));
+    pub fn connect_drag_component(&mut self) {
+        let self_ = self as *mut Self;
+        self.box_viewer.connect_drag_box(
+            Box::new(move |index,distance,layer_index| {
+                let self_ = unsafe { self_.as_mut().unwrap() };
+
+                let add_time = |a: gst::ClockTime, b: f64| {
+                    if b < 0.0 {
+                        if a < b.abs() as u64 * gst::MSECOND {
+                            0 * gst::MSECOND
+                        } else {
+                            a - b.abs() as u64 * gst::MSECOND
+                        }
+                    } else {
+                        a + b as u64 * gst::MSECOND
+                    }
+                };
+
+                let component = (self_.connect_get_component)(index);
+                self_.set_component_attr(
+                    index,
+                    "start_time",
+                    Attribute::Time(add_time(component.start_time, distance as f64)),
+                );
+                self_.set_component_attr(
+                    index,
+                    "layer_index",
+                    Attribute::Usize(cmp::max(layer_index, 0)),
+                );
+
+                self_.queue_draw();
+            }),
+            Box::new(move |index,distance| {
+                let self_ = unsafe { self_.as_mut().unwrap() };
+
+                let add_time = |a: gst::ClockTime, b: f64| {
+                    if b < 0.0 {
+                        if a < b.abs() as u64 * gst::MSECOND {
+                            0 * gst::MSECOND
+                        } else {
+                            a - b.abs() as u64 * gst::MSECOND
+                        }
+                    } else {
+                        a + b as u64 * gst::MSECOND
+                    }
+                };
+
+                let component = self_.get_component(index);
+                self_.set_component_attr(
+                    index,
+                    "length",
+                    Attribute::Time(add_time(component.length, distance as f64)),
+                );
+
+                self_.queue_draw();
+            }),
+        );
     }
 
-    pub fn setup_object_renderer<T: 'static + AsRef<BoxObject>>(&self, cont: Box<Fn() -> Vec<T>>, renderer: Box<Fn(&T, f64, &cairo::Context)>) {
-        BoxViewerWidget::setup(self.box_viewer.clone(), cont, renderer);
-    }
+    pub fn connect_ruler_seek_time<F: Fn(gst::ClockTime) -> gtk::Inhibit + 'static>(&mut self, cont: F) {
+        let self_ = self as *mut Self;
+        self.ruler_box.connect_button_press_event(move |_, event| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
 
-    pub fn connect_select_component(self_: Rc<RefCell<TimelineWidget>>, cont: Box<Fn(usize)>, cont_menu: Box<Fn(usize, gst::ClockTime) -> gtk::Menu>) {
-        let self__ = self_.clone();
-        BoxViewerWidget::connect_select_box(self_.borrow().box_viewer.clone(), Box::new(move |index, event| {
-            if event.get_button() == 1 {
-                cont(index)
-            } else if event.get_button() == 3 {
-                let length = (event.get_position().0 / self__.borrow().scaler.get_value()) as u64 * gst::MSECOND;
-                let menu = cont_menu(index, length);
-                menu.popup_easy(0, gtk::get_current_event_time());
-                menu.show_all();
-            }
-        }));
-    }
-
-    pub fn connect_drag_component(&self, cont_move: Box<Fn(usize, i32, usize)>, cont_resize: Box<Fn(usize, i32)>) {
-        BoxViewerWidget::connect_drag_box(self.box_viewer.clone(), cont_move, cont_resize);
-    }
-
-    pub fn connect_ruler_seek_time<F: Fn(gst::ClockTime) -> gtk::Inhibit + 'static>(self_: Rc<RefCell<TimelineWidget>>, cont: F) {
-        let scaler = self_.borrow().scaler.clone();
-        let self__ = self_.clone();
-        self_.borrow().ruler_box.connect_button_press_event(move |_, event| {
-            self__.borrow_mut().tracking_position = event.get_position().0 as i32;
-            cont((event.get_position().0 * scaler.get_value()) as u64 * gst::MSECOND)
+            self_.tracking_position = event.get_position().0 as i32;
+            cont((event.get_position().0 * self_.scaler.get_value()) as u64 * gst::MSECOND)
         });
     }
 
     pub fn queue_draw(&self) {
         self.overlay.queue_draw();
-        self.box_viewer.borrow().as_widget().queue_draw();
+        self.box_viewer.as_widget().queue_draw();
     }
 }
 
-impl AsWidget for TimelineWidget {
+impl<M: AsRef<BoxObject>> AsWidget for TimelineWidget<M> {
     type T = gtk::Grid;
 
     fn as_widget(&self) -> &Self::T {
