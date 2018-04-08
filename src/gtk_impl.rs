@@ -73,7 +73,7 @@ pub fn edit_type_as_widget(self_: &Attribute, tracker: Vec<Tracker>, cont: Rc<Fn
                 vbox.pack_start(&edit_type_as_widget(&wy, tracker, cont), true, true, 5);
             }
 
-            vbox.set_margin_left(20);
+            vbox.set_margin_start(20);
             expander.add(&vbox);
             expander.dynamic_cast().unwrap()
         },

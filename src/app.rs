@@ -20,12 +20,12 @@ extern crate pango;
 
 use gtk::prelude::*;
 use gdk::prelude::*;
+use gdk_pixbuf::prelude::*;
 
 extern crate serde_json;
 
 extern crate madder_core;
 use madder_core::*;
-use util::gtk_util;
 
 use widget::*;
 use gtk_impl;
@@ -164,7 +164,7 @@ impl App {
                 let mut data = data.as_mut_slice();
 
                 let pixbuf = self_.editor.get_current_pixbuf();
-                let pixbuf = pixbuf.scale_simple(width / 2, height / 2, gtk_util::GdkInterpType::Nearest.to_i32()).unwrap();
+                let pixbuf = pixbuf.scale_simple(width / 2, height / 2, gdk_pixbuf::InterpType::Nearest).unwrap();
                 let pixels = unsafe { pixbuf.get_pixels() };
 
                 use std::io::Write;
@@ -497,7 +497,7 @@ impl App {
                     let expander = gtk::Expander::new("Effect");
                     let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
                     expander.add(&vbox);
-                    vbox.set_margin_left(10);
+                    vbox.set_margin_start(10);
 
                     for (i, (prop_name, prop)) in prop_vec.into_iter().enumerate() {
                         let prop_index = prop_index.clone();

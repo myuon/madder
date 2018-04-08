@@ -12,6 +12,7 @@ extern crate gstreamer_video as gstv;
 
 extern crate gdk_pixbuf;
 extern crate pango;
+use gdk_pixbuf::prelude::*;
 
 mod avi_renderer;
 use avi_renderer::AviRenderer;
@@ -25,7 +26,6 @@ use serde::de::{Deserialize, Deserializer};
 use serde_json::Value;
 
 #[macro_use] extern crate madder_util as util;
-use util::gtk_util;
 use util::serde_impl::*;
 
 pub mod component;
@@ -110,7 +110,7 @@ impl Editor {
     }
 
     pub fn get_current_pixbuf(&self) -> gdk_pixbuf::Pixbuf {
-        let pixbuf = unsafe { gdk_pixbuf::Pixbuf::new(0, false, 8, self.width, self.height).unwrap() };
+        let pixbuf = gdk_pixbuf::Pixbuf::new(gdk_pixbuf::Colorspace::Rgb, false, 8, self.width, self.height);
 
         for p in unsafe { pixbuf.get_pixels().chunks_mut(3) } {
             p[0] = 0;
@@ -145,7 +145,7 @@ impl Editor {
                     cmp::min(dest.get_height(), self.height - common_prop.coordinate.1),
                     common_prop.coordinate.0.into(), common_prop.coordinate.1.into(),
                     common_prop.scale.0, common_prop.scale.1,
-                    gtk_util::GdkInterpType::Nearest.to_i32(), common_prop.alpha);
+                    gdk_pixbuf::InterpType::Nearest, common_prop.alpha);
             }
         }
 

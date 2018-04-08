@@ -4,6 +4,7 @@ extern crate gstreamer as gst;
 extern crate gtk;
 extern crate glib;
 extern crate gdk;
+extern crate gdk_pixbuf;
 
 #[macro_use] extern crate serde_json;
 

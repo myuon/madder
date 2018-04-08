@@ -6,6 +6,7 @@ extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 extern crate serde;
 extern crate serde_json;
+use gdk_pixbuf::prelude::*;
 
 use component::*;
 
@@ -206,13 +207,13 @@ impl Effect {
 
         let new_width = (pixbuf.get_width() as f64 * arg.cos().abs() + pixbuf.get_height() as f64 * arg.sin().abs()) as i32;
         let new_height = (pixbuf.get_width() as f64 * arg.sin().abs() + pixbuf.get_height() as f64 * arg.cos().abs()) as i32;
-        let new_pixbuf = unsafe { gdk_pixbuf::Pixbuf::new(
+        let new_pixbuf = gdk_pixbuf::Pixbuf::new(
             pixbuf.get_colorspace(),
             true,
             pixbuf.get_bits_per_sample(),
             new_width,
             new_height,
-        ).unwrap() };
+        );
 
         let width = pixbuf.get_width();
         let height = pixbuf.get_height();
