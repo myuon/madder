@@ -9,18 +9,17 @@ extern crate cairo;
 extern crate pango;
 extern crate serde_json;
 
+extern crate relm;
+extern crate relm_attributes;
+extern crate relm_derive;
+use relm_attributes::widget;
+use relm::*;
+
 extern crate madder_core;
 use madder_core::*;
 use widget::*;
 
-pub struct TimelineWidget<Renderer: AsRef<BoxObject>> {
-    box_viewer: BoxViewerWidget<Renderer>,
-    ruler: RulerWidget,
-    ruler_box: gtk::EventBox,
-    tracker: gtk::DrawingArea,
-    grid: gtk::Grid,
-    overlay: gtk::Overlay,
-    scaler: gtk::Scale,
+pub struct Model {
     tracking_position: i32,
     width: i32,
     height: i32,
@@ -33,6 +32,74 @@ pub struct TimelineWidget<Renderer: AsRef<BoxObject>> {
     pub menu: gtk::Menu,
 }
 
+#[derive(Msg)]
+pub enum TimelineMsg {
+}
+
+#[widget]
+impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObject> {
+    fn model(_: &Relm<Self>, parameter: (i32, i32, i32)) -> Model {
+        Model {
+            tracking_position: 0,
+            width: parameter.0,
+            height: parameter.1,
+            length: parameter.2,
+            connect_get_component: Box::new(|_| unreachable!()),
+            connect_select_component: Box::new(|_| unreachable!()),
+            connect_select_component_menu: Box::new(|_,_| unreachable!()),
+            connect_set_component_attr: Box::new(|_,_,_| unreachable!()),
+            connect_new_component: Box::new(|_| unreachable!()),
+            menu: gtk::Menu::new(),
+        }
+    }
+
+    fn update(&mut self, event: TimelineMsg) {
+    }
+
+    view! {
+        #[name="grid"]
+        gtk::Grid {
+            column_spacing: 4,
+            gtk::Scale {
+                cell: {
+                    top_attach: 0,
+                    left_attach: 0,
+                },
+            },
+            gtk::Label {
+                label: "Layers here",
+                cell: {
+                    top_attach: 1,
+                    left_attach: 0,
+                },
+            },
+            gtk::ScrolledWindow {
+                hexpand: true,
+                vexpand: true,
+                cell: {
+                    top_attach: 0,
+                    left_attach: 1,
+                    height: 2,
+                },
+                gtk::Overlay {
+                    gtk::Box {
+                        orientation: gtk::Orientation::Vertical,
+
+                        #[name="ruler_box"]
+                        gtk::EventBox {
+                            RulerWidget(self.model.length, 20) {
+                            },
+                        },
+                        BoxViewerWidget<Renderer>(self.model.height) {
+                        },
+                    },
+                },
+            },
+        },
+    }
+}
+
+/*
 // workaround for sharing a variable within callbacks
 impl<Renderer: 'static + AsRef<BoxObject>> TimelineWidget<Renderer> {
     pub fn new(width: i32, height: i32, length: i32) -> TimelineWidget<Renderer> {
@@ -362,3 +429,4 @@ impl<M: AsRef<BoxObject>> AsWidget for TimelineWidget<M> {
 
     }
 }
+ */

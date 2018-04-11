@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 extern crate gtk;
 extern crate gdk;
 extern crate gdk_pixbuf;
@@ -6,7 +8,11 @@ extern crate gstreamer as gst;
 use gtk::prelude::*;
 use gdk::prelude::*;
 
-use widget::AsWidget;
+extern crate relm;
+extern crate relm_attributes;
+extern crate relm_derive;
+use relm_attributes::widget;
+use relm::*;
 
 #[derive(Clone, Debug)]
 pub struct BoxObject {
@@ -57,78 +63,91 @@ impl BoxObject {
     }
 }
 
-pub struct BoxViewerWidget<Renderer: AsRef<BoxObject>> {
-    canvas: gtk::DrawingArea,
+pub struct Model<Renderer: AsRef<BoxObject>> {
     offset: i32,
     selecting_box_index: Option<usize>,
     flag_resize: bool,
-    pub connect_get_objects: Box<Fn() -> Vec<Renderer>>,
-    pub connect_render_object: Box<Fn(Renderer, f64, &cairo::Context)>,
-    pub connect_select_box: Box<Fn(&BoxViewerWidget<Renderer>, usize, &gdk::EventButton)>,
-    pub connect_select_no_box: Box<Fn(&gdk::EventButton)>,
-    pub connect_motion_notify_event: Box<Fn(&gdk::EventMotion)>,
-    pub connect_get_scale: Box<Fn() -> f64>,
+    connect_get_objects: Box<Fn() -> Vec<Renderer>>,
+    connect_render_object: Box<Fn(Renderer, f64, &cairo::Context)>,
+    connect_select_box: Box<Fn(usize, &gdk::EventButton)>,
+    connect_select_no_box: Box<Fn(&gdk::EventButton)>,
+    connect_motion_notify_event: Box<Fn(&gdk::EventMotion)>,
+    connect_get_scale: Box<Fn() -> f64>,
+    height: i32,
 }
 
-impl<Renderer: 'static + AsRef<BoxObject>> BoxViewerWidget<Renderer> {
-    pub fn new(height: i32) -> BoxViewerWidget<Renderer> {
-        let canvas = gtk::DrawingArea::new();
-        canvas.set_size_request(-1, height);
+#[derive(Msg)]
+pub enum BoxViewerMsg {
+    Draw(Rc<cairo::Context>),
+    Select(Rc<gdk::EventButton>),
+}
 
-        BoxViewerWidget {
-            canvas: canvas,
+#[widget]
+impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObject> {
+    fn model(_: &Relm<Self>, height: i32) -> Model<Renderer> {
+        Model {
             offset: 0,
             selecting_box_index: None,
             flag_resize: false,
             connect_get_objects: Box::new(|| { vec![] }),
             connect_render_object: Box::new(|_,_,_| {}),
-            connect_select_box: Box::new(|_,_,_| {}),
+            connect_select_box: Box::new(|_,_| {}),
             connect_select_no_box: Box::new(|_| {}),
             connect_motion_notify_event: Box::new(|_| {}),
             connect_get_scale: Box::new(|| { 1.0 }),
+            height: height,
         }
     }
 
-    pub fn get_selected_object(&self) -> Option<BoxObject> {
-        self.selecting_box_index.map(|u| (self.connect_get_objects)()[u].as_ref().clone())
+    fn update(&mut self, event: BoxViewerMsg) {
+        use self::BoxViewerMsg::*;
+
+        match event {
+            Draw(cr) => {
+                let objects = (self.model.connect_get_objects)();
+                let scaler = (self.model.connect_get_scale)();
+
+                for wrapper in objects.into_iter() {
+                    (self.model.connect_render_object)(wrapper, scaler, cr.as_ref());
+                }
+            },
+            Select(event) => {
+                let event = &event;
+                let (x,y) = event.get_position();
+                let x = x as i32;
+                let y = y as i32;
+
+                let scale = (self.model.connect_get_scale)();
+
+                if let Some(object) = (self.model.connect_get_objects)().into_iter().find(|object| object.as_ref().clone().hscaled(scale).contains(x,y)) {
+                    self.model.offset = x;
+                    self.model.selecting_box_index = Some(object.as_ref().index);
+                    (self.model.connect_select_box)(object.as_ref().index, event);
+                } else {
+                    (self.model.connect_select_no_box)(event);
+                }
+            }
+        }
     }
 
-    pub fn setup(&mut self) {
-        let self_ = self as *mut BoxViewerWidget<_>;
-        self.canvas.connect_draw(move |_,cr| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            let objects = (self_.connect_get_objects)();
-            let scaler = (self_.connect_get_scale)();
-
-            for wrapper in objects.into_iter() {
-                (self_.connect_render_object)(wrapper, scaler, cr);
-            }
-
-            Inhibit(false)
-        });
-
-        let self_ = self as *mut BoxViewerWidget<Renderer>;
+    fn init_view(&mut self) {
+        self.canvas.set_size_request(-1, self.model.height);
         self.canvas.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
-        self.canvas.connect_button_press_event(move |_,event| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
+    }
 
-            let (x,y) = event.get_position();
-            let x = x as i32;
-            let y = y as i32;
+    view!{
+        #[name="canvas"]
+        gtk::DrawingArea {
+            draw(_,cr) => (BoxViewerMsg::Draw(unsafe { Rc::from_raw(cr) }), Inhibit(false)),
+            button_press_event(_,event) => (BoxViewerMsg::Select(unsafe { Rc::from_raw(event) }), Inhibit(false)),
+        }
+    }
+}
 
-            let scale = (self_.connect_get_scale)();
-
-            if let Some(object) = (self_.connect_get_objects)().into_iter().find(|object| object.as_ref().clone().hscaled(scale).contains(x,y)) {
-                self_.offset = x;
-                self_.selecting_box_index = Some(object.as_ref().index);
-                (self_.connect_select_box)(&self_, object.as_ref().index, event);
-            } else {
-                (self_.connect_select_no_box)(event);
-            }
-
-            Inhibit(false)
-        });
+/*
+impl BoxViewer {
+    pub fn get_selected_object(&self) -> Option<BoxObject> {
+        self.selecting_box_index.map(|u| (self.connect_get_objects)()[u].as_ref().clone())
     }
 
     pub fn connect_drag_box(&mut self, cont_move: Box<Fn(usize, i32, usize)>, cont_resize: Box<Fn(usize, i32)>) {
@@ -183,4 +202,5 @@ impl<R: AsRef<BoxObject>> AsWidget for BoxViewerWidget<R> {
         &self.canvas
     }
 }
+ */
 

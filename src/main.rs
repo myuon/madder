@@ -1,10 +1,16 @@
 #![feature(box_patterns)]
 #![feature(slice_patterns)]
+#![feature(proc_macro)]
 extern crate gstreamer as gst;
 extern crate gtk;
 extern crate glib;
 extern crate gdk;
 extern crate gdk_pixbuf;
+
+extern crate relm;
+extern crate relm_attributes;
+#[macro_use] extern crate relm_derive;
+use relm::*;
 
 #[macro_use] extern crate serde_json;
 
@@ -24,6 +30,7 @@ fn main() {
     gtk::init().expect("Gtk initialization error");
     gst::init().expect("Gstreamer initialization error");
 
+    /*
     use std::env;
     let args = env::args().collect::<Vec<String>>();
 
@@ -53,4 +60,7 @@ fn main() {
     app.create_ui();
 
     gtk::main();
+     */
+
+    App::run((640, 480, 90000 * gst::MSECOND)).unwrap();
 }

@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 extern crate gtk;
 extern crate gdk;
 extern crate glib;
@@ -6,21 +8,65 @@ extern crate gstreamer as gst;
 use gtk::prelude::*;
 use gdk::prelude::*;
 
+extern crate relm;
+extern crate relm_attributes;
+extern crate relm_derive;
+use relm_attributes::widget;
+use relm::*;
+
 extern crate madder_core;
 use madder_core::*;
-use widget::{AsWidget, BoxObject, BoxViewerWidget};
+use widget::{BoxObject, BoxViewerWidget};
 
-pub struct EffectViewer<Renderer: AsRef<BoxObject>> {
-    viewer: BoxViewerWidget<Renderer>,
-    window: gtk::Window,
-    overlay: gtk::Overlay,
-    tracker: gtk::DrawingArea,
+pub struct Model {
     tracking_position: (f64, usize),
     name_list: gtk::Box,
-    pub connect_get_effect: Box<Fn(usize) -> component::Effect>,
-    pub connect_new_point: Box<Fn(usize, f64)>,
+    connect_get_effect: Box<Fn(usize) -> component::Effect>,
+    connect_new_point: Box<Fn(usize, f64)>,
 }
 
+#[derive(Msg)]
+pub enum EffectMsg {
+    Hide(Rc<gtk::Window>),
+}
+
+#[widget]
+impl<Renderer: 'static> Widget for EffectViewer<Renderer> where Renderer: AsRef<BoxObject> {
+    fn model(_: &Relm<Self>, parameter: (i32, i32, i32)) -> Model {
+        Model {
+            tracking_position: (0.0, 0),
+            name_list: gtk::Box::new(gtk::Orientation::Vertical, 0),
+            connect_get_effect: Box::new(|_| unreachable!()),
+            connect_new_point: Box::new(|_,_| unreachable!()),
+        }
+    }
+
+    fn update(&mut self, event: EffectMsg) {
+        use self::EffectMsg::*;
+
+        match event {
+            Hide(window) => {
+                let window = &window;
+                window.hide();
+            },
+        }
+    }
+
+    view! {
+        gtk::Window {
+            gtk::Box {
+                orientation: gtk::Orientation::Horizontal,
+                gtk::Overlay {
+                    BoxViewerWidget<Renderer>(200) {
+                    }
+                },
+            },
+            delete_event(window,_) => (EffectMsg::Hide(unsafe { Rc::from_raw(window) }), Inhibit(true)),
+        },
+    }
+}
+
+/*
 impl<Renderer: 'static + AsRef<BoxObject>> EffectViewer<Renderer> {
     pub fn new() -> EffectViewer<Renderer> {
         let mut viewer = EffectViewer {
@@ -135,4 +181,4 @@ impl<M: AsRef<BoxObject>> AsWidget for EffectViewer<M> {
         &self.window
     }
 }
-
+*/

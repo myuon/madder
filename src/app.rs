@@ -7,7 +7,6 @@ use std::fs::File;
 extern crate gstreamer as gst;
 extern crate gstreamer_video as gstv;
 extern crate gstreamer_app as gsta;
-
 use gst::prelude::*;
 
 extern crate gtk;
@@ -22,6 +21,12 @@ use gtk::prelude::*;
 use gdk::prelude::*;
 use gdk_pixbuf::prelude::*;
 
+extern crate relm;
+extern crate relm_attributes;
+extern crate relm_derive;
+use relm_attributes::widget;
+use relm::*;
+
 extern crate serde_json;
 
 extern crate madder_core;
@@ -33,18 +38,41 @@ use ui_impl;
 
 use WINDOW_NUMBER;
 
-pub struct App {
+pub struct Model {
     editor: Editor,
-    timeline: TimelineWidget<ui_impl::TimelineComponentRenderer>,
-    canvas: gtk::DrawingArea,
-    property: PropertyViewerWidget,
-    effect_viewer: EffectViewer<ui_impl::EffectComponentRenderer>,
+//    timeline: TimelineWidget<ui_impl::TimelineComponentRenderer>,
+//    canvas: gtk::DrawingArea,
+//    property: PropertyViewerWidget,
+//    effect_viewer: EffectViewer<ui_impl::EffectComponentRenderer>,
     selected_component_index: Option<usize>,
-    window: gtk::Window,
+//    window: gtk::Window,
     project_file_path: Option<PathBuf>,
-    _menu_for_timeline: Option<Rc<gtk::Menu>>,
 }
 
+#[derive(Msg)]
+pub enum AppMsg {
+}
+
+#[widget]
+impl Widget for App {
+    fn model(_: &Relm<Self>, param: (i32, i32, gst::ClockTime)) -> Model {
+        Model {
+            editor: Editor::new(param.0, param.1, param.2),
+            selected_component_index: None,
+            project_file_path: None,
+        }
+    }
+
+    fn update(&mut self, event: AppMsg) {
+    }
+
+    view! {
+        gtk::Window {
+        }
+    }
+}
+
+/*
 impl App {
     fn new_with(editor: Editor, width: i32, length: gst::ClockTime) -> App {
         let prop_width = 250;
@@ -58,7 +86,6 @@ impl App {
             selected_component_index: None,
             window: gtk::Window::new(gtk::WindowType::Toplevel),
             project_file_path: None,
-            _menu_for_timeline: None,
         }
     }
 
@@ -729,3 +756,4 @@ impl App {
         }
     }
 }
+*/
