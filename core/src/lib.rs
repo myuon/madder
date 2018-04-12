@@ -46,12 +46,12 @@ pub struct Editor {
     #[serde(default = "position_default")]
     position: gst::ClockTime,
 
-    width: i32,
-    height: i32,
+    pub width: i32,
+    pub height: i32,
 
     #[serde(serialize_with = "SerTime::serialize_time")]
     #[serde(deserialize_with = "SerTime::deserialize_time")]
-    length: gst::ClockTime,
+    pub length: gst::ClockTime,
 
     #[serde(skip)]
     renderer: Option<AviRenderer>,

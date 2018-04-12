@@ -138,9 +138,15 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
     view!{
         #[name="canvas"]
         gtk::DrawingArea {
-            draw(_,cr) => (BoxViewerMsg::Draw(unsafe { Rc::from_raw(cr) }), Inhibit(false)),
-            button_press_event(_,event) => (BoxViewerMsg::Select(unsafe { Rc::from_raw(event) }), Inhibit(false)),
+            draw(_,cr) => (BoxViewerMsg::Draw(Rc::new(cr.clone())), Inhibit(false)),
+            button_press_event(_,event) => (BoxViewerMsg::Select(Rc::new(event.clone())), Inhibit(false)),
         }
+    }
+}
+
+impl<Renderer: AsRef<BoxObject>> BoxViewerWidget<Renderer> {
+    pub fn queue_draw(&self) {
+        self.canvas.queue_draw();
     }
 }
 

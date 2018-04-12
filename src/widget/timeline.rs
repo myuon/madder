@@ -56,6 +56,14 @@ impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRe
     fn update(&mut self, event: TimelineMsg) {
     }
 
+    fn init_view(&mut self) {
+        let tracker = gtk::DrawingArea::new();
+        tracker.set_size_request(self.model.length, -1);
+
+        self.overlay.add_overlay(&tracker);
+        self.overlay.set_overlay_pass_through(&tracker, true);
+    }
+
     view! {
         #[name="grid"]
         gtk::Grid {
@@ -81,6 +89,8 @@ impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRe
                     left_attach: 1,
                     height: 2,
                 },
+
+                #[name="overlay"]
                 gtk::Overlay {
                     gtk::Box {
                         orientation: gtk::Orientation::Vertical,
@@ -90,6 +100,8 @@ impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRe
                             RulerWidget(self.model.length, 20) {
                             },
                         },
+
+                        #[name="box_viewer"]
                         BoxViewerWidget<Renderer>(self.model.height) {
                         },
                     },
@@ -99,55 +111,103 @@ impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRe
     }
 }
 
+impl<Renderer: AsRef<BoxObject>> TimelineWidget<Renderer> {
+    fn create_menu(&mut self) {
+        /*
+        let video_item = gtk::MenuItem::new_with_label("動画");
+        let image_item = gtk::MenuItem::new_with_label("画像");
+        let text_item = gtk::MenuItem::new_with_label("テキスト");
+        self.model.menu.append(&video_item);
+        self.model.menu.append(&image_item);
+        self.model.menu.append(&text_item);
+
+        let self_ = self as *mut Self;
+        video_item.connect_activate(move |_| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
+            dialog.add_button("追加", 0);
+
+            {
+                let filter = gtk::FileFilter::new();
+                filter.add_pattern("*.mkv");
+                dialog.add_filter(&filter);
+            }
+            dialog.run();
+
+            (self.model.connect_new_component)(json!({
+                "component_type": "Video",
+                "start_time": 0,
+                "length": 100,
+                "layer_index": 0,
+                "prop": {
+                    "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                }
+            }));
+
+            self.queue_draw();
+            dialog.destroy();
+        });
+
+        let self_ = self as *mut Self;
+        image_item.connect_activate(move |_| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
+            dialog.add_button("追加", 0);
+
+            {
+                let filter = gtk::FileFilter::new();
+                filter.add_pattern("*.png");
+                dialog.add_filter(&filter);
+            }
+            dialog.run();
+
+            (self.model.connect_new_component)(json!({
+                "component_type": "Image",
+                "start_time": 0,
+                "length": 100,
+                "layer_index": 0,
+                "prop": {
+                    "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                }
+            }));
+
+            self.queue_draw();
+            dialog.destroy();
+        });
+
+        let self_ = self as *mut Self;
+        text_item.connect_activate(move |_| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            (self.model.connect_new_component)(json!({
+                "component_type": "Text",
+                "start_time": 0,
+                "length": 100,
+                "layer_index": 0,
+                "prop": {
+                    "entity": "dummy entity",
+                    "coordinate": [50, 50],
+                }
+            }));
+
+            self.queue_draw();
+        });
+        */
+    }
+
+    pub fn queue_draw(&self) {
+        /*
+        self.overlay.queue_draw();
+        self.box_viewer.queue_draw();
+        */
+    }
+}
+
 /*
 // workaround for sharing a variable within callbacks
 impl<Renderer: 'static + AsRef<BoxObject>> TimelineWidget<Renderer> {
-    pub fn new(width: i32, height: i32, length: i32) -> TimelineWidget<Renderer> {
-        let box_viewer: BoxViewerWidget<Renderer> = BoxViewerWidget::new(height);
-
-        let ruler_box = gtk::EventBox::new();
-
-        let grid = gtk::Grid::new();
-        grid.set_column_spacing(4);
-
-        let ruler = RulerWidget::new(length, 20);
-        ruler_box.add(ruler.as_widget());
-
-        let tracker = gtk::DrawingArea::new();
-        tracker.set_size_request(length, -1);
-
-        let overlay = {
-            let overlay = gtk::Overlay::new();
-            overlay.add_overlay(&tracker);
-            overlay.set_overlay_pass_through(&tracker, true);
-            overlay
-        };
-        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        vbox.pack_start(&ruler_box, true, true, 10);
-        vbox.pack_start(box_viewer.as_widget(), true, true, 0);
-        overlay.add(&vbox);
-
-        TimelineWidget {
-            box_viewer: box_viewer,
-            ruler: ruler,
-            ruler_box: ruler_box,
-            grid: grid,
-            tracker: tracker,
-            overlay: overlay,
-            scaler: gtk::Scale::new_with_range(gtk::Orientation::Horizontal, 1.0, 10.0, 0.1),
-            tracking_position: 0,
-            width: width,
-            height: height,
-            length: length,
-            connect_get_component: Box::new(|_| unreachable!()),
-            connect_select_component: Box::new(|_| unreachable!()),
-            connect_select_component_menu: Box::new(|_,_| unreachable!()),
-            connect_set_component_attr: Box::new(|_,_,_| unreachable!()),
-            connect_new_component: Box::new(|_| unreachable!()),
-            menu: gtk::Menu::new(),
-        }
-    }
-
     pub fn set_component_attr(&mut self, index: usize, name: &str, value: Attribute) {
         (self.connect_set_component_attr)(index, name, value);
     }

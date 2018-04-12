@@ -51,6 +51,7 @@ pub struct Model {
 
 #[derive(Msg)]
 pub enum AppMsg {
+    Quit(Rc<gtk::Window>),
 }
 
 #[widget]
@@ -64,10 +65,86 @@ impl Widget for App {
     }
 
     fn update(&mut self, event: AppMsg) {
+        use self::AppMsg::*;
+
+        match event {
+            Quit(window) => {
+                let window = &window;
+                window.destroy();
+
+                unsafe {
+                    if WINDOW_NUMBER == 1 {
+                        gtk::main_quit();
+                    } else {
+                        WINDOW_NUMBER -= 1;
+                    }
+                }
+            },
+        }
+    }
+
+    fn init_view(&mut self) {
+        unsafe {
+            WINDOW_NUMBER += 1;
+        }
+
+        self.canvas.set_size_request(
+            self.model.editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32,
+            self.model.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32
+        );
     }
 
     view! {
         gtk::Window {
+            title: "madder",
+            gtk::Box {
+                orientation: gtk::Orientation::Vertical,
+
+                /*
+                self.create_menu() {
+                    child: {
+                        expand: true,
+                        fill: true,
+                    },
+                },
+                */
+
+                gtk::Box {
+                    orientation: gtk::Orientation::Horizontal,
+                    child: {
+                        expand: true,
+                        fill: true,
+                    },
+
+                    #[name="canvas"]
+                    gtk::DrawingArea {
+                        child: {
+                            expand: true,
+                            fill: true,
+                        },
+                    },
+                    PropertyViewerWidget(250) {
+                        child: {
+                            expand: true,
+                            fill: true,
+                            pack_type: gtk::PackType::End,
+                        },
+                    }
+                },
+
+                TimelineWidget<ui_impl::TimelineComponentRenderer>(self.model.editor.width, 130, cmp::max(self.model.editor.width + 250, self.model.editor.length.mseconds().unwrap() as i32)) {
+                    child: {
+                        expand: true,
+                        fill: true,
+                        padding: 5,
+                    },
+                },
+
+                gtk::Button {
+                    label: "start preview",
+                }
+            },
+            delete_event(window,_) => (AppMsg::Quit(Rc::new(window.clone())), Inhibit(false)),
         }
     }
 }
@@ -756,4 +833,4 @@ impl App {
         }
     }
 }
-*/
+ */

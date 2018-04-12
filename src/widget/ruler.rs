@@ -97,7 +97,7 @@ impl Widget for RulerWidget {
     view! {
         #[name="canvas"]
         gtk::DrawingArea {
-            draw(_,cr) => (RulerMsg::Draw(unsafe { Rc::from_raw(cr) }), Inhibit(false)),
+            draw(_,cr) => (RulerMsg::Draw(Rc::new(cr.clone())), Inhibit(false)),
         }
     }
 }

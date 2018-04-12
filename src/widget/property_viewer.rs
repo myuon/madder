@@ -4,6 +4,12 @@ extern crate gtk;
 extern crate gdk;
 use gtk::prelude::*;
 
+extern crate relm;
+extern crate relm_attributes;
+extern crate relm_derive;
+use relm_attributes::widget;
+use relm::*;
+
 use widget::AsWidget;
 
 pub trait PageI {
@@ -127,13 +133,39 @@ impl AsWidget for BoxPage {
     }
 }
 
-pub struct PropertyViewerWidget {
-    view: gtk::Box,
-    notebook: gtk::Notebook,
+pub struct Model {
     remove_button: gtk::Button,
-    pub width: i32,
+    width: i32,
 }
 
+#[derive(Msg)]
+pub enum PropertyMsg {
+}
+
+#[widget]
+impl Widget for PropertyViewerWidget {
+    fn model(_: &Relm<Self>, width: i32) -> Model {
+        Model {
+            remove_button: gtk::Button::new(),
+            width: width,
+        }
+    }
+
+    fn update(&mut self, event: PropertyMsg) {
+    }
+
+    view! {
+        gtk::Box {
+            orientation: gtk::Orientation::Vertical,
+
+            gtk::Label {
+                text: "hoge",
+            },
+        },
+    }
+}
+
+/*
 impl PropertyViewerWidget {
     pub fn new(width: i32) -> PropertyViewerWidget {
         let self_ = PropertyViewerWidget {
@@ -177,3 +209,4 @@ impl AsWidget for PropertyViewerWidget {
         &self.view
     }
 }
+ */
