@@ -34,6 +34,7 @@ pub struct Model {
 
 #[derive(Msg)]
 pub enum TimelineMsg {
+    RulerSeekTime(gst::ClockTime),
 }
 
 #[widget]
@@ -54,6 +55,13 @@ impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRe
     }
 
     fn update(&mut self, event: TimelineMsg) {
+        use self::TimelineMsg::*;
+
+        match event {
+            RulerSeekTime(time) => {
+                unimplemented!()
+            },
+        }
     }
 
     fn init_view(&mut self) {
@@ -68,6 +76,8 @@ impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRe
         #[name="grid"]
         gtk::Grid {
             column_spacing: 4,
+
+            #[name="scaler"]
             gtk::Scale {
                 cell: {
                     top_attach: 0,
@@ -203,6 +213,14 @@ impl<Renderer: AsRef<BoxObject>> TimelineWidget<Renderer> {
         self.box_viewer.queue_draw();
         */
     }
+
+    /*
+    pub fn connect_ruler_seek_time<F: Fn(gst::ClockTime) -> gtk::Inhibit + 'static>(&mut self, cont: F) {
+        self.ruler_box.connect_button_press_event(move |_, event| {
+            self.model.tracking_position = event.get_position().0 as i32;
+            cont((event.get_position().0 * self.scaler.get_value()) as u64 * gst::MSECOND)
+        });
+}*/
 }
 
 /*
@@ -463,16 +481,6 @@ impl<Renderer: 'static + AsRef<BoxObject>> TimelineWidget<Renderer> {
                 self_.queue_draw();
             }),
         );
-    }
-
-    pub fn connect_ruler_seek_time<F: Fn(gst::ClockTime) -> gtk::Inhibit + 'static>(&mut self, cont: F) {
-        let self_ = self as *mut Self;
-        self.ruler_box.connect_button_press_event(move |_, event| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            self_.tracking_position = event.get_position().0 as i32;
-            cont((event.get_position().0 * self_.scaler.get_value()) as u64 * gst::MSECOND)
-        });
     }
 
     pub fn queue_draw(&self) {

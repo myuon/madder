@@ -38,117 +38,6 @@ use ui_impl;
 
 use WINDOW_NUMBER;
 
-pub struct Model {
-    editor: Editor,
-//    timeline: TimelineWidget<ui_impl::TimelineComponentRenderer>,
-//    canvas: gtk::DrawingArea,
-//    property: PropertyViewerWidget,
-//    effect_viewer: EffectViewer<ui_impl::EffectComponentRenderer>,
-    selected_component_index: Option<usize>,
-//    window: gtk::Window,
-    project_file_path: Option<PathBuf>,
-}
-
-#[derive(Msg)]
-pub enum AppMsg {
-    Quit(Rc<gtk::Window>),
-}
-
-#[widget]
-impl Widget for App {
-    fn model(_: &Relm<Self>, param: (i32, i32, gst::ClockTime)) -> Model {
-        Model {
-            editor: Editor::new(param.0, param.1, param.2),
-            selected_component_index: None,
-            project_file_path: None,
-        }
-    }
-
-    fn update(&mut self, event: AppMsg) {
-        use self::AppMsg::*;
-
-        match event {
-            Quit(window) => {
-                let window = &window;
-                window.destroy();
-
-                unsafe {
-                    if WINDOW_NUMBER == 1 {
-                        gtk::main_quit();
-                    } else {
-                        WINDOW_NUMBER -= 1;
-                    }
-                }
-            },
-        }
-    }
-
-    fn init_view(&mut self) {
-        unsafe {
-            WINDOW_NUMBER += 1;
-        }
-
-        self.canvas.set_size_request(
-            self.model.editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32,
-            self.model.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32
-        );
-    }
-
-    view! {
-        gtk::Window {
-            title: "madder",
-            gtk::Box {
-                orientation: gtk::Orientation::Vertical,
-
-                /*
-                self.create_menu() {
-                    child: {
-                        expand: true,
-                        fill: true,
-                    },
-                },
-                */
-
-                gtk::Box {
-                    orientation: gtk::Orientation::Horizontal,
-                    child: {
-                        expand: true,
-                        fill: true,
-                    },
-
-                    #[name="canvas"]
-                    gtk::DrawingArea {
-                        child: {
-                            expand: true,
-                            fill: true,
-                        },
-                    },
-                    PropertyViewerWidget(250) {
-                        child: {
-                            expand: true,
-                            fill: true,
-                            pack_type: gtk::PackType::End,
-                        },
-                    }
-                },
-
-                TimelineWidget<ui_impl::TimelineComponentRenderer>(self.model.editor.width, 130, cmp::max(self.model.editor.width + 250, self.model.editor.length.mseconds().unwrap() as i32)) {
-                    child: {
-                        expand: true,
-                        fill: true,
-                        padding: 5,
-                    },
-                },
-
-                gtk::Button {
-                    label: "start preview",
-                }
-            },
-            delete_event(window,_) => (AppMsg::Quit(Rc::new(window.clone())), Inhibit(false)),
-        }
-    }
-}
-
 /*
 impl App {
     fn new_with(editor: Editor, width: i32, length: gst::ClockTime) -> App {
@@ -766,71 +655,156 @@ impl App {
 
             Inhibit(false)
         });
-
-        let self_ = self as *mut Self;
-        self.canvas.connect_draw(move |_,cr| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            cr.set_source_pixbuf(&self_.editor.get_current_pixbuf(), 0f64, 0f64);
-            cr.paint();
-            Inhibit(false)
-        });
-
-        self.canvas.set_size_request(
-            self.editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32,
-            self.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32
-        );
-        self.window.set_size_request(
-            self.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32,
-            self.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32 + 200
-        );
-        self.window.set_title("madder");
-
-        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        vbox.pack_start(&self.create_menu(), true, true, 0);
-
-        let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-        hbox.pack_start(&self.canvas, true, true, 0);
-        hbox.pack_end(self.property.as_widget(), true, true, 0);
-
-        let self_ = self as *mut Self;
-        self.property.connect_remove(Box::new(move || {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-            self_.remove_selected();
-        }));
-
-        vbox.pack_start(&hbox, true, true, 0);
-        vbox.pack_start(self.timeline.as_widget(), true, true, 5);
-
-        let self_ = self as *mut Self;
-        let hbox_ = hbox.clone();
-        let btn = gtk::Button::new();
-        btn.set_label("start preview");
-        btn.connect_clicked(move |_| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-            self_.start_instant_preview(&hbox_);
-        });
-        vbox.pack_start(&btn, false, false, 0);
-
-        self.window.add(&vbox);
-        self.window.show_all();
-        self.window.connect_delete_event(move |window,_| {
-            window.destroy();
-
-            unsafe {
-                if WINDOW_NUMBER == 1 {
-                    gtk::main_quit();
-                } else {
-                    WINDOW_NUMBER -= 1;
-                }
-            }
-
-            Inhibit(false)
-        });
-
-        unsafe {
-            WINDOW_NUMBER += 1;
-        }
     }
 }
  */
+
+pub struct Model {
+    editor: Editor,
+//    timeline: TimelineWidget<ui_impl::TimelineComponentRenderer>,
+//    canvas: gtk::DrawingArea,
+//    property: PropertyViewerWidget,
+//    effect_viewer: EffectViewer<ui_impl::EffectComponentRenderer>,
+    selected_component_index: Option<usize>,
+//    window: gtk::Window,
+    project_file_path: Option<PathBuf>,
+}
+
+#[derive(Msg)]
+pub enum AppMsg {
+    Quit(Rc<gtk::Window>),
+    RemoveSelected,
+    Draw(cairo::Context),
+    SeekTime(gst::ClockTime),
+}
+
+use self::TimelineMsg::*;
+
+#[widget]
+impl Widget for App {
+    fn model(_: &Relm<Self>, param: (i32, i32, gst::ClockTime)) -> Model {
+        Model {
+            editor: Editor::new(param.0, param.1, param.2),
+            selected_component_index: None,
+            project_file_path: None,
+        }
+    }
+
+    fn update(&mut self, event: AppMsg) {
+        use self::AppMsg::*;
+
+        match event {
+            Quit(window) => {
+                let window = &window;
+                window.destroy();
+
+                unsafe {
+                    if WINDOW_NUMBER == 1 {
+                        gtk::main_quit();
+                    } else {
+                        WINDOW_NUMBER -= 1;
+                    }
+                }
+            },
+            RemoveSelected => {
+//                self.remove_selected();
+            },
+            Draw(cr) => {
+                cr.set_source_pixbuf(&self.model.editor.get_current_pixbuf(), 0f64, 0f64);
+                cr.paint();
+            },
+            SeekTime(time) => {
+                self.model.editor.seek_to(time);
+//                self.model.queue_draw();
+            },
+        }
+    }
+
+    fn init_view(&mut self) {
+        unsafe {
+            WINDOW_NUMBER += 1;
+        }
+
+        self.canvas.set_size_request(
+            self.model.editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32,
+            self.model.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32
+        );
+
+        self.window.set_size_request(
+            self.model.editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32,
+            self.model.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32 + 200
+        );
+    }
+
+    view! {
+        #[name="window"]
+        gtk::Window {
+            title: "madder",
+            gtk::Box {
+                orientation: gtk::Orientation::Vertical,
+
+                gtk::MenuBar {
+                    child: {
+                        expand: true,
+                        fill: true,
+                    },
+
+                    gtk::MenuItem {
+                        label: "ファイル",
+                    },
+                    gtk::MenuItem {
+                        label: "タイムライン",
+                    },
+                },
+
+                gtk::Box {
+                    orientation: gtk::Orientation::Horizontal,
+                    child: {
+                        expand: true,
+                        fill: true,
+                    },
+
+                    #[name="canvas"]
+                    gtk::DrawingArea {
+                        child: {
+                            expand: true,
+                            fill: true,
+                        },
+
+                        draw(_,cr) => (Some(AppMsg::Draw(cr.clone())), Inhibit(false)),
+                    },
+                    PropertyViewerWidget(250) {
+                        child: {
+                            expand: true,
+                            fill: true,
+                            pack_type: gtk::PackType::End,
+                        },
+//                        remove => (AppMsg::RemoveSelected, ()),
+                    }
+                },
+
+                #[name="timeline"]
+                TimelineWidget<ui_impl::TimelineComponentRenderer>(self.model.editor.width, 130, cmp::max(self.model.editor.width + 250, self.model.editor.length.mseconds().unwrap() as i32)) {
+                    child: {
+                        expand: true,
+                        fill: true,
+                        padding: 5,
+                    },
+
+                    RulerSeekTime(time) => AppMsg::SeekTime(time),
+                },
+
+                gtk::Button {
+                    label: "start preview",
+                    clicked(_) => {
+//                        self_.start_instant_preview(&hbox_);
+                        println!("start_instant_preview")
+                    },
+                }
+            },
+            delete_event(window,_) => (AppMsg::Quit(Rc::new(window.clone())), Inhibit(false)),
+        }
+    }
+}
+
+
