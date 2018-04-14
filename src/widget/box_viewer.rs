@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 extern crate gtk;
 extern crate gdk;
 extern crate gdk_pixbuf;
@@ -66,7 +68,7 @@ pub struct Model<Renderer: AsRef<BoxObject>> {
     selecting_box_index: Option<usize>,
     flag_resize: bool,
     objects: Vec<Renderer>,
-    connect_get_scale: Box<Fn() -> f64>,
+    scale: Rc<gtk::Scale>,
     height: i32,
 }
 
@@ -83,13 +85,13 @@ pub enum BoxViewerMsg {
 
 #[widget]
 impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObject> {
-    fn model(_: &Relm<Self>, height: i32) -> Model<Renderer> {
+    fn model(_: &Relm<Self>, (height, scale): (i32, Rc<gtk::Scale>)) -> Model<Renderer> {
         Model {
             offset: 0,
             selecting_box_index: None,
             flag_resize: false,
             objects: vec![],
-            connect_get_scale: Box::new(|| { 1.0 }),
+            scale: scale,
             height: height,
         }
     }
@@ -105,8 +107,7 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
                 let (x,y) = event.get_position();
                 let x = x as i32;
                 let y = y as i32;
-
-                let scale = (self.model.connect_get_scale)();
+                let scale = self.model.scale.get_value();
 
                 let state =
                     if let Some(object) = self.model.objects.iter().find(|object| object.as_ref().clone().hscaled(scale).contains(x,y)) {
@@ -125,7 +126,7 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
                 let y = y as i32;
 
                 let window = self.canvas.get_window().unwrap();
-                let scale = (self.model.connect_get_scale)();
+                let scale = self.model.scale.get_value();
 
                 if event.get_state().contains(gdk::ModifierType::BUTTON1_MASK) && self.model.selecting_box_index.is_some() {
                     let distance = ((x - self.model.offset) as f64 * scale) as i32;

@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use std::cmp;
 extern crate gstreamer as gst;
 extern crate gtk;
@@ -119,7 +120,7 @@ impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRe
                         },
 
                         #[name="box_viewer"]
-                        BoxViewerWidget<Renderer>(self.model.height) {
+                        BoxViewerWidget<Renderer>(self.model.height, Rc::new(scaler.clone())) {
                             Draw(ref cr) => TimelineMsg::DrawObjects(cr.clone()),
                         },
                     },
