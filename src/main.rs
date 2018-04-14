@@ -62,5 +62,21 @@ fn main() {
     gtk::main();
      */
 
-    App::run((640, 480, 90000 * gst::MSECOND)).unwrap();
+    App::run(json!({
+        "width": 640,
+        "height": 480,
+        "length": 90000,
+        "components": [
+            {
+                "component_type": "Text",
+                "start_time": 0,
+                "length": 100,
+                "layer_index": 0,
+                "prop": {
+                    "coordinate": [50,50],
+                    "entity": "[ここにテキストを挿入]",
+                },
+            }
+        ],
+    })).unwrap();
 }

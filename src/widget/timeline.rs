@@ -34,8 +34,11 @@ pub struct Model {
 
 #[derive(Msg)]
 pub enum TimelineMsg {
-    RulerSeekTime(gst::ClockTime),
+    RulerSeekTime(f64),
+    DrawObjects(cairo::Context),
 }
+
+use self::BoxViewerMsg::*;
 
 #[widget]
 impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObject> {
@@ -59,7 +62,9 @@ impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRe
 
         match event {
             RulerSeekTime(time) => {
-                unimplemented!()
+                self.model.tracking_position = time as i32;
+            },
+            DrawObjects(_) => {
             },
         }
     }
@@ -109,10 +114,13 @@ impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRe
                         gtk::EventBox {
                             RulerWidget(self.model.length, 20) {
                             },
+
+                            button_press_event(_, event) => (Some(TimelineMsg::RulerSeekTime(event.get_position().0)), Inhibit(false)),
                         },
 
                         #[name="box_viewer"]
                         BoxViewerWidget<Renderer>(self.model.height) {
+                            Draw(ref cr) => TimelineMsg::DrawObjects(cr.clone()),
                         },
                     },
                 },
@@ -213,14 +221,6 @@ impl<Renderer: AsRef<BoxObject>> TimelineWidget<Renderer> {
         self.box_viewer.queue_draw();
         */
     }
-
-    /*
-    pub fn connect_ruler_seek_time<F: Fn(gst::ClockTime) -> gtk::Inhibit + 'static>(&mut self, cont: F) {
-        self.ruler_box.connect_button_press_event(move |_, event| {
-            self.model.tracking_position = event.get_position().0 as i32;
-            cont((event.get_position().0 * self.scaler.get_value()) as u64 * gst::MSECOND)
-        });
-}*/
 }
 
 /*

@@ -645,28 +645,13 @@ impl App {
 
         self.timeline.create_ui();
         self.timeline.connect_drag_component();
-
-        let self_ = self as *mut Self;
-        self.timeline.connect_ruler_seek_time(move |time| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            self_.editor.seek_to(time);
-            self_.queue_draw();
-
-            Inhibit(false)
-        });
     }
 }
  */
 
 pub struct Model {
     editor: Editor,
-//    timeline: TimelineWidget<ui_impl::TimelineComponentRenderer>,
-//    canvas: gtk::DrawingArea,
-//    property: PropertyViewerWidget,
-//    effect_viewer: EffectViewer<ui_impl::EffectComponentRenderer>,
     selected_component_index: Option<usize>,
-//    window: gtk::Window,
     project_file_path: Option<PathBuf>,
 }
 
@@ -676,15 +661,16 @@ pub enum AppMsg {
     RemoveSelected,
     Draw(cairo::Context),
     SeekTime(gst::ClockTime),
+    DrawObjects(cairo::Context),
 }
 
 use self::TimelineMsg::*;
 
 #[widget]
 impl Widget for App {
-    fn model(_: &Relm<Self>, param: (i32, i32, gst::ClockTime)) -> Model {
+    fn model(_: &Relm<Self>, value: serde_json::Value) -> Model {
         Model {
-            editor: Editor::new(param.0, param.1, param.2),
+            editor: Editor::new_from_json(value),
             selected_component_index: None,
             project_file_path: None,
         }
@@ -715,7 +701,36 @@ impl Widget for App {
             },
             SeekTime(time) => {
                 self.model.editor.seek_to(time);
-//                self.model.queue_draw();
+                self.window.queue_draw();
+            },
+            DrawObjects(cr) => {
+                for (i,component) in serde_json::from_value::<Vec<component::Component>>(self.model.editor.get_value(Pointer::from_str("/components"))).unwrap().iter().enumerate() {
+                    let entity = serde_json::from_value::<Attribute>(self.model.editor.get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
+
+                    let obj = BoxObject::new(
+                        component.start_time.mseconds().unwrap() as i32,
+                        component.length.mseconds().unwrap() as i32,
+                        i
+                    ).label(format!("{:?}", entity))
+                        .selected(Some(i) == self.model.selected_component_index)
+                        .layer_index(component.layer_index);
+
+                    let robj = ui_impl::TimelineComponentRenderer {
+                        object: obj,
+                        object_type: component.component_type.clone(),
+                    };
+
+                    // robj.hscaled(self.timeline.get_value())
+                    robj.renderer(&cr, &|p| self.model.editor.elements[robj.object.index].peek(p));
+                }
+
+                /*
+        self.timeline.connect_get_objects(Box::new(move || {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+        }));
+
+                 */
             },
         }
     }
@@ -791,14 +806,15 @@ impl Widget for App {
                         padding: 5,
                     },
 
-                    RulerSeekTime(time) => AppMsg::SeekTime(time),
+                    RulerSeekTime(time) => AppMsg::SeekTime(time as u64 * gst::MSECOND),
+                    DrawObjects(ref cr) => AppMsg::DrawObjects(cr.clone()),
                 },
 
                 gtk::Button {
                     label: "start preview",
                     clicked(_) => {
 //                        self_.start_instant_preview(&hbox_);
-                        println!("start_instant_preview")
+                        println!("start_instant_preview");
                     },
                 }
             },
