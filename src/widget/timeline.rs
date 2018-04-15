@@ -37,18 +37,19 @@ pub struct Model {
 pub enum TimelineMsg {
     RulerSeekTime(f64),
     DrawObjects(cairo::Context),
+    OnSelect(usize),
 }
 
 use self::BoxViewerMsg::*;
 
 #[widget]
 impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObject> {
-    fn model(_: &Relm<Self>, parameter: (i32, i32, i32)) -> Model {
+    fn model(_: &Relm<Self>, (width, height, length): (i32, i32, i32)) -> Model {
         Model {
             tracking_position: 0,
-            width: parameter.0,
-            height: parameter.1,
-            length: parameter.2,
+            width: width,
+            height: height,
+            length: length,
             connect_get_component: Box::new(|_| unreachable!()),
             connect_select_component: Box::new(|_| unreachable!()),
             connect_select_component_menu: Box::new(|_,_| unreachable!()),
@@ -65,14 +66,17 @@ impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRe
             RulerSeekTime(time) => {
                 self.model.tracking_position = time as i32;
             },
-            DrawObjects(_) => {
-            },
+            _ => (),
         }
     }
 
     fn init_view(&mut self) {
         let tracker = gtk::DrawingArea::new();
         tracker.set_size_request(self.model.length, -1);
+        tracker.connect_realize(move |tracker| {
+            let window = tracker.get_window().unwrap();
+            window.set_pass_through(true);
+        });
 
         self.overlay.add_overlay(&tracker);
         self.overlay.set_overlay_pass_through(&tracker, true);
@@ -122,6 +126,24 @@ impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRe
                         #[name="box_viewer"]
                         BoxViewerWidget<Renderer>(self.model.height, Rc::new(scaler.clone())) {
                             Draw(ref cr) => TimelineMsg::DrawObjects(cr.clone()),
+                            OnSelect(ref index, ref event) => {
+                                if event.get_button() == 3 {
+                                    let menu = gtk::Menu::new();
+                                    menu.append(&gtk::MenuItem::new_with_label("puyo"));
+                                    menu.popup_easy(0, gtk::get_current_event_time());
+                                    menu.show_all();
+                                }
+
+                                TimelineMsg::OnSelect(*index)
+                            },
+                            OnSelectNoBox(ref event) => {
+                                if event.get_button() == 3 {
+                                    let menu = gtk::Menu::new();
+                                    menu.append(&gtk::MenuItem::new_with_label("puyo back"));
+                                    menu.popup_easy(0, gtk::get_current_event_time());
+                                    menu.show_all();
+                                }
+                            },
                         },
                     },
                 },
@@ -130,241 +152,11 @@ impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRe
     }
 }
 
-impl<Renderer: AsRef<BoxObject>> TimelineWidget<Renderer> {
-    fn create_menu(&mut self) {
-        /*
-        let video_item = gtk::MenuItem::new_with_label("動画");
-        let image_item = gtk::MenuItem::new_with_label("画像");
-        let text_item = gtk::MenuItem::new_with_label("テキスト");
-        self.model.menu.append(&video_item);
-        self.model.menu.append(&image_item);
-        self.model.menu.append(&text_item);
-
-        let self_ = self as *mut Self;
-        video_item.connect_activate(move |_| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
-            dialog.add_button("追加", 0);
-
-            {
-                let filter = gtk::FileFilter::new();
-                filter.add_pattern("*.mkv");
-                dialog.add_filter(&filter);
-            }
-            dialog.run();
-
-            (self.model.connect_new_component)(json!({
-                "component_type": "Video",
-                "start_time": 0,
-                "length": 100,
-                "layer_index": 0,
-                "prop": {
-                    "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
-                }
-            }));
-
-            self.queue_draw();
-            dialog.destroy();
-        });
-
-        let self_ = self as *mut Self;
-        image_item.connect_activate(move |_| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
-            dialog.add_button("追加", 0);
-
-            {
-                let filter = gtk::FileFilter::new();
-                filter.add_pattern("*.png");
-                dialog.add_filter(&filter);
-            }
-            dialog.run();
-
-            (self.model.connect_new_component)(json!({
-                "component_type": "Image",
-                "start_time": 0,
-                "length": 100,
-                "layer_index": 0,
-                "prop": {
-                    "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
-                }
-            }));
-
-            self.queue_draw();
-            dialog.destroy();
-        });
-
-        let self_ = self as *mut Self;
-        text_item.connect_activate(move |_| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            (self.model.connect_new_component)(json!({
-                "component_type": "Text",
-                "start_time": 0,
-                "length": 100,
-                "layer_index": 0,
-                "prop": {
-                    "entity": "dummy entity",
-                    "coordinate": [50, 50],
-                }
-            }));
-
-            self.queue_draw();
-        });
-        */
-    }
-
-    pub fn queue_draw(&self) {
-        /*
-        self.overlay.queue_draw();
-        self.box_viewer.queue_draw();
-        */
-    }
-}
-
 /*
 // workaround for sharing a variable within callbacks
 impl<Renderer: 'static + AsRef<BoxObject>> TimelineWidget<Renderer> {
-    pub fn set_component_attr(&mut self, index: usize, name: &str, value: Attribute) {
-        (self.connect_set_component_attr)(index, name, value);
-    }
-
-    pub fn get_component(&self, index: usize) -> component::Component {
-        (self.connect_get_component)(index)
-    }
-
-    pub fn connect_get_objects(&mut self, cont: Box<Fn() -> Vec<Renderer>>) {
-        self.box_viewer.connect_get_objects = cont;
-    }
-
-    pub fn connect_render_object(&mut self, cont: Box<Fn(Renderer, f64, &cairo::Context)>) {
-        self.box_viewer.connect_render_object = cont;
-    }
-
-    fn notify_pointer_motion(&mut self, x: f64) {
-        self.ruler.queue_draw();
-        self.ruler.send_pointer_position(x);
-    }
-
-    fn create_menu(&mut self) {
-        let video_item = gtk::MenuItem::new_with_label("動画");
-        let image_item = gtk::MenuItem::new_with_label("画像");
-        let text_item = gtk::MenuItem::new_with_label("テキスト");
-        self.menu.append(&video_item);
-        self.menu.append(&image_item);
-        self.menu.append(&text_item);
-
-        let self_ = self as *mut Self;
-        video_item.connect_activate(move |_| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
-            dialog.add_button("追加", 0);
-
-            {
-                let filter = gtk::FileFilter::new();
-                filter.add_pattern("*.mkv");
-                dialog.add_filter(&filter);
-            }
-            dialog.run();
-
-            (self_.connect_new_component)(json!({
-                "component_type": "Video",
-                "start_time": 0,
-                "length": 100,
-                "layer_index": 0,
-                "prop": {
-                    "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
-                }
-            }));
-
-            self_.queue_draw();
-            dialog.destroy();
-        });
-
-        let self_ = self as *mut Self;
-        image_item.connect_activate(move |_| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
-            dialog.add_button("追加", 0);
-
-            {
-                let filter = gtk::FileFilter::new();
-                filter.add_pattern("*.png");
-                dialog.add_filter(&filter);
-            }
-            dialog.run();
-
-            (self_.connect_new_component)(json!({
-                "component_type": "Image",
-                "start_time": 0,
-                "length": 100,
-                "layer_index": 0,
-                "prop": {
-                    "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
-                }
-            }));
-
-            self_.queue_draw();
-            dialog.destroy();
-        });
-
-        let self_ = self as *mut Self;
-        text_item.connect_activate(move |_| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            (self_.connect_new_component)(json!({
-                "component_type": "Text",
-                "start_time": 0,
-                "length": 100,
-                "layer_index": 0,
-                "prop": {
-                    "entity": "dummy entity",
-                    "coordinate": [50, 50],
-                }
-            }));
-
-            self_.queue_draw();
-        });
-    }
-
     pub fn create_ui(&mut self) {
         self.create_menu();
-
-        let self_ = self as *mut Self;
-        self.box_viewer.connect_select_box = Box::new(move |_, index, event| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            if event.get_button() == 1 {
-                (self_.connect_select_component)(index);
-            } else if event.get_button() == 3 {
-                (self_.connect_select_component)(index);
-                let length = (event.get_position().0 / self_.scaler.get_value()) as u64 * gst::MSECOND;
-                let menu = (self_.connect_select_component_menu)(index, length);
-                menu.popup_easy(0, gtk::get_current_event_time());
-                menu.show_all();
-            }
-        });
-
-        let self_ = self as *mut Self;
-        self.box_viewer.connect_select_no_box = Box::new(move |event| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            if event.get_button() == 3 {
-                self_.menu.popup_easy(0, gtk::get_current_event_time());
-                self_.menu.show_all();
-            }
-        });
-
-        let self_ = self as *mut Self;
-        self.box_viewer.connect_get_scale = Box::new(move || {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-            self_.scaler.get_value()
-        });
-
         self.ruler.create_ui();
 
         let self_ = self as *mut Self;
@@ -484,6 +276,110 @@ impl<Renderer: 'static + AsRef<BoxObject>> TimelineWidget<Renderer> {
         );
     }
 
+    pub fn set_component_attr(&mut self, index: usize, name: &str, value: Attribute) {
+        (self.connect_set_component_attr)(index, name, value);
+    }
+
+    pub fn get_component(&self, index: usize) -> component::Component {
+        (self.connect_get_component)(index)
+    }
+
+    pub fn connect_get_objects(&mut self, cont: Box<Fn() -> Vec<Renderer>>) {
+        self.box_viewer.connect_get_objects = cont;
+    }
+
+    pub fn connect_render_object(&mut self, cont: Box<Fn(Renderer, f64, &cairo::Context)>) {
+        self.box_viewer.connect_render_object = cont;
+    }
+
+    fn notify_pointer_motion(&mut self, x: f64) {
+        self.ruler.queue_draw();
+        self.ruler.send_pointer_position(x);
+    }
+
+    fn create_menu(&mut self) {
+        let video_item = gtk::MenuItem::new_with_label("動画");
+        let image_item = gtk::MenuItem::new_with_label("画像");
+        let text_item = gtk::MenuItem::new_with_label("テキスト");
+        self.menu.append(&video_item);
+        self.menu.append(&image_item);
+        self.menu.append(&text_item);
+
+        let self_ = self as *mut Self;
+        video_item.connect_activate(move |_| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
+            dialog.add_button("追加", 0);
+
+            {
+                let filter = gtk::FileFilter::new();
+                filter.add_pattern("*.mkv");
+                dialog.add_filter(&filter);
+            }
+            dialog.run();
+
+            (self_.connect_new_component)(json!({
+                "component_type": "Video",
+                "start_time": 0,
+                "length": 100,
+                "layer_index": 0,
+                "prop": {
+                    "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                }
+            }));
+
+            self_.queue_draw();
+            dialog.destroy();
+        });
+
+        let self_ = self as *mut Self;
+        image_item.connect_activate(move |_| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
+            dialog.add_button("追加", 0);
+
+            {
+                let filter = gtk::FileFilter::new();
+                filter.add_pattern("*.png");
+                dialog.add_filter(&filter);
+            }
+            dialog.run();
+
+            (self_.connect_new_component)(json!({
+                "component_type": "Image",
+                "start_time": 0,
+                "length": 100,
+                "layer_index": 0,
+                "prop": {
+                    "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                }
+            }));
+
+            self_.queue_draw();
+            dialog.destroy();
+        });
+
+        let self_ = self as *mut Self;
+        text_item.connect_activate(move |_| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            (self_.connect_new_component)(json!({
+                "component_type": "Text",
+                "start_time": 0,
+                "length": 100,
+                "layer_index": 0,
+                "prop": {
+                    "entity": "dummy entity",
+                    "coordinate": [50, 50],
+                }
+            }));
+
+            self_.queue_draw();
+        });
+    }
+
     pub fn queue_draw(&self) {
         self.overlay.queue_draw();
         self.box_viewer.as_widget().queue_draw();
@@ -499,3 +395,98 @@ impl<M: AsRef<BoxObject>> AsWidget for TimelineWidget<M> {
     }
 }
  */
+
+impl<Renderer: AsRef<BoxObject>> TimelineWidget<Renderer> {
+    fn create_menu(&mut self) {
+        /*
+        let video_item = gtk::MenuItem::new_with_label("動画");
+        let image_item = gtk::MenuItem::new_with_label("画像");
+        let text_item = gtk::MenuItem::new_with_label("テキスト");
+        self.model.menu.append(&video_item);
+        self.model.menu.append(&image_item);
+        self.model.menu.append(&text_item);
+
+        let self_ = self as *mut Self;
+        video_item.connect_activate(move |_| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
+            dialog.add_button("追加", 0);
+
+            {
+                let filter = gtk::FileFilter::new();
+                filter.add_pattern("*.mkv");
+                dialog.add_filter(&filter);
+            }
+            dialog.run();
+
+            (self.model.connect_new_component)(json!({
+                "component_type": "Video",
+                "start_time": 0,
+                "length": 100,
+                "layer_index": 0,
+                "prop": {
+                    "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                }
+            }));
+
+            self.queue_draw();
+            dialog.destroy();
+        });
+
+        let self_ = self as *mut Self;
+        image_item.connect_activate(move |_| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
+            dialog.add_button("追加", 0);
+
+            {
+                let filter = gtk::FileFilter::new();
+                filter.add_pattern("*.png");
+                dialog.add_filter(&filter);
+            }
+            dialog.run();
+
+            (self.model.connect_new_component)(json!({
+                "component_type": "Image",
+                "start_time": 0,
+                "length": 100,
+                "layer_index": 0,
+                "prop": {
+                    "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
+                }
+            }));
+
+            self.queue_draw();
+            dialog.destroy();
+        });
+
+        let self_ = self as *mut Self;
+        text_item.connect_activate(move |_| {
+            let self_ = unsafe { self_.as_mut().unwrap() };
+
+            (self.model.connect_new_component)(json!({
+                "component_type": "Text",
+                "start_time": 0,
+                "length": 100,
+                "layer_index": 0,
+                "prop": {
+                    "entity": "dummy entity",
+                    "coordinate": [50, 50],
+                }
+            }));
+
+            self.queue_draw();
+        });
+        */
+    }
+
+    pub fn queue_draw(&self) {
+        /*
+        self.overlay.queue_draw();
+        self.box_viewer.queue_draw();
+        */
+    }
+}
+

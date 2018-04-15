@@ -70,6 +70,7 @@ pub struct Model<Renderer: AsRef<BoxObject>> {
     objects: Vec<Renderer>,
     scale: Rc<gtk::Scale>,
     height: i32,
+    relm: Relm<BoxViewerWidget<Renderer>>,
 }
 
 #[derive(Msg)]
@@ -85,7 +86,7 @@ pub enum BoxViewerMsg {
 
 #[widget]
 impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObject> {
-    fn model(_: &Relm<Self>, (height, scale): (i32, Rc<gtk::Scale>)) -> Model<Renderer> {
+    fn model(relm: &Relm<Self>, (height, scale): (i32, Rc<gtk::Scale>)) -> Model<Renderer> {
         Model {
             offset: 0,
             selecting_box_index: None,
@@ -93,6 +94,7 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
             objects: vec![],
             scale: scale,
             height: height,
+            relm: relm.clone(),
         }
     }
 
@@ -100,8 +102,6 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
         use self::BoxViewerMsg::*;
 
         match event {
-            Draw(cr) => {
-            },
             Select(event) => {
                 let event = &event;
                 let (x,y) = event.get_position();
@@ -109,16 +109,13 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
                 let y = y as i32;
                 let scale = self.model.scale.get_value();
 
-                let state =
-                    if let Some(object) = self.model.objects.iter().find(|object| object.as_ref().clone().hscaled(scale).contains(x,y)) {
-                        self.model.offset = x;
-                        self.model.selecting_box_index = Some(object.as_ref().index);
-                        BoxViewerMsg::OnSelect(object.as_ref().index, event.clone())
-                    } else {
-                        BoxViewerMsg::OnSelectNoBox(event.clone())
-                    };
-
-                self.update(state);
+                if let Some(object) = self.model.objects.iter().find(|object| object.as_ref().clone().hscaled(scale).contains(x,y)) {
+                    self.model.offset = x;
+                    self.model.selecting_box_index = Some(object.as_ref().index);
+                    self.model.relm.stream().emit(BoxViewerMsg::OnSelect(object.as_ref().index, event.clone()));
+                } else {
+                    self.model.relm.stream().emit(BoxViewerMsg::OnSelectNoBox(event.clone()));
+                }
             },
             Motion(event) => {
                 let (x,y) = event.get_position();
@@ -159,6 +156,7 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
     fn init_view(&mut self) {
         self.canvas.set_size_request(-1, self.model.height);
         self.canvas.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
+        self.canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
     }
 
     view!{
