@@ -179,7 +179,7 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                                     menu.show_all();
                                 }
                             },
-                            Motion(_) => TimelineMsg::RulerQueueDraw,
+                            Motion(ref event) => TimelineMsg::RulerMotionNotify(event.get_position().0),
                         },
                     },
                 },
