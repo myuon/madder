@@ -13,14 +13,14 @@ extern crate serde_json;
 extern crate relm;
 extern crate relm_attributes;
 extern crate relm_derive;
-use relm_attributes::widget;
 use relm::*;
+use relm_attributes::widget;
 
 extern crate madder_core;
 use madder_core::*;
 use widget::*;
 
-pub struct Model {
+pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
     tracking_position: i32,
     width: i32,
     height: i32,
@@ -31,11 +31,15 @@ pub struct Model {
     pub connect_set_component_attr: Box<Fn(usize, &str, Attribute)>,
     pub connect_new_component: Box<Fn(serde_json::Value)>,
     pub menu: gtk::Menu,
+    relm: Relm<TimelineWidget<Renderer>>,
+    tracker: gtk::DrawingArea,
 }
 
 #[derive(Msg)]
 pub enum TimelineMsg {
     RulerSeekTime(f64),
+    RulerMotionNotify(f64),
+    DrawTracker(gtk::DrawingArea, cairo::Context),
     DrawObjects(cairo::Context),
     OnSelect(usize),
 }
@@ -43,8 +47,8 @@ pub enum TimelineMsg {
 use self::BoxViewerMsg::*;
 
 #[widget]
-impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObject> {
-    fn model(_: &Relm<Self>, (width, height, length): (i32, i32, i32)) -> Model {
+impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
+    fn model(relm: &Relm<Self>, (width, height, length): (i32, i32, i32)) -> Model<Renderer> {
         Model {
             tracking_position: 0,
             width: width,
@@ -56,6 +60,8 @@ impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRe
             connect_set_component_attr: Box::new(|_,_,_| unreachable!()),
             connect_new_component: Box::new(|_| unreachable!()),
             menu: gtk::Menu::new(),
+            relm: relm.clone(),
+            tracker: gtk::DrawingArea::new(),
         }
     }
 
@@ -65,21 +71,35 @@ impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRe
         match event {
             RulerSeekTime(time) => {
                 self.model.tracking_position = time as i32;
+                self.model.tracker.queue_draw();
+            },
+            RulerMotionNotify(pos) => {
+                self.ruler.widget().queue_draw();
+                self.ruler.stream().emit(RulerMsg::MovePointer(pos));
+            },
+            DrawTracker(tracker, cr) => {
+                cr.set_source_rgb(200f64, 0f64, 0f64);
+
+                cr.move_to(self.model.tracking_position as f64, 0f64);
+                cr.rel_line_to(0.0, tracker.get_allocation().height as f64);
+                cr.stroke();
             },
             _ => (),
         }
     }
 
     fn init_view(&mut self) {
-        let tracker = gtk::DrawingArea::new();
-        tracker.set_size_request(self.model.length, -1);
-        tracker.connect_realize(move |tracker| {
+        self.model.tracker.set_size_request(self.model.length, -1);
+        self.model.tracker.connect_realize(move |tracker| {
             let window = tracker.get_window().unwrap();
             window.set_pass_through(true);
         });
+        self.model.tracker.show();
 
-        self.overlay.add_overlay(&tracker);
-        self.overlay.set_overlay_pass_through(&tracker, true);
+        connect!(self.model.relm, self.model.tracker, connect_draw(tracker, cr), return (Some(TimelineMsg::DrawTracker(tracker.clone(), cr.clone())), Inhibit(false)));
+
+        self.overlay.add_overlay(&self.model.tracker);
+        self.overlay.set_overlay_pass_through(&self.model.tracker, true);
     }
 
     view! {
@@ -117,10 +137,15 @@ impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRe
 
                         #[name="ruler_box"]
                         gtk::EventBox {
+                            #[name="ruler"]
                             RulerWidget(self.model.length, 20) {
                             },
 
+                            realize(ruler_box) => {
+                                ruler_box.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
+                            },
                             button_press_event(_, event) => (Some(TimelineMsg::RulerSeekTime(event.get_position().0)), Inhibit(false)),
+                            motion_notify_event(_, event) => (Some(TimelineMsg::RulerMotionNotify(event.get_position().0)), Inhibit(false))
                         },
 
                         #[name="box_viewer"]
@@ -157,28 +182,6 @@ impl<Renderer: 'static> Widget for TimelineWidget<Renderer> where Renderer: AsRe
 impl<Renderer: 'static + AsRef<BoxObject>> TimelineWidget<Renderer> {
     pub fn create_ui(&mut self) {
         self.create_menu();
-        self.ruler.create_ui();
-
-        let self_ = self as *mut Self;
-        self.ruler.connect_get_scale = Box::new(move || {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            self_.scaler.get_value()
-        });
-
-        self.tracker.connect_realize(move |tracker| {
-            let window = tracker.get_window().unwrap();
-            window.set_pass_through(true);
-        });
-
-        let self_ = self as *mut Self;
-        self.ruler_box.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
-        self.ruler_box.connect_motion_notify_event(move |_,event| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            self_.notify_pointer_motion(event.get_position().0);
-            Inhibit(false)
-        });
 
         let self_ = self as *mut Self;
         self.tracker.connect_draw(move |tracker,cr| {

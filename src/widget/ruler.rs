@@ -21,6 +21,7 @@ pub struct Model {
 #[derive(Msg)]
 pub enum RulerMsg {
     Draw(Rc<cairo::Context>),
+    MovePointer(f64),
 }
 
 #[widget]
@@ -41,9 +42,9 @@ impl Widget for RulerWidget {
             Draw(cr) => {
                 let cr = &cr;
                 cr.set_line_width(1.0);
-                cr.set_source_rgb(0f64, 0f64, 0f64);
+                cr.set_source_rgb(0.0, 0.0, 0.0);
 
-                cr.move_to(0f64, self.model.height as f64);
+                cr.move_to(0.0, self.model.height as f64);
                 cr.line_to(self.model.width as f64, self.model.height as f64);
 
                 cr.select_font_face("Serif", cairo::FontSlant::Normal, cairo::FontWeight::Bold);
@@ -87,6 +88,9 @@ impl Widget for RulerWidget {
 
                 cr.stroke();
             },
+            MovePointer(pos) => {
+                self.model.pointer = pos;
+            },
         }
     }
 
@@ -103,10 +107,6 @@ impl Widget for RulerWidget {
 }
 
 impl RulerWidget {
-    pub fn send_pointer_position(&mut self, x: f64) {
-        self.model.pointer = x;
-    }
-
     pub fn queue_draw(&self) {
         self.canvas.queue_draw();
     }
