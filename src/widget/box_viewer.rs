@@ -75,9 +75,10 @@ pub struct Model<Renderer: AsRef<BoxObject>> {
 
 #[derive(Msg)]
 pub enum BoxViewerMsg {
-    Draw(cairo::Context),
+    Draw,
     Motion(gdk::EventMotion),
     Select(gdk::EventButton),
+    OnDraw(gdk::Window),
     OnSelect(usize, gdk::EventButton),
     OnSelectNoBox(gdk::EventButton),
     OnResize(usize, i32),
@@ -102,6 +103,9 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
         use self::BoxViewerMsg::*;
 
         match event {
+            Draw => {
+                self.model.relm.stream().emit(BoxViewerMsg::OnDraw(self.canvas.get_window().unwrap()));
+            },
             Select(event) => {
                 let event = &event;
                 let (x,y) = event.get_position();
@@ -131,9 +135,9 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
 
                     let index = self.model.selecting_box_index.unwrap();
                     if self.model.flag_resize {
-                        self.update(BoxViewerMsg::OnResize(index, distance));
+                        self.model.relm.stream().emit(BoxViewerMsg::OnResize(index, distance));
                     } else {
-                        self.update(BoxViewerMsg::OnDrag(index, distance, layer_index as usize));
+                        self.model.relm.stream().emit(BoxViewerMsg::OnDrag(index, distance, layer_index as usize));
                     }
                     self.model.offset = event.get_position().0 as i32;
                 } else {
@@ -159,10 +163,10 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
         self.canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
     }
 
-    view!{
+    view! {
         #[name="canvas"]
         gtk::DrawingArea {
-            draw(_,cr) => (BoxViewerMsg::Draw(cr.clone()), Inhibit(false)),
+            draw(_,_) => (BoxViewerMsg::Draw, Inhibit(false)),
             button_press_event(_,event) => (BoxViewerMsg::Select(event.clone()), Inhibit(false)),
             motion_notify_event(_,event) => (BoxViewerMsg::Motion(event.clone()), Inhibit(false)),
         }

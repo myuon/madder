@@ -39,8 +39,9 @@ pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
 pub enum TimelineMsg {
     RulerSeekTime(f64),
     RulerMotionNotify(f64),
-    DrawTracker(gtk::DrawingArea, cairo::Context),
-    DrawObjects(cairo::Context),
+    RulerQueueDraw,
+    DrawTracker(gtk::DrawingArea),
+    OnDrawObjects(gdk::Window),
     OnSelect(usize),
 }
 
@@ -74,10 +75,14 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                 self.model.tracker.queue_draw();
             },
             RulerMotionNotify(pos) => {
-                self.ruler.widget().queue_draw();
                 self.ruler.stream().emit(RulerMsg::MovePointer(pos));
+                self.model.relm.stream().emit(TimelineMsg::RulerQueueDraw);
             },
-            DrawTracker(tracker, cr) => {
+            RulerQueueDraw => {
+                self.ruler.widget().queue_draw();
+            },
+            DrawTracker(tracker) => {
+                let cr = cairo::Context::create_from_window(&self.model.tracker.get_window().unwrap());
                 cr.set_source_rgb(200f64, 0f64, 0f64);
 
                 cr.move_to(self.model.tracking_position as f64, 0f64);
@@ -96,10 +101,13 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
         });
         self.model.tracker.show();
 
-        connect!(self.model.relm, self.model.tracker, connect_draw(tracker, cr), return (Some(TimelineMsg::DrawTracker(tracker.clone(), cr.clone())), Inhibit(false)));
+        connect!(self.model.relm, self.model.tracker, connect_draw(tracker,_), return (Some(TimelineMsg::DrawTracker(tracker.clone())), Inhibit(false)));
 
+        self.overlay.set_size_request(self.model.length, -1);
         self.overlay.add_overlay(&self.model.tracker);
         self.overlay.set_overlay_pass_through(&self.model.tracker, true);
+
+        self.scrolled.set_size_request(self.model.width, self.model.height);
     }
 
     view! {
@@ -121,6 +129,8 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                     left_attach: 0,
                 },
             },
+
+            #[name="scrolled"]
             gtk::ScrolledWindow {
                 hexpand: true,
                 vexpand: true,
@@ -150,7 +160,7 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
 
                         #[name="box_viewer"]
                         BoxViewerWidget<Renderer>(self.model.height, Rc::new(scaler.clone())) {
-                            Draw(ref cr) => TimelineMsg::DrawObjects(cr.clone()),
+                            OnDraw(ref window) => TimelineMsg::OnDrawObjects(window.clone()),
                             OnSelect(ref index, ref event) => {
                                 if event.get_button() == 3 {
                                     let menu = gtk::Menu::new();
@@ -169,6 +179,7 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                                     menu.show_all();
                                 }
                             },
+                            Motion(_) => TimelineMsg::RulerQueueDraw,
                         },
                     },
                 },
@@ -182,31 +193,6 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
 impl<Renderer: 'static + AsRef<BoxObject>> TimelineWidget<Renderer> {
     pub fn create_ui(&mut self) {
         self.create_menu();
-
-        let self_ = self as *mut Self;
-        self.tracker.connect_draw(move |tracker,cr| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            cr.set_source_rgb(200f64, 0f64, 0f64);
-
-            cr.move_to(self_.tracking_position as f64, 0f64);
-            cr.rel_line_to(0.0, tracker.get_allocation().height as f64);
-            cr.stroke();
-
-            Inhibit(false)
-        });
-
-        let scroll = gtk::ScrolledWindow::new(None, None);
-        scroll.set_size_request(self.width, self.height);
-        scroll.set_hexpand(true);
-        scroll.set_vexpand(true);
-        scroll.add(&self.overlay);
-
-        self.grid.attach(&self.scaler,0,0,1,1);
-        self.grid.attach(&gtk::Label::new("layers here"),0,1,1,1);
-        self.grid.attach(&scroll, 1, 0, 1, 2);
-
-        self.overlay.set_size_request(self.length, -1);
 
         let length = self.length;
         let self_ = self as *mut Self;

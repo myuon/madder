@@ -659,9 +659,9 @@ pub struct Model {
 pub enum AppMsg {
     Quit(Rc<gtk::Window>),
     RemoveSelected,
-    Draw(cairo::Context),
+    DrawScreen,
     SeekTime(gst::ClockTime),
-    DrawObjects(cairo::Context),
+    DrawObjects(gdk::Window),
 }
 
 use self::TimelineMsg::*;
@@ -695,7 +695,8 @@ impl Widget for App {
             RemoveSelected => {
 //                self.remove_selected();
             },
-            Draw(cr) => {
+            DrawScreen => {
+                let cr = cairo::Context::create_from_window(&self.canvas.get_window().unwrap());
                 cr.set_source_pixbuf(&self.model.editor.get_current_pixbuf(), 0f64, 0f64);
                 cr.paint();
             },
@@ -703,7 +704,8 @@ impl Widget for App {
                 self.model.editor.seek_to(time);
                 self.window.queue_draw();
             },
-            DrawObjects(cr) => {
+            DrawObjects(window) => {
+                let cr = cairo::Context::create_from_window(&window);
                 for (i,component) in serde_json::from_value::<Vec<component::Component>>(self.model.editor.get_value(Pointer::from_str("/components"))).unwrap().iter().enumerate() {
                     let entity = serde_json::from_value::<Attribute>(self.model.editor.get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
 
@@ -744,11 +746,6 @@ impl Widget for App {
             self.model.editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32,
             self.model.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32
         );
-
-        self.window.set_size_request(
-            self.model.editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32,
-            self.model.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32 + 200
-        );
     }
 
     view! {
@@ -786,7 +783,7 @@ impl Widget for App {
                             fill: true,
                         },
 
-                        draw(_,cr) => (Some(AppMsg::Draw(cr.clone())), Inhibit(false)),
+                        draw(_,_) => (Some(AppMsg::DrawScreen), Inhibit(false)),
                     },
                     PropertyViewerWidget(250) {
                         child: {
@@ -807,7 +804,7 @@ impl Widget for App {
                     },
 
                     RulerSeekTime(time) => AppMsg::SeekTime(time as u64 * gst::MSECOND),
-                    DrawObjects(ref cr) => AppMsg::DrawObjects(cr.clone()),
+                    OnDrawObjects(ref window) => AppMsg::DrawObjects(window.clone()),
                 },
 
                 gtk::Button {

@@ -4,6 +4,7 @@ extern crate gstreamer as gst;
 extern crate gtk;
 extern crate cairo;
 use gtk::prelude::*;
+use gdk::ContextExt;
 
 extern crate relm;
 extern crate relm_attributes;
@@ -20,7 +21,7 @@ pub struct Model {
 
 #[derive(Msg)]
 pub enum RulerMsg {
-    Draw(Rc<cairo::Context>),
+    Draw,
     MovePointer(f64),
 }
 
@@ -39,8 +40,8 @@ impl Widget for RulerWidget {
         use self::RulerMsg::*;
 
         match event {
-            Draw(cr) => {
-                let cr = &cr;
+            Draw => {
+                let cr = cairo::Context::create_from_window(&self.canvas.get_window().unwrap());
                 cr.set_line_width(1.0);
                 cr.set_source_rgb(0.0, 0.0, 0.0);
 
@@ -101,7 +102,7 @@ impl Widget for RulerWidget {
     view! {
         #[name="canvas"]
         gtk::DrawingArea {
-            draw(_,cr) => (RulerMsg::Draw(Rc::new(cr.clone())), Inhibit(false)),
+            draw(_,_) => (RulerMsg::Draw, Inhibit(false)),
         }
     }
 }
