@@ -653,6 +653,7 @@ pub struct Model {
     editor: Editor,
     selected_component_index: Option<usize>,
     project_file_path: Option<PathBuf>,
+    relm: Relm<App>,
 }
 
 #[derive(Msg)]
@@ -668,11 +669,12 @@ use self::TimelineMsg::*;
 
 #[widget]
 impl Widget for App {
-    fn model(_: &Relm<Self>, value: serde_json::Value) -> Model {
+    fn model(relm: &Relm<Self>, value: serde_json::Value) -> Model {
         Model {
             editor: Editor::new_from_json(value),
             selected_component_index: None,
             project_file_path: None,
+            relm: relm.clone(),
         }
     }
 
@@ -702,7 +704,8 @@ impl Widget for App {
             },
             SeekTime(time) => {
                 self.model.editor.seek_to(time);
-                self.window.queue_draw();
+                self.model.relm.stream().emit(AppMsg::DrawScreen);
+                self.timeline.stream().emit(TimelineMsg::RulerQueueDraw);
             },
             DrawObjects(window) => {
                 let cr = cairo::Context::create_from_window(&window);
@@ -783,7 +786,7 @@ impl Widget for App {
                             fill: true,
                         },
 
-                        draw(_,_) => (Some(AppMsg::DrawScreen), Inhibit(false)),
+                        draw(_,_) => (AppMsg::DrawScreen, Inhibit(false)),
                     },
                     PropertyViewerWidget(250) {
                         child: {

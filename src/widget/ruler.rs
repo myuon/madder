@@ -42,7 +42,6 @@ impl Widget for RulerWidget {
 
         match event {
             Draw => {
-                unreachable!();
                 let cr = cairo::Context::create_from_window(&self.canvas.get_window().unwrap());
                 cr.set_line_width(1.0);
                 cr.set_source_rgb(0.0, 0.0, 0.0);
@@ -104,14 +103,8 @@ impl Widget for RulerWidget {
     view! {
         #[name="canvas"]
         gtk::DrawingArea {
-//            draw(_,_) => (RulerMsg::Draw, Inhibit(false)),
+            draw(_,_) => (RulerMsg::Draw, Inhibit(false)),
         }
-    }
-}
-
-impl RulerWidget {
-    pub fn queue_draw(&self) {
-        self.canvas.queue_draw();
     }
 }
 
