@@ -12,11 +12,12 @@ extern crate relm_derive;
 use relm_attributes::widget;
 use relm::*;
 
+#[derive(Clone)]
 pub struct Model {
     pointer: f64,
     width: i32,
     height: i32,
-    connect_get_scale: Box<Fn() -> f64>,
+    scale: Rc<gtk::Scale>,
 }
 
 #[derive(Msg)]
@@ -27,12 +28,12 @@ pub enum RulerMsg {
 
 #[widget]
 impl Widget for RulerWidget {
-    fn model(_: &Relm<Self>, parameter: (i32, i32)) -> Model {
+    fn model(_: &Relm<Self>, (width, height, scale): (i32, i32, Rc<gtk::Scale>)) -> Model {
         Model {
             pointer: 0.0,
-            width: parameter.0,
-            height: parameter.1,
-            connect_get_scale: Box::new(|| { 1.0 }),
+            width: width,
+            height: height,
+            scale: scale,
         }
     }
 
@@ -41,6 +42,7 @@ impl Widget for RulerWidget {
 
         match event {
             Draw => {
+                unreachable!();
                 let cr = cairo::Context::create_from_window(&self.canvas.get_window().unwrap());
                 cr.set_line_width(1.0);
                 cr.set_source_rgb(0.0, 0.0, 0.0);
@@ -56,7 +58,7 @@ impl Widget for RulerWidget {
                 let interval_small_height = self.model.height as f64 * 0.25;
                 let interval = 10;
 
-                let scaler = (self.model.connect_get_scale)();
+                let scaler = self.model.scale.get_value();
 
                 for x in (0..(((self.model.width / interval) as f64) / scaler) as i32).map(|x| x * interval) {
                     cr.move_to(x as f64, interval_large_height);
@@ -102,7 +104,7 @@ impl Widget for RulerWidget {
     view! {
         #[name="canvas"]
         gtk::DrawingArea {
-            draw(_,_) => (RulerMsg::Draw, Inhibit(false)),
+//            draw(_,_) => (RulerMsg::Draw, Inhibit(false)),
         }
     }
 }

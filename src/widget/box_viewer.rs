@@ -173,9 +173,3 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
     }
 }
 
-impl<Renderer: AsRef<BoxObject>> BoxViewerWidget<Renderer> {
-    pub fn queue_draw(&self) {
-        self.canvas.queue_draw();
-    }
-}
-

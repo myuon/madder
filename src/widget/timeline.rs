@@ -148,7 +148,7 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                         #[name="ruler_box"]
                         gtk::EventBox {
                             #[name="ruler"]
-                            RulerWidget(self.model.length, 20) {
+                            RulerWidget(self.model.length, 20, Rc::new(scaler.clone())) {
                             },
 
                             realize(ruler_box) => {
