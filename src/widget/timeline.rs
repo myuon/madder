@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use std::cell::RefCell;
 use std::cmp;
 extern crate gstreamer as gst;
 extern crate gtk;
@@ -41,8 +42,9 @@ pub enum TimelineMsg {
     RulerMotionNotify(f64),
     RulerQueueDraw,
     DrawTracker(gtk::DrawingArea),
-    OnDrawObjects(gdk::Window),
+    ChangeScale,
     OnSelect(usize),
+    ConnectDraw(Rc<Box<Fn(&cairo::Context)>>),
 }
 
 use self::BoxViewerMsg::*;
@@ -89,6 +91,13 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                 cr.rel_line_to(0.0, tracker.get_allocation().height as f64);
                 cr.stroke();
             },
+            ChangeScale => {
+                self.overlay.set_size_request((self.model.length as f64 / self.scaler.get_value()) as i32, -1);
+                self.grid.queue_draw();
+            },
+            ConnectDraw(callback) => {
+                self.box_viewer.stream().emit(BoxViewerMsg::ConnectDraw(callback));
+            },
             _ => (),
         }
     }
@@ -117,6 +126,10 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
 
             #[name="scaler"]
             gtk::Scale {
+                orientation: gtk::Orientation::Horizontal,
+                adjustment: &gtk::Adjustment::new(1.0, 0.1, 100.0, 0.1, 0.1, 0.1),
+                value_changed(_) => TimelineMsg::ChangeScale,
+
                 cell: {
                     top_attach: 0,
                     left_attach: 0,
@@ -160,7 +173,6 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
 
                         #[name="box_viewer"]
                         BoxViewerWidget<Renderer>(self.model.height, Rc::new(scaler.clone())) {
-                            OnDraw(ref window) => TimelineMsg::OnDrawObjects(window.clone()),
                             OnSelect(ref index, ref event) => {
                                 if event.get_button() == 3 {
                                     let menu = gtk::Menu::new();
@@ -199,8 +211,6 @@ impl<Renderer: 'static + AsRef<BoxObject>> TimelineWidget<Renderer> {
         self.scaler.connect_value_changed(move |scaler| {
             let self_ = unsafe { self_.as_mut().unwrap() };
 
-            self_.overlay.set_size_request((length as f64 / scaler.get_value()) as i32, -1);
-            self_.as_widget().queue_draw();
         });
 
         self.box_viewer.setup();

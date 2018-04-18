@@ -652,7 +652,7 @@ impl App {
 
 pub struct Model {
     editor: Rc<RefCell<Editor>>,
-    selected_component_index: Option<usize>,
+    selected_component_index: Rc<RefCell<Option<usize>>>,
     project_file_path: Option<PathBuf>,
     relm: Relm<App>,
 }
@@ -662,7 +662,6 @@ pub enum AppMsg {
     Quit(Rc<gtk::Window>),
     RemoveSelected,
     SeekTime(gst::ClockTime),
-    DrawObjects(gdk::Window),
 }
 
 use self::TimelineMsg::*;
@@ -672,7 +671,7 @@ impl Widget for App {
     fn model(relm: &Relm<Self>, value: serde_json::Value) -> Model {
         Model {
             editor: Rc::new(RefCell::new(Editor::new_from_json(value))),
-            selected_component_index: None,
+            selected_component_index: Rc::new(RefCell::new(None)),
             project_file_path: None,
             relm: relm.clone(),
         }
@@ -702,36 +701,6 @@ impl Widget for App {
                 self.canvas.queue_draw();
                 self.timeline.stream().emit(TimelineMsg::RulerQueueDraw);
             },
-            DrawObjects(window) => {
-                let cr = cairo::Context::create_from_window(&window);
-                for (i,component) in serde_json::from_value::<Vec<component::Component>>(self.model.editor.borrow().get_value(Pointer::from_str("/components"))).unwrap().iter().enumerate() {
-                    let entity = serde_json::from_value::<Attribute>(self.model.editor.borrow().get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
-
-                    let obj = BoxObject::new(
-                        component.start_time.mseconds().unwrap() as i32,
-                        component.length.mseconds().unwrap() as i32,
-                        i
-                    ).label(format!("{:?}", entity))
-                        .selected(Some(i) == self.model.selected_component_index)
-                        .layer_index(component.layer_index);
-
-                    let robj = ui_impl::TimelineComponentRenderer {
-                        object: obj,
-                        object_type: component.component_type.clone(),
-                    };
-
-                    // robj.hscaled(self.timeline.get_value())
-                    robj.renderer(&cr, &|p| self.model.editor.borrow().elements[robj.object.index].peek(p));
-                }
-
-                /*
-        self.timeline.connect_get_objects(Box::new(move || {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-        }));
-
-                 */
-            },
         }
     }
 
@@ -751,6 +720,30 @@ impl Widget for App {
             cr.paint();
             Inhibit(false)
         });
+
+        let editor = self.model.editor.clone();
+        let selected_component_index = self.model.selected_component_index.clone();
+        self.timeline.stream().emit(TimelineMsg::ConnectDraw(Rc::new(Box::new(move |cr| {
+            for (i,component) in serde_json::from_value::<Vec<component::Component>>(editor.borrow().get_value(Pointer::from_str("/components"))).unwrap().iter().enumerate() {
+                let entity = serde_json::from_value::<Attribute>(editor.borrow().get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
+
+                let obj = BoxObject::new(
+                    component.start_time.mseconds().unwrap() as i32,
+                    component.length.mseconds().unwrap() as i32,
+                    i
+                ).label(format!("{:?}", entity))
+                    .selected(Some(i) == *selected_component_index.borrow())
+                    .layer_index(component.layer_index);
+
+                let robj = ui_impl::TimelineComponentRenderer {
+                    object: obj,
+                    object_type: component.component_type.clone(),
+                };
+
+                // robj.hscaled(self.timeline.get_value())
+                robj.renderer(&cr, &|p| editor.borrow().elements[robj.object.index].peek(p));
+            }
+        }))));
     }
 
     view! {
@@ -807,7 +800,6 @@ impl Widget for App {
                     },
 
                     RulerSeekTime(time) => AppMsg::SeekTime(time as u64 * gst::MSECOND),
-                    OnDrawObjects(ref window) => AppMsg::DrawObjects(window.clone()),
                 },
 
                 gtk::Button {

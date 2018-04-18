@@ -5,7 +5,6 @@ extern crate gstreamer as gst;
 extern crate gtk;
 extern crate cairo;
 use gtk::prelude::*;
-use gdk::ContextExt;
 
 extern crate relm;
 extern crate relm_attributes;

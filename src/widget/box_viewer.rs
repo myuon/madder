@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use std::cell::RefCell;
 
 extern crate gtk;
 extern crate gdk;
@@ -70,6 +71,7 @@ pub struct Model<Renderer: AsRef<BoxObject>> {
     objects: Vec<Renderer>,
     scale: Rc<gtk::Scale>,
     height: i32,
+    on_draw: Rc<RefCell<Rc<Box<Fn(&cairo::Context)>>>>,
     relm: Relm<BoxViewerWidget<Renderer>>,
 }
 
@@ -78,11 +80,11 @@ pub enum BoxViewerMsg {
     Draw,
     Motion(gdk::EventMotion),
     Select(gdk::EventButton),
-    OnDraw(gdk::Window),
     OnSelect(usize, gdk::EventButton),
     OnSelectNoBox(gdk::EventButton),
     OnResize(usize, i32),
     OnDrag(usize, i32, usize),
+    ConnectDraw(Rc<Box<Fn(&cairo::Context)>>),
 }
 
 #[widget]
@@ -95,6 +97,7 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
             objects: vec![],
             scale: scale,
             height: height,
+            on_draw: Rc::new(RefCell::new(Rc::new(Box::new(|_| {})))),
             relm: relm.clone(),
         }
     }
@@ -103,9 +106,6 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
         use self::BoxViewerMsg::*;
 
         match event {
-            Draw => {
-                self.model.relm.stream().emit(BoxViewerMsg::OnDraw(self.canvas.get_window().unwrap()));
-            },
             Select(event) => {
                 let event = &event;
                 let (x,y) = event.get_position();
@@ -153,6 +153,9 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
                     }
                 }
             },
+            ConnectDraw(ref callback) => {
+                *self.model.on_draw.borrow_mut() = callback.clone();
+            },
             _ => (),
         }
     }
@@ -161,12 +164,17 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
         self.canvas.set_size_request(-1, self.model.height);
         self.canvas.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
         self.canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
+
+        let on_draw = self.model.on_draw.clone();
+        self.canvas.connect_draw(move |_,cr| {
+            (on_draw.borrow())(cr);
+            Inhibit(false)
+        });
     }
 
     view! {
         #[name="canvas"]
         gtk::DrawingArea {
-            draw(_,_) => (BoxViewerMsg::Draw, Inhibit(false)),
             button_press_event(_,event) => (BoxViewerMsg::Select(event.clone()), Inhibit(false)),
             motion_notify_event(_,event) => (BoxViewerMsg::Motion(event.clone()), Inhibit(false)),
         }
