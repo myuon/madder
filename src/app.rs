@@ -1,5 +1,6 @@
 use std::cmp;
 use std::rc::Rc;
+use std::cell::RefCell;
 use std::path::PathBuf;
 use std::io::{BufWriter, Write};
 use std::fs::File;
@@ -650,7 +651,7 @@ impl App {
  */
 
 pub struct Model {
-    editor: Editor,
+    editor: Rc<RefCell<Editor>>,
     selected_component_index: Option<usize>,
     project_file_path: Option<PathBuf>,
     relm: Relm<App>,
@@ -660,7 +661,6 @@ pub struct Model {
 pub enum AppMsg {
     Quit(Rc<gtk::Window>),
     RemoveSelected,
-    DrawScreen,
     SeekTime(gst::ClockTime),
     DrawObjects(gdk::Window),
 }
@@ -671,7 +671,7 @@ use self::TimelineMsg::*;
 impl Widget for App {
     fn model(relm: &Relm<Self>, value: serde_json::Value) -> Model {
         Model {
-            editor: Editor::new_from_json(value),
+            editor: Rc::new(RefCell::new(Editor::new_from_json(value))),
             selected_component_index: None,
             project_file_path: None,
             relm: relm.clone(),
@@ -697,20 +697,15 @@ impl Widget for App {
             RemoveSelected => {
 //                self.remove_selected();
             },
-            DrawScreen => {
-                let cr = cairo::Context::create_from_window(&self.canvas.get_window().unwrap());
-                cr.set_source_pixbuf(&self.model.editor.get_current_pixbuf(), 0f64, 0f64);
-                cr.paint();
-            },
             SeekTime(time) => {
-                self.model.editor.seek_to(time);
-                self.model.relm.stream().emit(AppMsg::DrawScreen);
+                self.model.editor.borrow_mut().seek_to(time);
+                self.canvas.queue_draw();
                 self.timeline.stream().emit(TimelineMsg::RulerQueueDraw);
             },
             DrawObjects(window) => {
                 let cr = cairo::Context::create_from_window(&window);
-                for (i,component) in serde_json::from_value::<Vec<component::Component>>(self.model.editor.get_value(Pointer::from_str("/components"))).unwrap().iter().enumerate() {
-                    let entity = serde_json::from_value::<Attribute>(self.model.editor.get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
+                for (i,component) in serde_json::from_value::<Vec<component::Component>>(self.model.editor.borrow().get_value(Pointer::from_str("/components"))).unwrap().iter().enumerate() {
+                    let entity = serde_json::from_value::<Attribute>(self.model.editor.borrow().get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
 
                     let obj = BoxObject::new(
                         component.start_time.mseconds().unwrap() as i32,
@@ -726,7 +721,7 @@ impl Widget for App {
                     };
 
                     // robj.hscaled(self.timeline.get_value())
-                    robj.renderer(&cr, &|p| self.model.editor.elements[robj.object.index].peek(p));
+                    robj.renderer(&cr, &|p| self.model.editor.borrow().elements[robj.object.index].peek(p));
                 }
 
                 /*
@@ -746,9 +741,16 @@ impl Widget for App {
         }
 
         self.canvas.set_size_request(
-            self.model.editor.get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32,
-            self.model.editor.get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32
+            self.model.editor.borrow().get_value(Pointer::from_str("/width")).as_i64().unwrap() as i32,
+            self.model.editor.borrow().get_value(Pointer::from_str("/height")).as_i64().unwrap() as i32
         );
+
+        let editor = self.model.editor.clone();
+        self.canvas.connect_draw(move |_,cr| {
+            cr.set_source_pixbuf(&editor.borrow().get_current_pixbuf(), 0f64, 0f64);
+            cr.paint();
+            Inhibit(false)
+        });
     }
 
     view! {
@@ -785,8 +787,6 @@ impl Widget for App {
                             expand: true,
                             fill: true,
                         },
-
-                        draw(_,_) => (AppMsg::DrawScreen, Inhibit(false)),
                     },
                     PropertyViewerWidget(250) {
                         child: {
@@ -799,7 +799,7 @@ impl Widget for App {
                 },
 
                 #[name="timeline"]
-                TimelineWidget<ui_impl::TimelineComponentRenderer>(self.model.editor.width, 130, cmp::max(self.model.editor.width + 250, self.model.editor.length.mseconds().unwrap() as i32)) {
+                TimelineWidget<ui_impl::TimelineComponentRenderer>(self.model.editor.borrow().width, 130, cmp::max(self.model.editor.borrow().width + 250, self.model.editor.borrow().length.mseconds().unwrap() as i32)) {
                     child: {
                         expand: true,
                         fill: true,
