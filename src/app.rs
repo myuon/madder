@@ -723,7 +723,7 @@ impl Widget for App {
 
         let editor = self.model.editor.clone();
         let selected_component_index = self.model.selected_component_index.clone();
-        self.timeline.stream().emit(TimelineMsg::ConnectDraw(Rc::new(Box::new(move |cr| {
+        self.timeline.stream().emit(TimelineMsg::ConnectDraw(Rc::new(Box::new(move |cr, scaler| {
             for (i,component) in serde_json::from_value::<Vec<component::Component>>(editor.borrow().get_value(Pointer::from_str("/components"))).unwrap().iter().enumerate() {
                 let entity = serde_json::from_value::<Attribute>(editor.borrow().get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
 
@@ -740,8 +740,7 @@ impl Widget for App {
                     object_type: component.component_type.clone(),
                 };
 
-                // robj.hscaled(self.timeline.get_value())
-                robj.renderer(&cr, &|p| editor.borrow().elements[robj.object.index].peek(p));
+                robj.hscaled(scaler).renderer(&cr, &|p| editor.borrow().elements[robj.object.index].peek(p));
             }
         }))));
     }

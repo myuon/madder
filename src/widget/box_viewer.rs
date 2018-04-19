@@ -71,7 +71,7 @@ pub struct Model<Renderer: AsRef<BoxObject>> {
     objects: Vec<Renderer>,
     scale: Rc<gtk::Scale>,
     height: i32,
-    on_draw: Rc<RefCell<Rc<Box<Fn(&cairo::Context)>>>>,
+    on_draw: Rc<RefCell<Rc<Box<Fn(&cairo::Context, f64)>>>>,
     relm: Relm<BoxViewerWidget<Renderer>>,
 }
 
@@ -84,7 +84,7 @@ pub enum BoxViewerMsg {
     OnSelectNoBox(gdk::EventButton),
     OnResize(usize, i32),
     OnDrag(usize, i32, usize),
-    ConnectDraw(Rc<Box<Fn(&cairo::Context)>>),
+    ConnectDraw(Rc<Box<Fn(&cairo::Context, f64)>>),
 }
 
 #[widget]
@@ -97,7 +97,7 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
             objects: vec![],
             scale: scale,
             height: height,
-            on_draw: Rc::new(RefCell::new(Rc::new(Box::new(|_| {})))),
+            on_draw: Rc::new(RefCell::new(Rc::new(Box::new(|_,_| {})))),
             relm: relm.clone(),
         }
     }
@@ -166,8 +166,9 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
         self.canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
 
         let on_draw = self.model.on_draw.clone();
+        let scale = self.model.scale.clone();
         self.canvas.connect_draw(move |_,cr| {
-            (on_draw.borrow())(cr);
+            (on_draw.borrow())(cr, scale.get_value());
             Inhibit(false)
         });
     }

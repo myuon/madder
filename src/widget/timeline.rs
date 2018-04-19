@@ -1,5 +1,4 @@
 use std::rc::Rc;
-use std::cell::RefCell;
 use std::cmp;
 extern crate gstreamer as gst;
 extern crate gtk;
@@ -44,7 +43,7 @@ pub enum TimelineMsg {
     DrawTracker(gtk::DrawingArea),
     ChangeScale,
     OnSelect(usize),
-    ConnectDraw(Rc<Box<Fn(&cairo::Context)>>),
+    ConnectDraw(Rc<Box<Fn(&cairo::Context, f64)>>),
 }
 
 use self::BoxViewerMsg::*;
