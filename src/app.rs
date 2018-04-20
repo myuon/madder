@@ -362,14 +362,6 @@ impl App {
     }
 
     pub fn create_ui(&mut self) {
-        let self_ = self as *mut Self;
-        self.timeline.connect_get_component = Box::new(move |index| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            serde_json::from_value::<Component>(self_.editor.get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap()
-        });
-
-        let self_ = self as *mut Self;
         self.timeline.connect_new_component = Box::new(move |value| {
             let self_ = unsafe { self_.as_mut().unwrap() };
 
@@ -377,11 +369,6 @@ impl App {
                 Pointer::from_str("/components"),
                 value,
             ), ContentType::Value).unwrap();
-        });
-        self.timeline.connect_get_component = Box::new(move |index| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            serde_json::from_value::<Component>(self_.editor.get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap()
         });
 
         let self_ = self as *mut Self;
@@ -412,16 +399,6 @@ impl App {
 
             robj.hscaled(scaler).renderer(cr, &|p| self_.editor.elements[robj.object.index].peek(p));
         }));
-
-        let self_ = self as *mut Self;
-        self.timeline.connect_set_component_attr = Box::new(move |index, attr, value| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            self_.editor.patch_once(Operation::Add(
-                Pointer::from_str(&format!("/components/{}/{}", index, attr)),
-                json!(value),
-            ), ContentType::Attribute).unwrap();
-        });
 
         let self_ = self as *mut Self;
         self.timeline.connect_select_component = Box::new(move |index: usize| {
@@ -662,6 +639,7 @@ pub enum AppMsg {
     Quit(Rc<gtk::Window>),
     RemoveSelected,
     SeekTime(gst::ClockTime),
+    SetComponentAttr(usize, &'static str, Attribute),
 }
 
 use self::TimelineMsg::*;
@@ -700,6 +678,12 @@ impl Widget for App {
                 self.model.editor.borrow_mut().seek_to(time);
                 self.canvas.queue_draw();
                 self.timeline.stream().emit(TimelineMsg::RulerQueueDraw);
+            },
+            SetComponentAttr(index, name, attr) => {
+                self.model.editor.borrow_mut().patch_once(Operation::Add(
+                    Pointer::from_str(&format!("/components/{}/{}", index, name)),
+                    json!(attr),
+                ), ContentType::Attribute).unwrap();
             },
         }
     }
@@ -743,6 +727,11 @@ impl Widget for App {
                 robj.hscaled(scaler).renderer(&cr, &|p| editor.borrow().elements[robj.object.index].peek(p));
             }
         }))));
+
+        let editor = self.model.editor.clone();
+        self.timeline.stream().emit(TimelineMsg::ConnectGetComponent(Box::new(move |index| {
+            serde_json::from_value::<component::Component>(editor.borrow().get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap()
+        })));
     }
 
     view! {
@@ -799,6 +788,7 @@ impl Widget for App {
                     },
 
                     RulerSeekTime(time) => AppMsg::SeekTime(time as u64 * gst::MSECOND),
+                    SetComponentAttr(index, name, ref attr) => AppMsg::SetComponentAttr(index, name, attr.clone()),
                 },
 
                 gtk::Button {

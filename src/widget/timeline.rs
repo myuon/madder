@@ -25,10 +25,9 @@ pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
     width: i32,
     height: i32,
     length: i32,
-    pub connect_get_component: Box<Fn(usize) -> component::Component>,
+    get_component: Box<Fn(usize) -> component::Component>,
     pub connect_select_component: Box<Fn(usize)>,
     pub connect_select_component_menu: Box<Fn(usize, gst::ClockTime) -> gtk::Menu>,
-    pub connect_set_component_attr: Box<Fn(usize, &str, Attribute)>,
     pub connect_new_component: Box<Fn(serde_json::Value)>,
     pub menu: gtk::Menu,
     relm: Relm<TimelineWidget<Renderer>>,
@@ -43,7 +42,11 @@ pub enum TimelineMsg {
     DrawTracker(gtk::DrawingArea),
     ChangeScale,
     OnSelect(usize),
+    DragComponent(usize, i32, usize),
+    ResizeComponent(usize, i32),
+    SetComponentAttr(usize, &'static str, Attribute),
     ConnectDraw(Rc<Box<Fn(&cairo::Context, f64)>>),
+    ConnectGetComponent(Box<Fn(usize) -> component::Component>),
 }
 
 use self::BoxViewerMsg::*;
@@ -56,10 +59,9 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
             width: width,
             height: height,
             length: length,
-            connect_get_component: Box::new(|_| unreachable!()),
+            get_component: Box::new(|_| unreachable!()),
             connect_select_component: Box::new(|_| unreachable!()),
             connect_select_component_menu: Box::new(|_,_| unreachable!()),
-            connect_set_component_attr: Box::new(|_,_,_| unreachable!()),
             connect_new_component: Box::new(|_| unreachable!()),
             menu: gtk::Menu::new(),
             relm: relm.clone(),
@@ -96,6 +98,60 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
             },
             ConnectDraw(callback) => {
                 self.box_viewer.stream().emit(BoxViewerMsg::ConnectDraw(callback));
+            },
+            DragComponent(index, distance, layer_index) => {
+                let add_time = |a: gst::ClockTime, b: f64| {
+                    if b < 0.0 {
+                        if a < b.abs() as u64 * gst::MSECOND {
+                            0 * gst::MSECOND
+                        } else {
+                            a - b.abs() as u64 * gst::MSECOND
+                        }
+                    } else {
+                        a + b as u64 * gst::MSECOND
+                    }
+                };
+
+                let component = (self.model.get_component)(index);
+
+                self.model.relm.stream().emit(TimelineMsg::SetComponentAttr(
+                    index,
+                    "start_time",
+                    Attribute::Time(add_time(component.start_time, distance as f64)),
+                ));
+                self.model.relm.stream().emit(TimelineMsg::SetComponentAttr(
+                    index,
+                    "layer_index",
+                    Attribute::Usize(cmp::max(layer_index, 0)),
+                ));
+
+                self.grid.queue_draw();
+            },
+            ResizeComponent(index, distance) => {
+                let add_time = |a: gst::ClockTime, b: f64| {
+                    if b < 0.0 {
+                        if a < b.abs() as u64 * gst::MSECOND {
+                            0 * gst::MSECOND
+                        } else {
+                            a - b.abs() as u64 * gst::MSECOND
+                        }
+                    } else {
+                        a + b as u64 * gst::MSECOND
+                    }
+                };
+
+                let component = (self.model.get_component)(index);
+
+                self.model.relm.stream().emit(TimelineMsg::SetComponentAttr(
+                    index,
+                    "length",
+                    Attribute::Time(add_time(component.length, distance as f64)),
+                ));
+
+                self.grid.queue_draw();
+            },
+            ConnectGetComponent(callback) => {
+                self.model.get_component = callback;
             },
             _ => (),
         }
@@ -191,6 +247,8 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                                 }
                             },
                             Motion(ref event) => TimelineMsg::RulerMotionNotify(event.get_position().0),
+                            OnDrag(index, distance, layer_index) => TimelineMsg::DragComponent(index, distance, layer_index),
+                            OnResize(index, distance) => TimelineMsg::ResizeComponent(index, distance),
                         },
                     },
                 },
@@ -202,99 +260,6 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
 /*
 // workaround for sharing a variable within callbacks
 impl<Renderer: 'static + AsRef<BoxObject>> TimelineWidget<Renderer> {
-    pub fn create_ui(&mut self) {
-        self.create_menu();
-
-        let length = self.length;
-        let self_ = self as *mut Self;
-        self.scaler.connect_value_changed(move |scaler| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-        });
-
-        self.box_viewer.setup();
-    }
-
-    pub fn connect_drag_component(&mut self) {
-        let self_ = self as *mut Self;
-        self.box_viewer.connect_drag_box(
-            Box::new(move |index,distance,layer_index| {
-                let self_ = unsafe { self_.as_mut().unwrap() };
-
-                let add_time = |a: gst::ClockTime, b: f64| {
-                    if b < 0.0 {
-                        if a < b.abs() as u64 * gst::MSECOND {
-                            0 * gst::MSECOND
-                        } else {
-                            a - b.abs() as u64 * gst::MSECOND
-                        }
-                    } else {
-                        a + b as u64 * gst::MSECOND
-                    }
-                };
-
-                let component = (self_.connect_get_component)(index);
-                self_.set_component_attr(
-                    index,
-                    "start_time",
-                    Attribute::Time(add_time(component.start_time, distance as f64)),
-                );
-                self_.set_component_attr(
-                    index,
-                    "layer_index",
-                    Attribute::Usize(cmp::max(layer_index, 0)),
-                );
-
-                self_.queue_draw();
-            }),
-            Box::new(move |index,distance| {
-                let self_ = unsafe { self_.as_mut().unwrap() };
-
-                let add_time = |a: gst::ClockTime, b: f64| {
-                    if b < 0.0 {
-                        if a < b.abs() as u64 * gst::MSECOND {
-                            0 * gst::MSECOND
-                        } else {
-                            a - b.abs() as u64 * gst::MSECOND
-                        }
-                    } else {
-                        a + b as u64 * gst::MSECOND
-                    }
-                };
-
-                let component = self_.get_component(index);
-                self_.set_component_attr(
-                    index,
-                    "length",
-                    Attribute::Time(add_time(component.length, distance as f64)),
-                );
-
-                self_.queue_draw();
-            }),
-        );
-    }
-
-    pub fn set_component_attr(&mut self, index: usize, name: &str, value: Attribute) {
-        (self.connect_set_component_attr)(index, name, value);
-    }
-
-    pub fn get_component(&self, index: usize) -> component::Component {
-        (self.connect_get_component)(index)
-    }
-
-    pub fn connect_get_objects(&mut self, cont: Box<Fn() -> Vec<Renderer>>) {
-        self.box_viewer.connect_get_objects = cont;
-    }
-
-    pub fn connect_render_object(&mut self, cont: Box<Fn(Renderer, f64, &cairo::Context)>) {
-        self.box_viewer.connect_render_object = cont;
-    }
-
-    fn notify_pointer_motion(&mut self, x: f64) {
-        self.ruler.queue_draw();
-        self.ruler.send_pointer_position(x);
-    }
-
     fn create_menu(&mut self) {
         let video_item = gtk::MenuItem::new_with_label("動画");
         let image_item = gtk::MenuItem::new_with_label("画像");
