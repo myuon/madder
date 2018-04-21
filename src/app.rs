@@ -362,15 +362,6 @@ impl App {
     }
 
     pub fn create_ui(&mut self) {
-        self.timeline.connect_new_component = Box::new(move |value| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            self_.editor.patch_once(Operation::Add(
-                Pointer::from_str("/components"),
-                value,
-            ), ContentType::Value).unwrap();
-        });
-
         let self_ = self as *mut Self;
         self.timeline.connect_get_objects(Box::new(move || {
             let self_ = unsafe { self_.as_mut().unwrap() };
@@ -640,6 +631,7 @@ pub enum AppMsg {
     RemoveSelected,
     SeekTime(gst::ClockTime),
     SetComponentAttr(usize, &'static str, Attribute),
+    NewComponent(serde_json::Value),
 }
 
 use self::TimelineMsg::*;
@@ -684,6 +676,12 @@ impl Widget for App {
                     Pointer::from_str(&format!("/components/{}/{}", index, name)),
                     json!(attr),
                 ), ContentType::Attribute).unwrap();
+            },
+            NewComponent(value) => {
+                self.model.editor.borrow_mut().patch_once(Operation::Add(
+                    Pointer::from_str("/components"),
+                    value,
+                ), ContentType::Value).unwrap();
             },
         }
     }
@@ -788,7 +786,8 @@ impl Widget for App {
                     },
 
                     RulerSeekTime(time) => AppMsg::SeekTime(time as u64 * gst::MSECOND),
-                    SetComponentAttr(index, name, ref attr) => AppMsg::SetComponentAttr(index, name, attr.clone()),
+                    OnSetComponentAttr(index, name, ref attr) => AppMsg::SetComponentAttr(index, name, attr.clone()),
+                    OnNewComponent(ref value) => AppMsg::NewComponent(value.clone()),
                 },
 
                 gtk::Button {
