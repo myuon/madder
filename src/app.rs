@@ -708,33 +708,6 @@ impl Widget for App {
         });
 
         let editor = self.model.editor.clone();
-        let selected_component_index = self.model.selected_component_index.clone();
-        self.timeline.stream().emit(TimelineMsg::ConnectDraw(
-            Rc::new(Box::new(move || {
-                serde_json::from_value::<Vec<component::Component>>(
-                    editor.borrow().get_value(Pointer::from_str("/components"))
-                ).unwrap().iter().enumerate().map(move |(i,component)| {
-                    let entity = serde_json::from_value::<Attribute>(editor.borrow().get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
-
-                    let obj = BoxObject::new(
-                        component.start_time.mseconds().unwrap() as i32,
-                        component.length.mseconds().unwrap() as i32,
-                        i
-                    ).label(format!("{:?}", entity))
-                        .selected(Some(i) == *selected_component_index.borrow())
-                        .layer_index(component.layer_index);
-
-                    ui_impl::TimelineComponentRenderer {
-                        object: obj,
-                        object_type: component.component_type.clone(),
-                    }
-                }).collect()
-            })),
-            Rc::new(Box::new(move |robj, scaler, cr| {
-                robj.hscaled(scaler).renderer(&cr, &|p| editor.borrow().elements[robj.object.index].peek(p));
-            }))));
-
-        let editor = self.model.editor.clone();
         self.timeline.stream().emit(TimelineMsg::ConnectGetComponent(Box::new(move |index| {
             serde_json::from_value::<component::Component>(editor.borrow().get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap()
         })));
@@ -786,7 +759,41 @@ impl Widget for App {
                 },
 
                 #[name="timeline"]
-                TimelineWidget<ui_impl::TimelineComponentRenderer>(self.model.editor.borrow().width, 130, cmp::max(self.model.editor.borrow().width + 250, self.model.editor.borrow().length.mseconds().unwrap() as i32)) {
+                TimelineWidget<ui_impl::TimelineComponentRenderer>(
+                    self.model.editor.borrow().width,
+                    130,
+                    cmp::max(self.model.editor.borrow().width + 250, self.model.editor.borrow().length.mseconds().unwrap() as i32),
+                    {
+                        let editor = self.model.editor.clone();
+                        let selected_component_index = self.model.selected_component_index.clone();
+                        Box::new(move || {
+                            serde_json::from_value::<Vec<component::Component>>(
+                                editor.borrow().get_value(Pointer::from_str("/components"))
+                            ).unwrap().iter().enumerate().map(move |(i,component)| {
+                                let entity = serde_json::from_value::<Attribute>(editor.borrow().get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
+
+                                let obj = BoxObject::new(
+                                    component.start_time.mseconds().unwrap() as i32,
+                                    component.length.mseconds().unwrap() as i32,
+                                    i
+                                ).label(format!("{:?}", entity))
+                                    .selected(Some(i) == *selected_component_index.borrow())
+                                    .layer_index(component.layer_index);
+
+                                ui_impl::TimelineComponentRenderer {
+                                    object: obj,
+                                    object_type: component.component_type.clone(),
+                                }
+                            }).collect()
+                        })
+                    },
+                    {
+                        let editor = self.model.editor.clone();
+                        Box::new(move |robj, scaler, cr| {
+                            robj.hscaled(scaler).renderer(&cr, &|p| editor.borrow().elements[robj.object.index].peek(p));
+                        })
+                    }
+                ) {
                     child: {
                         expand: true,
                         fill: true,

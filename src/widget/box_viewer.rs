@@ -71,14 +71,13 @@ pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
     objects: Vec<Renderer>,
     scale: Rc<gtk::Scale>,
     height: i32,
-    on_draw: Rc<RefCell<Rc<Box<Fn(&cairo::Context, f64)>>>>,
-    on_get_object: Rc<RefCell<Rc<Box<Fn() -> Vec<Renderer>>>>>,
-    on_render: Rc<RefCell<Rc<Box<Fn(Renderer, f64, &cairo::Context)>>>>,
+    on_get_object: Box<Fn() -> Vec<Renderer>>,
+    on_render: Box<Fn(Renderer, f64, &cairo::Context)>,
     relm: Relm<BoxViewerWidget<Renderer>>,
 }
 
 #[derive(Msg)]
-pub enum BoxViewerMsg<Renderer: 'static> {
+pub enum BoxViewerMsg {
     Draw,
     Motion(gdk::EventMotion),
     Select(gdk::EventButton),
@@ -86,12 +85,11 @@ pub enum BoxViewerMsg<Renderer: 'static> {
     OnSelectNoBox(gdk::EventButton),
     OnResize(usize, i32),
     OnDrag(usize, i32, usize),
-    ConnectDraw(Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(Renderer, f64, &cairo::Context)>>),
 }
 
 #[widget]
 impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
-    fn model(relm: &Relm<Self>, (height, scale): (i32, Rc<gtk::Scale>)) -> Model<Renderer> {
+    fn model(relm: &Relm<Self>, (height, scale, on_get_object, on_render): (i32, Rc<gtk::Scale>, Box<Fn() -> Vec<Renderer>>, Box<Fn(Renderer, f64, &cairo::Context)>)) -> Model<Renderer> {
         Model {
             offset: 0,
             selecting_box_index: None,
@@ -99,14 +97,13 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
             objects: vec![],
             scale: scale,
             height: height,
-            on_draw: Rc::new(RefCell::new(Rc::new(Box::new(|_,_| {})))),
-            on_get_object: Rc::new(RefCell::new(Rc::new(Box::new(|| vec![])))),
-            on_render: Rc::new(RefCell::new(Rc::new(Box::new(|_,_,_| {})))),
+            on_get_object: on_get_object,
+            on_render: on_render,
             relm: relm.clone(),
         }
     }
 
-    fn update(&mut self, event: BoxViewerMsg<Renderer>) {
+    fn update(&mut self, event: BoxViewerMsg) {
         use self::BoxViewerMsg::*;
 
         match event {
@@ -157,10 +154,6 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
                     }
                 }
             },
-            ConnectDraw(ref on_get_object, ref on_render) => {
-                *self.model.on_get_object.borrow_mut() = on_get_object.clone();
-                *self.model.on_render.borrow_mut() = on_render.clone();
-            },
             _ => (),
         }
     }
@@ -170,10 +163,15 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
         self.canvas.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
         self.canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
 
-        let on_draw = self.model.on_draw.clone();
+        let on_get_object = self.model.on_get_object;
+        let on_render = self.model.on_render;
         let scale = self.model.scale.clone();
         self.canvas.connect_draw(move |_,cr| {
-            (on_draw.borrow())(cr, scale.get_value());
+            let objects = on_get_object();
+            for object in objects {
+                on_render(object, scale.get_value(), cr);
+            }
+
             Inhibit(false)
         });
     }

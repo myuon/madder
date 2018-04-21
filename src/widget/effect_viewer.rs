@@ -57,7 +57,12 @@ impl<Renderer: 'static> Widget for EffectViewer<Renderer> where Renderer: AsRef<
             gtk::Box {
                 orientation: gtk::Orientation::Horizontal,
                 gtk::Overlay {
-                    BoxViewerWidget<Renderer>(200, Rc::new(gtk::Scale::new(gtk::Orientation::Vertical, None))) {
+                    BoxViewerWidget<Renderer>(
+                        200,
+                        Rc::new(gtk::Scale::new(gtk::Orientation::Vertical, None)),
+                        Box::new(|| { unreachable!() }),
+                        Box::new(|_,_,_| { unreachable!() }),
+                    ) {
                     }
                 },
             },
