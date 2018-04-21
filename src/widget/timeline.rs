@@ -32,23 +32,24 @@ pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
 }
 
 #[derive(Msg)]
-pub enum TimelineMsg {
+pub enum TimelineMsg<Renderer: AsRef<BoxObject> + 'static> {
     RulerSeekTime(f64),
     RulerMotionNotify(f64),
     RulerQueueDraw,
     DrawTracker(gtk::DrawingArea),
     OpenMenu(gdk::EventButton),
     ChangeScale,
-    OnSelect(usize),
+    SelectComponent(usize, gdk::EventButton),
     DragComponent(usize, i32, usize),
     ResizeComponent(usize, i32),
-    ConnectDraw(Rc<Box<Fn(&cairo::Context, f64)>>),
+    ConnectDraw(Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(Renderer, f64, &cairo::Context)>>),
     ConnectGetComponent(Box<Fn(usize) -> component::Component>),
     OpenVideoItem,
     OpenImageItem,
     OpenTextItem,
     OnSetComponentAttr(usize, &'static str, Attribute),
     OnNewComponent(serde_json::Value),
+    OnSelectComponent(usize),
 }
 
 use self::BoxViewerMsg::*;
@@ -80,7 +81,7 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
         }
     }
 
-    fn update(&mut self, event: TimelineMsg) {
+    fn update(&mut self, event: TimelineMsg<Renderer>) {
         use self::TimelineMsg::*;
 
         match event {
@@ -107,8 +108,8 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                 self.overlay.set_size_request((self.model.length as f64 / self.scaler.get_value()) as i32, -1);
                 self.grid.queue_draw();
             },
-            ConnectDraw(callback) => {
-                self.box_viewer.stream().emit(BoxViewerMsg::ConnectDraw(callback));
+            ConnectDraw(on_get_objects, on_render) => {
+                self.box_viewer.stream().emit(BoxViewerMsg::ConnectDraw(on_get_objects, on_render));
             },
             DragComponent(index, distance, layer_index) => {
                 let add_time = |a: gst::ClockTime, b: f64| {
@@ -208,6 +209,17 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                 self.model.relm.stream().emit(TimelineMsg::OnNewComponent(json_entity("Text", "dummy entity")));
                 self.grid.queue_draw();
             },
+            SelectComponent(index, event) => {
+                if event.get_button() == 1 {
+                    self.model.relm.stream().emit(TimelineMsg::OnSelectComponent(index));
+                } else if event.get_button() == 3 {
+                    let length = (event.get_position().0 / self.scaler.get_value()) as u64 * gst::MSECOND;
+                    let menu = gtk::Menu::new();
+                    menu.append(&gtk::MenuItem::new_with_label("piyo"));
+                    menu.popup_easy(0, gtk::get_current_event_time());
+                    menu.show_all();
+                }
+            },
             _ => (),
         }
     }
@@ -296,7 +308,7 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
 
                         #[name="box_viewer"]
                         BoxViewerWidget<Renderer>(self.model.height, Rc::new(scaler.clone())) {
-                            OnSelect(ref index, _) => TimelineMsg::OnSelect(*index),
+                            OnSelect(ref index, ref event) => TimelineMsg::SelectComponent(*index, event.clone()),
                             OnSelectNoBox(ref event) => TimelineMsg::OpenMenu(event.clone()),
                             Motion(ref event) => TimelineMsg::RulerMotionNotify(event.get_position().0),
                             OnDrag(index, distance, layer_index) => TimelineMsg::DragComponent(index, distance, layer_index),

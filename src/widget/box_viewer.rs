@@ -64,7 +64,7 @@ impl BoxObject {
     }
 }
 
-pub struct Model<Renderer: AsRef<BoxObject>> {
+pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
     offset: i32,
     selecting_box_index: Option<usize>,
     flag_resize: bool,
@@ -72,11 +72,13 @@ pub struct Model<Renderer: AsRef<BoxObject>> {
     scale: Rc<gtk::Scale>,
     height: i32,
     on_draw: Rc<RefCell<Rc<Box<Fn(&cairo::Context, f64)>>>>,
+    on_get_object: Rc<RefCell<Rc<Box<Fn() -> Vec<Renderer>>>>>,
+    on_render: Rc<RefCell<Rc<Box<Fn(Renderer, f64, &cairo::Context)>>>>,
     relm: Relm<BoxViewerWidget<Renderer>>,
 }
 
 #[derive(Msg)]
-pub enum BoxViewerMsg {
+pub enum BoxViewerMsg<Renderer: 'static> {
     Draw,
     Motion(gdk::EventMotion),
     Select(gdk::EventButton),
@@ -84,11 +86,11 @@ pub enum BoxViewerMsg {
     OnSelectNoBox(gdk::EventButton),
     OnResize(usize, i32),
     OnDrag(usize, i32, usize),
-    ConnectDraw(Rc<Box<Fn(&cairo::Context, f64)>>),
+    ConnectDraw(Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(Renderer, f64, &cairo::Context)>>),
 }
 
 #[widget]
-impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObject> {
+impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
     fn model(relm: &Relm<Self>, (height, scale): (i32, Rc<gtk::Scale>)) -> Model<Renderer> {
         Model {
             offset: 0,
@@ -98,11 +100,13 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
             scale: scale,
             height: height,
             on_draw: Rc::new(RefCell::new(Rc::new(Box::new(|_,_| {})))),
+            on_get_object: Rc::new(RefCell::new(Rc::new(Box::new(|| vec![])))),
+            on_render: Rc::new(RefCell::new(Rc::new(Box::new(|_,_,_| {})))),
             relm: relm.clone(),
         }
     }
 
-    fn update(&mut self, event: BoxViewerMsg) {
+    fn update(&mut self, event: BoxViewerMsg<Renderer>) {
         use self::BoxViewerMsg::*;
 
         match event {
@@ -153,8 +157,9 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
                     }
                 }
             },
-            ConnectDraw(ref callback) => {
-                *self.model.on_draw.borrow_mut() = callback.clone();
+            ConnectDraw(ref on_get_object, ref on_render) => {
+                *self.model.on_get_object.borrow_mut() = on_get_object.clone();
+                *self.model.on_render.borrow_mut() = on_render.clone();
             },
             _ => (),
         }

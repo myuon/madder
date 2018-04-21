@@ -632,6 +632,7 @@ pub enum AppMsg {
     SeekTime(gst::ClockTime),
     SetComponentAttr(usize, &'static str, Attribute),
     NewComponent(serde_json::Value),
+    SelectComponent(usize),
 }
 
 use self::TimelineMsg::*;
@@ -683,6 +684,9 @@ impl Widget for App {
                     value,
                 ), ContentType::Value).unwrap();
             },
+            SelectComponent(index) => {
+                *self.model.selected_component_index.borrow_mut() = Some(index);
+            },
         }
     }
 
@@ -705,26 +709,30 @@ impl Widget for App {
 
         let editor = self.model.editor.clone();
         let selected_component_index = self.model.selected_component_index.clone();
-        self.timeline.stream().emit(TimelineMsg::ConnectDraw(Rc::new(Box::new(move |cr, scaler| {
-            for (i,component) in serde_json::from_value::<Vec<component::Component>>(editor.borrow().get_value(Pointer::from_str("/components"))).unwrap().iter().enumerate() {
-                let entity = serde_json::from_value::<Attribute>(editor.borrow().get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
+        self.timeline.stream().emit(TimelineMsg::ConnectDraw(
+            Rc::new(Box::new(move || {
+                serde_json::from_value::<Vec<component::Component>>(
+                    editor.borrow().get_value(Pointer::from_str("/components"))
+                ).unwrap().iter().enumerate().map(move |(i,component)| {
+                    let entity = serde_json::from_value::<Attribute>(editor.borrow().get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
 
-                let obj = BoxObject::new(
-                    component.start_time.mseconds().unwrap() as i32,
-                    component.length.mseconds().unwrap() as i32,
-                    i
-                ).label(format!("{:?}", entity))
-                    .selected(Some(i) == *selected_component_index.borrow())
-                    .layer_index(component.layer_index);
+                    let obj = BoxObject::new(
+                        component.start_time.mseconds().unwrap() as i32,
+                        component.length.mseconds().unwrap() as i32,
+                        i
+                    ).label(format!("{:?}", entity))
+                        .selected(Some(i) == *selected_component_index.borrow())
+                        .layer_index(component.layer_index);
 
-                let robj = ui_impl::TimelineComponentRenderer {
-                    object: obj,
-                    object_type: component.component_type.clone(),
-                };
-
+                    ui_impl::TimelineComponentRenderer {
+                        object: obj,
+                        object_type: component.component_type.clone(),
+                    }
+                }).collect()
+            })),
+            Rc::new(Box::new(move |robj, scaler, cr| {
                 robj.hscaled(scaler).renderer(&cr, &|p| editor.borrow().elements[robj.object.index].peek(p));
-            }
-        }))));
+            }))));
 
         let editor = self.model.editor.clone();
         self.timeline.stream().emit(TimelineMsg::ConnectGetComponent(Box::new(move |index| {
@@ -788,6 +796,7 @@ impl Widget for App {
                     RulerSeekTime(time) => AppMsg::SeekTime(time as u64 * gst::MSECOND),
                     OnSetComponentAttr(index, name, ref attr) => AppMsg::SetComponentAttr(index, name, attr.clone()),
                     OnNewComponent(ref value) => AppMsg::NewComponent(value.clone()),
+                    OnSelectComponent(index) => AppMsg::SelectComponent(index),
                 },
 
                 gtk::Button {
