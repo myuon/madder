@@ -26,9 +26,7 @@ pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
     height: i32,
     length: i32,
     get_component: Box<Fn(usize) -> component::Component>,
-    pub connect_select_component: Box<Fn(usize)>,
-    pub connect_select_component_menu: Box<Fn(usize, gst::ClockTime) -> gtk::Menu>,
-    pub menu: gtk::Menu,
+    menu: gtk::Menu,
     relm: Relm<TimelineWidget<Renderer>>,
     tracker: gtk::DrawingArea,
 }
@@ -76,8 +74,6 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
             height: height,
             length: length,
             get_component: Box::new(|_| unreachable!()),
-            connect_select_component: Box::new(|_| unreachable!()),
-            connect_select_component_menu: Box::new(|_,_| unreachable!()),
             menu: gtk::Menu::new(),
             relm: relm.clone(),
             tracker: gtk::DrawingArea::new(),
@@ -312,106 +308,4 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
         },
     }
 }
-
-/*
-// workaround for sharing a variable within callbacks
-impl<Renderer: 'static + AsRef<BoxObject>> TimelineWidget<Renderer> {
-    fn create_menu(&mut self) {
-        let video_item = gtk::MenuItem::new_with_label("動画");
-        let image_item = gtk::MenuItem::new_with_label("画像");
-        let text_item = gtk::MenuItem::new_with_label("テキスト");
-        self.menu.append(&video_item);
-        self.menu.append(&image_item);
-        self.menu.append(&text_item);
-
-        let self_ = self as *mut Self;
-        video_item.connect_activate(move |_| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
-            dialog.add_button("追加", 0);
-
-            {
-                let filter = gtk::FileFilter::new();
-                filter.add_pattern("*.mkv");
-                dialog.add_filter(&filter);
-            }
-            dialog.run();
-
-            (self_.connect_new_component)(json!({
-                "component_type": "Video",
-                "start_time": 0,
-                "length": 100,
-                "layer_index": 0,
-                "prop": {
-                    "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
-                }
-            }));
-
-            self_.queue_draw();
-            dialog.destroy();
-        });
-
-        let self_ = self as *mut Self;
-        image_item.connect_activate(move |_| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
-            dialog.add_button("追加", 0);
-
-            {
-                let filter = gtk::FileFilter::new();
-                filter.add_pattern("*.png");
-                dialog.add_filter(&filter);
-            }
-            dialog.run();
-
-            (self_.connect_new_component)(json!({
-                "component_type": "Image",
-                "start_time": 0,
-                "length": 100,
-                "layer_index": 0,
-                "prop": {
-                    "entity": dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string(),
-                }
-            }));
-
-            self_.queue_draw();
-            dialog.destroy();
-        });
-
-        let self_ = self as *mut Self;
-        text_item.connect_activate(move |_| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            (self_.connect_new_component)(json!({
-                "component_type": "Text",
-                "start_time": 0,
-                "length": 100,
-                "layer_index": 0,
-                "prop": {
-                    "entity": "dummy entity",
-                    "coordinate": [50, 50],
-                }
-            }));
-
-            self_.queue_draw();
-        });
-    }
-
-    pub fn queue_draw(&self) {
-        self.overlay.queue_draw();
-        self.box_viewer.as_widget().queue_draw();
-    }
-}
-
-impl<M: AsRef<BoxObject>> AsWidget for TimelineWidget<M> {
-    type T = gtk::Grid;
-
-    fn as_widget(&self) -> &Self::T {
-        &self.grid
-
-    }
-}
- */
 
