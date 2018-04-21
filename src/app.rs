@@ -766,7 +766,7 @@ impl Widget for App {
                     {
                         let editor = self.model.editor.clone();
                         let selected_component_index = self.model.selected_component_index.clone();
-                        Box::new(move || {
+                        Rc::new(Box::new(move || {
                             serde_json::from_value::<Vec<component::Component>>(
                                 editor.borrow().get_value(Pointer::from_str("/components"))
                             ).unwrap().iter().enumerate().map(move |(i,component)| {
@@ -785,13 +785,13 @@ impl Widget for App {
                                     object_type: component.component_type.clone(),
                                 }
                             }).collect()
-                        })
+                        }))
                     },
                     {
                         let editor = self.model.editor.clone();
-                        Box::new(move |robj, scaler, cr| {
+                        Rc::new(Box::new(move |robj, scaler, cr| {
                             robj.hscaled(scaler).renderer(&cr, &|p| editor.borrow().elements[robj.object.index].peek(p));
-                        })
+                        }))
                     }
                 ) {
                     child: {

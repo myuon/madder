@@ -31,7 +31,7 @@ pub enum EffectMsg {
 }
 
 #[widget]
-impl<Renderer: 'static> Widget for EffectViewer<Renderer> where Renderer: AsRef<BoxObject> {
+impl<Renderer> Widget for EffectViewer<Renderer> where Renderer: AsRef<BoxObject> + 'static {
     fn model(_: &Relm<Self>, parameter: (i32, i32, i32)) -> Model {
         Model {
             tracking_position: (0.0, 0),

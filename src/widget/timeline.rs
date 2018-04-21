@@ -29,8 +29,8 @@ pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
     menu: gtk::Menu,
     relm: Relm<TimelineWidget<Renderer>>,
     tracker: gtk::DrawingArea,
-    on_get_object: Box<Fn() -> Vec<Renderer>>,
-    on_render: Box<Fn(Renderer, f64, &cairo::Context)>,
+    on_get_object: Rc<Box<Fn() -> Vec<Renderer>>>,
+    on_render: Rc<Box<Fn(Renderer, f64, &cairo::Context)>>,
 }
 
 #[derive(Msg)]
@@ -69,7 +69,7 @@ fn json_entity(component_type: &str, entity: &str) -> serde_json::Value {
 
 #[widget]
 impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
-    fn model(relm: &Relm<Self>, (width, height, length, on_get_object, on_render): (i32, i32, i32, Box<Fn() -> Vec<Renderer>>, Box<Fn(Renderer, f64, &cairo::Context)>)) -> Model<Renderer> {
+    fn model(relm: &Relm<Self>, (width, height, length, on_get_object, on_render): (i32, i32, i32, Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(Renderer, f64, &cairo::Context)>>)) -> Model<Renderer> {
         Model {
             tracking_position: 0,
             width: width,
@@ -310,8 +310,8 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                         BoxViewerWidget<Renderer>(
                             self.model.height,
                             Rc::new(scaler.clone()),
-                            self.model.on_get_object,
-                            self.model.on_render,
+                            self.model.on_get_object.clone(),
+                            self.model.on_render.clone(),
                         ) {
                             OnSelect(ref index, ref event) => TimelineMsg::SelectComponent(*index, event.clone()),
                             OnSelectNoBox(ref event) => TimelineMsg::OpenMenu(event.clone()),

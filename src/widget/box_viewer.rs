@@ -68,11 +68,10 @@ pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
     offset: i32,
     selecting_box_index: Option<usize>,
     flag_resize: bool,
-    objects: Vec<Renderer>,
     scale: Rc<gtk::Scale>,
     height: i32,
-    on_get_object: Box<Fn() -> Vec<Renderer>>,
-    on_render: Box<Fn(Renderer, f64, &cairo::Context)>,
+    on_get_object: Rc<Box<Fn() -> Vec<Renderer>>>,
+    on_render: Rc<Box<Fn(Renderer, f64, &cairo::Context)>>,
     relm: Relm<BoxViewerWidget<Renderer>>,
 }
 
@@ -89,12 +88,11 @@ pub enum BoxViewerMsg {
 
 #[widget]
 impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
-    fn model(relm: &Relm<Self>, (height, scale, on_get_object, on_render): (i32, Rc<gtk::Scale>, Box<Fn() -> Vec<Renderer>>, Box<Fn(Renderer, f64, &cairo::Context)>)) -> Model<Renderer> {
+    fn model(relm: &Relm<Self>, (height, scale, on_get_object, on_render): (i32, Rc<gtk::Scale>, Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(Renderer, f64, &cairo::Context)>>)) -> Model<Renderer> {
         Model {
             offset: 0,
             selecting_box_index: None,
             flag_resize: false,
-            objects: vec![],
             scale: scale,
             height: height,
             on_get_object: on_get_object,
@@ -114,7 +112,7 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
                 let y = y as i32;
                 let scale = self.model.scale.get_value();
 
-                if let Some(object) = self.model.objects.iter().find(|object| object.as_ref().clone().hscaled(scale).contains(x,y)) {
+                if let Some(object) = (self.model.on_get_object)().iter().find(|object| object.as_ref().clone().hscaled(scale).contains(x,y)) {
                     self.model.offset = x;
                     self.model.selecting_box_index = Some(object.as_ref().index);
                     self.model.relm.stream().emit(BoxViewerMsg::OnSelect(object.as_ref().index, event.clone()));
@@ -142,7 +140,7 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
                     }
                     self.model.offset = event.get_position().0 as i32;
                 } else {
-                    match self.model.objects.iter().find(|object| object.as_ref().contains(x,y)).map(|x| x.as_ref().clone()) {
+                    match (self.model.on_get_object)().iter().find(|object| object.as_ref().contains(x,y)).map(|x| x.as_ref().clone()) {
                         Some(ref object) if object.coordinate().0 + (object.size().0 as f64 / scale) as i32 - BoxObject::EDGE_WIDTH <= x && x <= object.coordinate().0 + (object.size().0 as f64 / scale) as i32 => {
                             window.set_cursor(&gdk::Cursor::new_from_name(&window.get_display(), "e-resize"));
                             self.model.flag_resize = true;
@@ -163,8 +161,8 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
         self.canvas.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
         self.canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
 
-        let on_get_object = self.model.on_get_object;
-        let on_render = self.model.on_render;
+        let on_get_object = self.model.on_get_object.clone();
+        let on_render = self.model.on_render.clone();
         let scale = self.model.scale.clone();
         self.canvas.connect_draw(move |_,cr| {
             let objects = on_get_object();
