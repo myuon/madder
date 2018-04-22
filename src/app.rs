@@ -360,35 +360,6 @@ impl App {
 
     pub fn create_ui(&mut self) {
         let self_ = self as *mut Self;
-        self.timeline.connect_get_objects(Box::new(move || {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            serde_json::from_value::<Vec<Component>>(self_.editor.get_value(Pointer::from_str("/components"))).unwrap().iter().enumerate().map(|(i,component)| {
-                let entity = serde_json::from_value::<Attribute>(self_.editor.get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
-
-                let obj = BoxObject::new(
-                    component.start_time.mseconds().unwrap() as i32,
-                    component.length.mseconds().unwrap() as i32,
-                    i
-                ).label(format!("{:?}", entity))
-                    .selected(Some(i) == self_.selected_component_index)
-                    .layer_index(component.layer_index);
-
-                ui_impl::TimelineComponentRenderer {
-                    object: obj,
-                    object_type: component.component_type.clone(),
-                }
-            }).collect()
-        }));
-
-        let self_ = self as *mut Self;
-        self.timeline.connect_render_object(Box::new(move |robj, scaler, cr| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            robj.hscaled(scaler).renderer(cr, &|p| self_.editor.elements[robj.object.index].peek(p));
-        }));
-
-        let self_ = self as *mut Self;
         self.timeline.connect_select_component = Box::new(move |index: usize| {
             let self_ = unsafe { self_.as_mut().unwrap() };
 

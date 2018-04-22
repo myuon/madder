@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use std::cell::RefCell;
 use std::cmp;
 extern crate gstreamer as gst;
 extern crate gtk;
@@ -18,14 +19,13 @@ use madder_core::*;
 use widget::*;
 
 pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
-    tracking_position: i32,
+    tracking_position: Rc<RefCell<f64>>,
     width: i32,
     height: i32,
     length: i32,
     get_component: Box<Fn(usize) -> component::Component>,
     menu: gtk::Menu,
     relm: Relm<TimelineWidget<Renderer>>,
-    tracker: gtk::DrawingArea,
     on_get_object: Rc<Box<Fn() -> Vec<Renderer>>>,
     on_render: Rc<Box<Fn(Renderer, f64, &cairo::Context)>>,
 }
@@ -35,7 +35,6 @@ pub enum TimelineMsg {
     RulerSeekTime(f64),
     RulerMotionNotify(f64),
     RulerQueueDraw,
-    DrawTracker(gtk::DrawingArea),
     OpenMenu(gdk::EventButton),
     ChangeScale,
     SelectComponent(usize, gdk::EventButton),
@@ -67,6 +66,7 @@ pub struct TimelineWidget<Renderer: AsRef<BoxObject> + 'static> {
     grid: gtk::Grid,
     overlay: gtk::Overlay,
     scaler: gtk::Scale,
+    tracker: gtk::DrawingArea,
     ruler: relm::Component<RulerWidget>,
 }
 
@@ -77,14 +77,13 @@ impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
 
     fn model(relm: &Relm<Self>, (width, height, length, on_get_object, on_render): (i32, i32, i32, Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(Renderer, f64, &cairo::Context)>>)) -> Model<Renderer> {
         Model {
-            tracking_position: 0,
+            tracking_position: Rc::new(RefCell::new(0.0)),
             width: width,
             height: height,
             length: length,
             get_component: Box::new(|_| unreachable!()),
             menu: gtk::Menu::new(),
             relm: relm.clone(),
-            tracker: gtk::DrawingArea::new(),
             on_get_object: on_get_object,
             on_render: on_render,
         }
@@ -95,8 +94,8 @@ impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
 
         match event {
             RulerSeekTime(time) => {
-                self.model.tracking_position = time as i32;
-                self.model.tracker.queue_draw();
+                *self.model.tracking_position.borrow_mut() = time;
+                self.tracker.queue_draw();
             },
             RulerMotionNotify(pos) => {
                 self.ruler.stream().emit(RulerMsg::MovePointer(pos));
@@ -104,14 +103,6 @@ impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
             },
             RulerQueueDraw => {
                 self.ruler.widget().queue_draw();
-            },
-            DrawTracker(tracker) => {
-                let cr = cairo::Context::create_from_window(&self.model.tracker.get_window().unwrap());
-                cr.set_source_rgb(200f64, 0f64, 0f64);
-
-                cr.move_to(self.model.tracking_position as f64, 0f64);
-                cr.rel_line_to(0.0, tracker.get_allocation().height as f64);
-                cr.stroke();
             },
             ChangeScale => {
                 self.overlay.set_size_request((self.model.length as f64 / self.scaler.get_value()) as i32, -1);
@@ -256,8 +247,6 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
 
         let overlay = gtk::Overlay::new();
         overlay.set_size_request(model.length, -1);
-        overlay.add_overlay(&model.tracker);
-        overlay.set_overlay_pass_through(&model.tracker, true);
         scrolled.add(&overlay);
 
         let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -286,14 +275,26 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
             connect!(box_viewer@OnResize(index, distance), relm, TimelineMsg::ResizeComponent(index, distance));
         }
 
-        model.tracker.set_size_request(model.length, -1);
-        model.tracker.connect_realize(move |tracker| {
+        let tracker = gtk::DrawingArea::new();
+        tracker.set_size_request(model.length, -1);
+        tracker.connect_realize(move |tracker| {
             let window = tracker.get_window().unwrap();
             window.set_pass_through(true);
         });
-        model.tracker.show();
 
-        connect!(relm, model.tracker, connect_draw(tracker,_), return (Some(TimelineMsg::DrawTracker(tracker.clone())), Inhibit(false)));
+        overlay.add_overlay(&tracker);
+        overlay.set_overlay_pass_through(&tracker, true);
+
+        let tracking_position = model.tracking_position.clone();
+        connect!(relm, tracker, connect_draw(tracker,cr), return {
+            cr.set_source_rgb(200.0, 0.0, 0.0);
+
+            cr.move_to(*tracking_position.borrow() as f64, 0.0);
+            cr.rel_line_to(0.0, tracker.get_allocation().height as f64);
+            cr.stroke();
+
+            Inhibit(false)
+        });
 
         {
             let video_item = gtk::MenuItem::new_with_label("動画");
@@ -314,6 +315,7 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
             scaler: scaler,
             overlay: overlay,
             ruler: ruler,
+            tracker: tracker,
         }
     }
 }

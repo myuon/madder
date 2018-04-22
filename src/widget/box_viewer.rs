@@ -187,8 +187,8 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
             Inhibit(false)
         });
 
-        connect!(relm, canvas, connect_button_press_event(_,event), return (BoxViewerMsg::Select(event.clone()), Inhibit(false)));
-        connect!(relm, canvas, connect_motion_notify_event(_,event), return (BoxViewerMsg::Motion(event.clone()), Inhibit(false)));
+        connect!(relm, canvas, connect_button_press_event(_,event), return (Some(BoxViewerMsg::Select(event.clone())), Inhibit(false)));
+        connect!(relm, canvas, connect_motion_notify_event(_,event), return (Some(BoxViewerMsg::Motion(event.clone())), Inhibit(false)));
 
         BoxViewerWidget {
             model: model,
