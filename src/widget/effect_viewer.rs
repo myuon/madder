@@ -60,8 +60,8 @@ impl<Renderer> Widget for EffectViewer<Renderer> where Renderer: AsRef<BoxObject
                     BoxViewerWidget<Renderer>(
                         200,
                         Rc::new(gtk::Scale::new(gtk::Orientation::Vertical, None)),
-                        Box::new(|| { unreachable!() }),
-                        Box::new(|_,_,_| { unreachable!() }),
+                        Rc::new(Box::new(|| { unreachable!() })),
+                        Rc::new(Box::new(|_,_,_| { unreachable!() })),
                     ) {
                     }
                 },
