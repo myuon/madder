@@ -10,9 +10,6 @@ use gtk::prelude::*;
 use gdk::prelude::*;
 
 extern crate relm;
-extern crate relm_attributes;
-extern crate relm_derive;
-use relm_attributes::widget;
 use relm::*;
 
 #[derive(Clone, Debug)]
@@ -86,8 +83,16 @@ pub enum BoxViewerMsg {
     OnDrag(usize, i32, usize),
 }
 
-#[widget]
-impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
+pub struct BoxViewerWidget<Renderer: AsRef<BoxObject> + 'static> {
+    model: Model<Renderer>,
+    canvas: gtk::DrawingArea,
+}
+
+impl<Renderer> Update for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
+    type Model = Model<Renderer>;
+    type ModelParam = (i32, Rc<gtk::Scale>, Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(Renderer, f64, &cairo::Context)>>);
+    type Msg = BoxViewerMsg;
+
     fn model(relm: &Relm<Self>, (height, scale, on_get_object, on_render): (i32, Rc<gtk::Scale>, Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(Renderer, f64, &cairo::Context)>>)) -> Model<Renderer> {
         Model {
             offset: 0,
@@ -155,16 +160,25 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
             _ => (),
         }
     }
+}
 
-    fn init_view(&mut self) {
-        self.canvas.set_size_request(-1, self.model.height);
-        self.canvas.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
-        self.canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
+impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
+    type Root = gtk::DrawingArea;
 
-        let on_get_object = self.model.on_get_object.clone();
-        let on_render = self.model.on_render.clone();
-        let scale = self.model.scale.clone();
-        self.canvas.connect_draw(move |_,cr| {
+    fn root(&self) -> Self::Root {
+        self.canvas.clone()
+    }
+
+    fn view(relm: &Relm<Self>, model: Self::Model) -> Self {
+        let canvas = gtk::DrawingArea::new();
+        canvas.set_size_request(-1, model.height);
+        canvas.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
+        canvas.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
+
+        let on_get_object = model.on_get_object.clone();
+        let on_render = model.on_render.clone();
+        let scale = model.scale.clone();
+        canvas.connect_draw(move |_,cr| {
             let objects = on_get_object();
             for object in objects {
                 on_render(object, scale.get_value(), cr);
@@ -172,13 +186,13 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
 
             Inhibit(false)
         });
-    }
 
-    view! {
-        #[name="canvas"]
-        gtk::DrawingArea {
-            button_press_event(_,event) => (BoxViewerMsg::Select(event.clone()), Inhibit(false)),
-            motion_notify_event(_,event) => (BoxViewerMsg::Motion(event.clone()), Inhibit(false)),
+        connect!(relm, canvas, connect_button_press_event(_,event), return (BoxViewerMsg::Select(event.clone()), Inhibit(false)));
+        connect!(relm, canvas, connect_motion_notify_event(_,event), return (BoxViewerMsg::Motion(event.clone()), Inhibit(false)));
+
+        BoxViewerWidget {
+            model: model,
+            canvas: canvas,
         }
     }
 }

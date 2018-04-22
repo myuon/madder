@@ -23,9 +23,6 @@ use gdk::prelude::*;
 use gdk_pixbuf::prelude::*;
 
 extern crate relm;
-extern crate relm_attributes;
-extern crate relm_derive;
-use relm_attributes::widget;
 use relm::*;
 
 extern crate serde_json;
@@ -622,7 +619,6 @@ pub struct Model {
     editor: Rc<RefCell<Editor>>,
     selected_component_index: Rc<RefCell<Option<usize>>>,
     project_file_path: Option<PathBuf>,
-    relm: Relm<App>,
 }
 
 #[derive(Msg)]
@@ -637,14 +633,23 @@ pub enum AppMsg {
 
 use self::TimelineMsg::*;
 
-#[widget]
-impl Widget for App {
-    fn model(relm: &Relm<Self>, value: serde_json::Value) -> Model {
+pub struct App {
+    model: Model,
+    window: gtk::Window,
+    canvas: gtk::DrawingArea,
+    timeline: relm::Component<TimelineWidget<ui_impl::TimelineComponentRenderer>>,
+}
+
+impl Update for App {
+    type Model = Model;
+    type ModelParam = serde_json::Value;
+    type Msg = AppMsg;
+
+    fn model(_relm: &Relm<Self>, value: serde_json::Value) -> Model {
         Model {
             editor: Rc::new(RefCell::new(Editor::new_from_json(value))),
             selected_component_index: Rc::new(RefCell::new(None)),
             project_file_path: None,
-            relm: relm.clone(),
         }
     }
 
@@ -689,6 +694,14 @@ impl Widget for App {
             },
         }
     }
+}
+
+impl Widget for App {
+    type Root = gtk::Window;
+
+    fn root(&self) -> Self::Root {
+        self.window.clone()
+    }
 
     fn init_view(&mut self) {
         unsafe {
@@ -713,110 +726,82 @@ impl Widget for App {
         })));
     }
 
-    view! {
-        #[name="window"]
-        gtk::Window {
-            title: "madder",
-            gtk::Box {
-                orientation: gtk::Orientation::Vertical,
+    fn view(relm: &Relm<Self>, model: Self::Model) -> Self {
+        let window = gtk::Window::new(gtk::WindowType::Toplevel);
+        window.set_title("madder");
+        connect!(relm, window, connect_delete_event(window,_), return (AppMsg::Quit(Rc::new(window.clone())), Inhibit(false)));
 
-                gtk::MenuBar {
-                    child: {
-                        expand: true,
-                        fill: true,
-                    },
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        let menu = gtk::MenuBar::new();
+        menu.append(&gtk::MenuItem::new_with_label("ファイル"));
+        vbox.pack_start(&menu, true, true, 0);
 
-                    gtk::MenuItem {
-                        label: "ファイル",
-                    },
-                    gtk::MenuItem {
-                        label: "タイムライン",
-                    },
-                },
+        let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        vbox.pack_start(&hbox, true, true, 0);
 
-                gtk::Box {
-                    orientation: gtk::Orientation::Horizontal,
-                    child: {
-                        expand: true,
-                        fill: true,
-                    },
+        let canvas = gtk::DrawingArea::new();
+        hbox.pack_start(&canvas, true, true, 0);
 
-                    #[name="canvas"]
-                    gtk::DrawingArea {
-                        child: {
-                            expand: true,
-                            fill: true,
-                        },
-                    },
-                    PropertyViewerWidget(250) {
-                        child: {
-                            expand: true,
-                            fill: true,
-                            pack_type: gtk::PackType::End,
-                        },
-//                        remove => (AppMsg::RemoveSelected, ()),
-                    }
-                },
+        let _prop_viewer = hbox.add_widget::<PropertyViewerWidget>(250);
+        // remove => (AppMsg::RemoveSelected, ()),
 
-                #[name="timeline"]
-                TimelineWidget<ui_impl::TimelineComponentRenderer>(
-                    self.model.editor.borrow().width,
-                    130,
-                    cmp::max(self.model.editor.borrow().width + 250, self.model.editor.borrow().length.mseconds().unwrap() as i32),
-                    {
-                        let editor = self.model.editor.clone();
-                        let selected_component_index = self.model.selected_component_index.clone();
-                        Rc::new(Box::new(move || {
-                            serde_json::from_value::<Vec<component::Component>>(
-                                editor.borrow().get_value(Pointer::from_str("/components"))
-                            ).unwrap().iter().enumerate().map(move |(i,component)| {
-                                let entity = serde_json::from_value::<Attribute>(editor.borrow().get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
+        let timeline = vbox.add_widget::<TimelineWidget<ui_impl::TimelineComponentRenderer>>((
+            model.editor.borrow().width,
+            130,
+            cmp::max(model.editor.borrow().width + 250, model.editor.borrow().length.mseconds().unwrap() as i32),
+            {
+                let editor = model.editor.clone();
+                let selected_component_index = model.selected_component_index.clone();
+                Rc::new(Box::new(move || {
+                    let components = editor.borrow().get_value(Pointer::from_str("/components"));
+                    let selected_component_index = *selected_component_index.borrow();
+                    let editor = editor.clone();
 
-                                let obj = BoxObject::new(
-                                    component.start_time.mseconds().unwrap() as i32,
-                                    component.length.mseconds().unwrap() as i32,
-                                    i
-                                ).label(format!("{:?}", entity))
-                                    .selected(Some(i) == *selected_component_index.borrow())
-                                    .layer_index(component.layer_index);
+                    serde_json::from_value::<Vec<component::Component>>(components).unwrap().iter().enumerate().map(move |(i,component)| {
+                        let entity = serde_json::from_value::<Attribute>(editor.borrow().get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
 
-                                ui_impl::TimelineComponentRenderer {
-                                    object: obj,
-                                    object_type: component.component_type.clone(),
-                                }
-                            }).collect()
-                        }))
-                    },
-                    {
-                        let editor = self.model.editor.clone();
-                        Rc::new(Box::new(move |robj, scaler, cr| {
-                            robj.hscaled(scaler).renderer(&cr, &|p| editor.borrow().elements[robj.object.index].peek(p));
-                        }))
-                    }
-                ) {
-                    child: {
-                        expand: true,
-                        fill: true,
-                        padding: 5,
-                    },
+                        let obj = BoxObject::new(
+                            component.start_time.mseconds().unwrap() as i32,
+                            component.length.mseconds().unwrap() as i32,
+                            i
+                        ).label(format!("{:?}", entity))
+                            .selected(Some(i) == selected_component_index)
+                            .layer_index(component.layer_index);
 
-                    RulerSeekTime(time) => AppMsg::SeekTime(time as u64 * gst::MSECOND),
-                    OnSetComponentAttr(index, name, ref attr) => AppMsg::SetComponentAttr(index, name, attr.clone()),
-                    OnNewComponent(ref value) => AppMsg::NewComponent(value.clone()),
-                    OnSelectComponent(index) => AppMsg::SelectComponent(index),
-                },
-
-                gtk::Button {
-                    label: "start preview",
-                    clicked(_) => {
-//                        self_.start_instant_preview(&hbox_);
-                        println!("start_instant_preview");
-                    },
-                }
+                        ui_impl::TimelineComponentRenderer {
+                            object: obj,
+                            object_type: component.component_type.clone(),
+                        }
+                    }).collect()
+                }))
             },
-            delete_event(window,_) => (AppMsg::Quit(Rc::new(window.clone())), Inhibit(false)),
+            {
+                let editor = model.editor.clone();
+                Rc::new(Box::new(move |robj, scaler, cr| {
+                    robj.hscaled(scaler).renderer(&cr, &|p| editor.borrow().elements[robj.object.index].peek(p));
+                }))
+            }
+        ));
+        connect!(timeline@RulerSeekTime(time), relm, AppMsg::SeekTime(time as u64 * gst::MSECOND));
+        connect!(timeline@OnSetComponentAttr(index, name, ref attr), relm, AppMsg::SetComponentAttr(index, name, attr.clone()));
+        connect!(timeline@OnNewComponent(ref value), relm, AppMsg::NewComponent(value.clone()));
+        connect!(timeline@OnSelectComponent(index), relm, AppMsg::SelectComponent(index));
+
+        let button = gtk::Button::new();
+        button.set_label("start preview");
+        connect!(relm, button, connect_clicked(_), {
+            println!("start instant preview");
+        });
+
+        window.add(&vbox);
+        window.show_all();
+
+        App {
+            model: model,
+            window: window,
+            canvas: canvas,
+            timeline: timeline,
         }
     }
 }
-
 

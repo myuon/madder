@@ -1,6 +1,5 @@
 #![feature(box_patterns)]
 #![feature(slice_patterns)]
-#![feature(proc_macro)]
 extern crate gstreamer as gst;
 extern crate gtk;
 extern crate glib;
@@ -8,7 +7,6 @@ extern crate gdk;
 extern crate gdk_pixbuf;
 
 extern crate relm;
-extern crate relm_attributes;
 #[macro_use] extern crate relm_derive;
 use relm::*;
 

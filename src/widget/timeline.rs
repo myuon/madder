@@ -11,10 +11,7 @@ extern crate pango;
 extern crate serde_json;
 
 extern crate relm;
-extern crate relm_attributes;
-extern crate relm_derive;
 use relm::*;
-use relm_attributes::widget;
 
 extern crate madder_core;
 use madder_core::*;
@@ -53,8 +50,6 @@ pub enum TimelineMsg {
     OnSelectComponent(usize),
 }
 
-use self::BoxViewerMsg::*;
-
 fn json_entity(component_type: &str, entity: &str) -> serde_json::Value {
     json!({
         "component_type": component_type,
@@ -67,8 +62,19 @@ fn json_entity(component_type: &str, entity: &str) -> serde_json::Value {
     })
 }
 
-#[widget]
-impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
+pub struct TimelineWidget<Renderer: AsRef<BoxObject> + 'static> {
+    model: Model<Renderer>,
+    grid: gtk::Grid,
+    overlay: gtk::Overlay,
+    scaler: gtk::Scale,
+    ruler: relm::Component<RulerWidget>,
+}
+
+impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
+    type Model = Model<Renderer>;
+    type ModelParam = (i32, i32, i32, Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(Renderer, f64, &cairo::Context)>>);
+    type Msg = TimelineMsg;
+
     fn model(relm: &Relm<Self>, (width, height, length, on_get_object, on_render): (i32, i32, i32, Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(Renderer, f64, &cairo::Context)>>)) -> Model<Renderer> {
         Model {
             tracking_position: 0,
@@ -213,7 +219,7 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                 if event.get_button() == 1 {
                     self.model.relm.stream().emit(TimelineMsg::OnSelectComponent(index));
                 } else if event.get_button() == 3 {
-                    let length = (event.get_position().0 / self.scaler.get_value()) as u64 * gst::MSECOND;
+                    let _length = (event.get_position().0 / self.scaler.get_value()) as u64 * gst::MSECOND;
                     let menu = gtk::Menu::new();
                     menu.append(&gtk::MenuItem::new_with_label("piyo"));
                     menu.popup_easy(0, gtk::get_current_event_time());
@@ -223,106 +229,92 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
             _ => (),
         }
     }
+}
 
-    fn init_view(&mut self) {
-        self.model.tracker.set_size_request(self.model.length, -1);
-        self.model.tracker.connect_realize(move |tracker| {
+impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
+    type Root = gtk::Grid;
+
+    fn root(&self) -> Self::Root {
+        self.grid.clone()
+    }
+
+    fn view(relm: &Relm<Self>, model: Self::Model) -> Self {
+        let grid = gtk::Grid::new();
+        grid.set_column_spacing(4);
+
+        let scaler = gtk::Scale::new_with_range(gtk::Orientation::Horizontal, 1.0, 10.0, 0.1);
+        connect!(relm, scaler, connect_value_changed(_), TimelineMsg::ChangeScale);
+
+        let scrolled = gtk::ScrolledWindow::new(None, None);
+        scrolled.set_size_request(model.width, model.height);
+        scrolled.set_hexpand(true);
+        scrolled.set_vexpand(true);
+
+        grid.attach(&scaler,0,0,1,1);
+        grid.attach(&gtk::Label::new("Layers here"),0,1,1,1);
+        grid.attach(&scrolled,1,0,1,2);
+
+        let overlay = gtk::Overlay::new();
+        overlay.set_size_request(model.length, -1);
+        overlay.add_overlay(&model.tracker);
+        overlay.set_overlay_pass_through(&model.tracker, true);
+        scrolled.add(&overlay);
+
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        overlay.add(&vbox);
+
+        let ruler_box = gtk::EventBox::new();
+        ruler_box.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
+        connect!(relm, ruler_box, connect_button_press_event(_, event), return (Some(TimelineMsg::RulerSeekTime(event.get_position().0)), Inhibit(false)));
+        connect!(relm, ruler_box, connect_motion_notify_event(_, event), return (Some(TimelineMsg::RulerMotionNotify(event.get_position().0)), Inhibit(false)));
+        let ruler = ruler_box.add_widget::<RulerWidget>((model.length, 20, Rc::new(scaler.clone())));
+        vbox.pack_start(&ruler_box, true, true, 10);
+
+        let box_viewer = vbox.add_widget::<BoxViewerWidget<Renderer>>((
+            model.height,
+            Rc::new(scaler.clone()),
+            model.on_get_object.clone(),
+            model.on_render.clone(),
+        ));
+
+        {
+            use self::BoxViewerMsg::*;
+            connect!(box_viewer@OnSelect(ref index, ref event), relm, TimelineMsg::SelectComponent(*index, event.clone()));
+            connect!(box_viewer@OnSelectNoBox(ref event), relm, TimelineMsg::OpenMenu(event.clone()));
+            connect!(box_viewer@Motion(ref event), relm, TimelineMsg::RulerMotionNotify(event.get_position().0));
+            connect!(box_viewer@OnDrag(index, distance, layer_index), relm, TimelineMsg::DragComponent(index, distance, layer_index));
+            connect!(box_viewer@OnResize(index, distance), relm, TimelineMsg::ResizeComponent(index, distance));
+        }
+
+        model.tracker.set_size_request(model.length, -1);
+        model.tracker.connect_realize(move |tracker| {
             let window = tracker.get_window().unwrap();
             window.set_pass_through(true);
         });
-        self.model.tracker.show();
+        model.tracker.show();
 
-        connect!(self.model.relm, self.model.tracker, connect_draw(tracker,_), return (Some(TimelineMsg::DrawTracker(tracker.clone())), Inhibit(false)));
-
-        self.overlay.set_size_request(self.model.length, -1);
-        self.overlay.add_overlay(&self.model.tracker);
-        self.overlay.set_overlay_pass_through(&self.model.tracker, true);
-
-        self.scrolled.set_size_request(self.model.width, self.model.height);
+        connect!(relm, model.tracker, connect_draw(tracker,_), return (Some(TimelineMsg::DrawTracker(tracker.clone())), Inhibit(false)));
 
         {
             let video_item = gtk::MenuItem::new_with_label("動画");
             let image_item = gtk::MenuItem::new_with_label("画像");
             let text_item = gtk::MenuItem::new_with_label("テキスト");
-            self.model.menu.append(&video_item);
-            self.model.menu.append(&image_item);
-            self.model.menu.append(&text_item);
+            model.menu.append(&video_item);
+            model.menu.append(&image_item);
+            model.menu.append(&text_item);
 
-            connect!(self.model.relm, video_item, connect_activate(_), return (TimelineMsg::OpenVideoItem, ()));
-            connect!(self.model.relm, image_item, connect_activate(_), return (TimelineMsg::OpenImageItem, ()));
-            connect!(self.model.relm, text_item, connect_activate(_), return (TimelineMsg::OpenTextItem, ()));
+            connect!(relm, video_item, connect_activate(_), return (TimelineMsg::OpenVideoItem, ()));
+            connect!(relm, image_item, connect_activate(_), return (TimelineMsg::OpenImageItem, ()));
+            connect!(relm, text_item, connect_activate(_), return (TimelineMsg::OpenTextItem, ()));
         }
-    }
 
-    view! {
-        #[name="grid"]
-        gtk::Grid {
-            column_spacing: 4,
-
-            #[name="scaler"]
-            gtk::Scale {
-                orientation: gtk::Orientation::Horizontal,
-                adjustment: &gtk::Adjustment::new(1.0, 0.1, 100.0, 0.1, 0.1, 0.1),
-                value_changed(_) => TimelineMsg::ChangeScale,
-
-                cell: {
-                    top_attach: 0,
-                    left_attach: 0,
-                },
-            },
-            gtk::Label {
-                label: "Layers here",
-                cell: {
-                    top_attach: 1,
-                    left_attach: 0,
-                },
-            },
-
-            #[name="scrolled"]
-            gtk::ScrolledWindow {
-                hexpand: true,
-                vexpand: true,
-                cell: {
-                    top_attach: 0,
-                    left_attach: 1,
-                    height: 2,
-                },
-
-                #[name="overlay"]
-                gtk::Overlay {
-                    gtk::Box {
-                        orientation: gtk::Orientation::Vertical,
-
-                        #[name="ruler_box"]
-                        gtk::EventBox {
-                            #[name="ruler"]
-                            RulerWidget(self.model.length, 20, Rc::new(scaler.clone())) {
-                            },
-
-                            realize(ruler_box) => {
-                                ruler_box.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
-                            },
-                            button_press_event(_, event) => (Some(TimelineMsg::RulerSeekTime(event.get_position().0)), Inhibit(false)),
-                            motion_notify_event(_, event) => (Some(TimelineMsg::RulerMotionNotify(event.get_position().0)), Inhibit(false))
-                        },
-
-                        #[name="box_viewer"]
-                        BoxViewerWidget<Renderer>(
-                            self.model.height,
-                            Rc::new(scaler.clone()),
-                            self.model.on_get_object.clone(),
-                            self.model.on_render.clone(),
-                        ) {
-                            OnSelect(ref index, ref event) => TimelineMsg::SelectComponent(*index, event.clone()),
-                            OnSelectNoBox(ref event) => TimelineMsg::OpenMenu(event.clone()),
-                            Motion(ref event) => TimelineMsg::RulerMotionNotify(event.get_position().0),
-                            OnDrag(index, distance, layer_index) => TimelineMsg::DragComponent(index, distance, layer_index),
-                            OnResize(index, distance) => TimelineMsg::ResizeComponent(index, distance),
-                        },
-                    },
-                },
-            },
-        },
+        TimelineWidget {
+            model: model,
+            grid: grid,
+            scaler: scaler,
+            overlay: overlay,
+            ruler: ruler,
+        }
     }
 }
 

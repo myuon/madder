@@ -7,9 +7,6 @@ extern crate cairo;
 use gtk::prelude::*;
 
 extern crate relm;
-extern crate relm_attributes;
-extern crate relm_derive;
-use relm_attributes::widget;
 use relm::*;
 
 #[derive(Clone)]
@@ -25,8 +22,16 @@ pub enum RulerMsg {
     MovePointer(f64),
 }
 
-#[widget]
-impl Widget for RulerWidget {
+pub struct RulerWidget {
+    model: Model,
+    canvas: gtk::DrawingArea,
+}
+
+impl Update for RulerWidget {
+    type Model = Model;
+    type ModelParam = (i32, i32, Rc<gtk::Scale>);
+    type Msg = RulerMsg;
+
     fn model(_: &Relm<Self>, (width, height, scale): (i32, i32, Rc<gtk::Scale>)) -> Model {
         Model {
             pointer: Rc::new(RefCell::new(0.0)),
@@ -45,13 +50,22 @@ impl Widget for RulerWidget {
             },
         }
     }
+}
 
-    fn init_view(&mut self) {
-        self.canvas.set_size_request(-1, self.model.height);
+impl Widget for RulerWidget {
+    type Root = gtk::DrawingArea;
 
-        let model = Rc::new(self.model.clone());
-        self.canvas.connect_draw(move |_,cr| {
-            let model = model.as_ref();
+    fn root(&self) -> Self::Root {
+        self.canvas.clone()
+    }
+
+    fn view(_relm: &Relm<Self>, model: Self::Model) -> Self {
+        let canvas = gtk::DrawingArea::new();
+        canvas.set_size_request(-1, model.height);
+
+        let model_ = Rc::new(model.clone());
+        canvas.connect_draw(move |_,cr| {
+            let model = model_.as_ref();
             cr.set_line_width(1.0);
             cr.set_source_rgb(0.0, 0.0, 0.0);
 
@@ -101,12 +115,13 @@ impl Widget for RulerWidget {
 
             Inhibit(false)
         });
-    }
 
-    view! {
-        #[name="canvas"]
-        gtk::DrawingArea {
+        RulerWidget {
+            model: model,
+            canvas: canvas,
         }
     }
 }
+
+
 

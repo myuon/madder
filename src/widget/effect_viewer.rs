@@ -9,9 +9,6 @@ use gtk::prelude::*;
 use gdk::prelude::*;
 
 extern crate relm;
-extern crate relm_attributes;
-extern crate relm_derive;
-use relm_attributes::widget;
 use relm::*;
 
 extern crate madder_core;
@@ -30,9 +27,18 @@ pub enum EffectMsg {
     Hide(Rc<gtk::Window>),
 }
 
-#[widget]
-impl<Renderer> Widget for EffectViewer<Renderer> where Renderer: AsRef<BoxObject> + 'static {
-    fn model(_: &Relm<Self>, parameter: (i32, i32, i32)) -> Model {
+pub struct EffectViewer<Renderer: AsRef<BoxObject> + 'static> {
+    model: Model,
+    window: gtk::Window,
+    box_viewer: relm::Component<BoxViewerWidget<Renderer>>
+}
+
+impl<Renderer> Update for EffectViewer<Renderer> where Renderer: AsRef<BoxObject> + 'static {
+    type Model = Model;
+    type ModelParam = (i32, i32, i32);
+    type Msg = EffectMsg;
+
+    fn model(_: &Relm<Self>, _parameter: (i32, i32, i32)) -> Model {
         Model {
             tracking_position: (0.0, 0),
             name_list: gtk::Box::new(gtk::Orientation::Vertical, 0),
@@ -51,23 +57,37 @@ impl<Renderer> Widget for EffectViewer<Renderer> where Renderer: AsRef<BoxObject
             },
         }
     }
+}
 
-    view! {
-        gtk::Window {
-            gtk::Box {
-                orientation: gtk::Orientation::Horizontal,
-                gtk::Overlay {
-                    BoxViewerWidget<Renderer>(
-                        200,
-                        Rc::new(gtk::Scale::new(gtk::Orientation::Vertical, None)),
-                        Rc::new(Box::new(|| { unreachable!() })),
-                        Rc::new(Box::new(|_,_,_| { unreachable!() })),
-                    ) {
-                    }
-                },
-            },
-            delete_event(window,_) => (EffectMsg::Hide(unsafe { Rc::from_raw(window) }), Inhibit(true)),
-        },
+impl<Renderer> Widget for EffectViewer<Renderer> where Renderer: AsRef<BoxObject> + 'static {
+    type Root = gtk::Window;
+
+    fn root(&self) -> Self::Root {
+        self.window.clone()
+    }
+
+    fn view(relm: &Relm<Self>, model: Self::Model) -> Self {
+        let window = gtk::Window::new(gtk::WindowType::Toplevel);
+        connect!(relm, window, connect_delete_event(window,_), return (EffectMsg::Hide(Rc::new(window.clone())), Inhibit(true)));
+
+        let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        window.add(&hbox);
+
+        let overlay = gtk::Overlay::new();
+        hbox.pack_start(&overlay, false, false, 0);
+
+        let box_viewer = overlay.add_widget::<BoxViewerWidget<Renderer>>((
+            200,
+            Rc::new(gtk::Scale::new(gtk::Orientation::Vertical, None)),
+            Rc::new(Box::new(|| { unreachable!() })),
+            Rc::new(Box::new(|_,_,_| { unreachable!() })),
+        ));
+
+        EffectViewer {
+            model: model,
+            window: window,
+            box_viewer: box_viewer,
+        }
     }
 }
 

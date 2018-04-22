@@ -5,9 +5,6 @@ extern crate gdk;
 use gtk::prelude::*;
 
 extern crate relm;
-extern crate relm_attributes;
-extern crate relm_derive;
-use relm_attributes::widget;
 use relm::*;
 
 use widget::AsWidget;
@@ -142,8 +139,16 @@ pub struct Model {
 pub enum PropertyMsg {
 }
 
-#[widget]
-impl Widget for PropertyViewerWidget {
+pub struct PropertyViewerWidget {
+    model: Model,
+    vbox: gtk::Box,
+}
+
+impl Update for PropertyViewerWidget {
+    type Model = Model;
+    type ModelParam = i32;
+    type Msg = PropertyMsg;
+
     fn model(_: &Relm<Self>, width: i32) -> Model {
         Model {
             remove_button: gtk::Button::new(),
@@ -151,17 +156,31 @@ impl Widget for PropertyViewerWidget {
         }
     }
 
-    fn update(&mut self, event: PropertyMsg) {
+    fn update(&mut self, _event: PropertyMsg) {
+    }
+}
+
+impl Widget for PropertyViewerWidget {
+    type Root = gtk::Box;
+
+    fn root(&self) -> Self::Root {
+        self.vbox.clone()
     }
 
-    view! {
-        gtk::Box {
-            orientation: gtk::Orientation::Vertical,
+    fn view(_relm: &Relm<Self>, model: Self::Model) -> Self {
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        vbox.pack_start(&gtk::Label::new("prop viewer"), false, false, 0);
 
-            gtk::Label {
-                text: "hoge",
-            },
-        },
+        PropertyViewerWidget {
+            model: model,
+            vbox: vbox,
+        }
+    }
+}
+
+impl UpdateNew for PropertyViewerWidget {
+    fn new(relm: &Relm<Self>, model: Self::Model) -> Self {
+        Widget::view(relm, model)
     }
 }
 
