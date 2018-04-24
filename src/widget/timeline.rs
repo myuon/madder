@@ -135,7 +135,7 @@ impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                     Attribute::Usize(cmp::max(layer_index, 0)),
                 ));
 
-                self.grid.queue_draw();
+                self.box_viewer.widget().queue_draw();
             },
             ResizeComponent(index, distance) => {
                 let add_time = |a: gst::ClockTime, b: f64| {
@@ -158,7 +158,7 @@ impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                     Attribute::Time(add_time(component.length, distance as f64)),
                 ));
 
-                self.grid.queue_draw();
+                self.box_viewer.widget().queue_draw();
             },
             ConnectGetComponent(callback) => {
                 self.model.get_component = callback;
@@ -183,7 +183,7 @@ impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                 let entity = dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string();
                 self.model.relm.stream().emit(TimelineMsg::OnNewComponent(json_entity("Video", &entity)));
 
-                self.grid.queue_draw();
+                self.box_viewer.widget().queue_draw();
                 dialog.destroy();
             },
             OpenImageItem => {
@@ -200,12 +200,12 @@ impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                 let entity = dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string();
                 self.model.relm.stream().emit(TimelineMsg::OnNewComponent(json_entity("Image", &entity)));
 
-                self.grid.queue_draw();
+                self.box_viewer.widget().queue_draw();
                 dialog.destroy();
             },
             OpenTextItem => {
                 self.model.relm.stream().emit(TimelineMsg::OnNewComponent(json_entity("Text", "dummy entity")));
-                self.grid.queue_draw();
+                self.box_viewer.widget().queue_draw();
             },
             SelectComponent(index, event) => {
                 if event.get_button() == 1 {
