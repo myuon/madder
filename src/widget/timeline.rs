@@ -27,7 +27,7 @@ pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
     menu: gtk::Menu,
     relm: Relm<TimelineWidget<Renderer>>,
     on_get_object: Rc<Box<Fn() -> Vec<Renderer>>>,
-    on_render: Rc<Box<Fn(Renderer, f64, &cairo::Context)>>,
+    on_render: Rc<Box<Fn(&Renderer, f64, &cairo::Context)>>,
 }
 
 #[derive(Msg)]
@@ -72,10 +72,10 @@ pub struct TimelineWidget<Renderer: AsRef<BoxObject> + 'static> {
 
 impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
     type Model = Model<Renderer>;
-    type ModelParam = (i32, i32, i32, Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(Renderer, f64, &cairo::Context)>>);
+    type ModelParam = (i32, i32, i32, Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(&Renderer, f64, &cairo::Context)>>);
     type Msg = TimelineMsg;
 
-    fn model(relm: &Relm<Self>, (width, height, length, on_get_object, on_render): (i32, i32, i32, Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(Renderer, f64, &cairo::Context)>>)) -> Model<Renderer> {
+    fn model(relm: &Relm<Self>, (width, height, length, on_get_object, on_render): Self::ModelParam) -> Model<Renderer> {
         Model {
             tracking_position: Rc::new(RefCell::new(0.0)),
             width: width,
