@@ -68,6 +68,7 @@ pub struct TimelineWidget<Renderer: AsRef<BoxObject> + 'static> {
     scaler: gtk::Scale,
     tracker: gtk::DrawingArea,
     ruler: relm::Component<RulerWidget>,
+    box_viewer: relm::Component<BoxViewerWidget<Renderer>>,
 }
 
 impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
@@ -316,6 +317,7 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
             overlay: overlay,
             ruler: ruler,
             tracker: tracker,
+            box_viewer: box_viewer,
         }
     }
 }
