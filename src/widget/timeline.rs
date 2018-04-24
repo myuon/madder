@@ -245,8 +245,17 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
         grid.attach(&gtk::Label::new("Layers here"),0,1,1,1);
         grid.attach(&scrolled,1,0,1,2);
 
+        let tracker = gtk::DrawingArea::new();
+        tracker.set_size_request(model.length, -1);
+        tracker.connect_realize(move |tracker| {
+            let window = tracker.get_window().unwrap();
+            window.set_pass_through(true);
+        });
+
         let overlay = gtk::Overlay::new();
         overlay.set_size_request(model.length, -1);
+        overlay.add_overlay(&tracker);
+        overlay.set_overlay_pass_through(&tracker, true);
         scrolled.add(&overlay);
 
         let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -256,6 +265,7 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
         ruler_box.add_events(gdk::EventMask::POINTER_MOTION_MASK.bits() as i32);
         connect!(relm, ruler_box, connect_button_press_event(_, event), return (Some(TimelineMsg::RulerSeekTime(event.get_position().0)), Inhibit(false)));
         connect!(relm, ruler_box, connect_motion_notify_event(_, event), return (Some(TimelineMsg::RulerMotionNotify(event.get_position().0)), Inhibit(false)));
+
         let ruler = ruler_box.add_widget::<RulerWidget>((model.length, 20, Rc::new(scaler.clone())));
         vbox.pack_start(&ruler_box, true, true, 10);
 
@@ -274,16 +284,6 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
             connect!(box_viewer@OnDrag(index, distance, layer_index), relm, TimelineMsg::DragComponent(index, distance, layer_index));
             connect!(box_viewer@OnResize(index, distance), relm, TimelineMsg::ResizeComponent(index, distance));
         }
-
-        let tracker = gtk::DrawingArea::new();
-        tracker.set_size_request(model.length, -1);
-        tracker.connect_realize(move |tracker| {
-            let window = tracker.get_window().unwrap();
-            window.set_pass_through(true);
-        });
-
-        overlay.add_overlay(&tracker);
-        overlay.set_overlay_pass_through(&tracker, true);
 
         let tracking_position = model.tracking_position.clone();
         connect!(relm, tracker, connect_draw(tracker,cr), return {

@@ -1,5 +1,4 @@
 use std::rc::Rc;
-use std::cell::RefCell;
 
 extern crate gtk;
 extern crate gdk;
@@ -74,7 +73,6 @@ pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
 
 #[derive(Msg)]
 pub enum BoxViewerMsg {
-    Draw,
     Motion(gdk::EventMotion),
     Select(gdk::EventButton),
     OnSelect(usize, gdk::EventButton),
@@ -93,7 +91,7 @@ impl<Renderer> Update for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
     type ModelParam = (i32, Rc<gtk::Scale>, Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(Renderer, f64, &cairo::Context)>>);
     type Msg = BoxViewerMsg;
 
-    fn model(relm: &Relm<Self>, (height, scale, on_get_object, on_render): (i32, Rc<gtk::Scale>, Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(Renderer, f64, &cairo::Context)>>)) -> Model<Renderer> {
+    fn model(relm: &Relm<Self>, (height, scale, on_get_object, on_render): Self::ModelParam) -> Model<Renderer> {
         Model {
             offset: 0,
             selecting_box_index: None,
@@ -106,10 +104,10 @@ impl<Renderer> Update for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
         }
     }
 
-    fn update(&mut self, event: BoxViewerMsg) {
+    fn update(&mut self, msg: BoxViewerMsg) {
         use self::BoxViewerMsg::*;
 
-        match event {
+        match msg {
             Select(event) => {
                 let event = &event;
                 let (x,y) = event.get_position();
@@ -178,7 +176,7 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
         let on_get_object = model.on_get_object.clone();
         let on_render = model.on_render.clone();
         let scale = model.scale.clone();
-        canvas.connect_draw(move |_,cr| {
+        connect!(relm, canvas, connect_draw(_,cr), return {
             let objects = on_get_object();
             for object in objects {
                 on_render(object, scale.get_value(), cr);
@@ -187,8 +185,8 @@ impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
             Inhibit(false)
         });
 
-        connect!(relm, canvas, connect_button_press_event(_,event), return (Some(BoxViewerMsg::Select(event.clone())), Inhibit(false)));
-        connect!(relm, canvas, connect_motion_notify_event(_,event), return (Some(BoxViewerMsg::Motion(event.clone())), Inhibit(false)));
+        connect!(relm, canvas, connect_button_press_event(_, event), return (Some(BoxViewerMsg::Select(event.clone())), Inhibit(false)));
+        connect!(relm, canvas, connect_motion_notify_event(_, event), return (Some(BoxViewerMsg::Motion(event.clone())), Inhibit(false)));
 
         BoxViewerWidget {
             model: model,
