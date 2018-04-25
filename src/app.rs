@@ -602,13 +602,12 @@ pub enum AppMsg {
     SelectComponent(usize),
 }
 
-use self::TimelineMsg::*;
-
 pub struct App {
     model: Model,
     window: gtk::Window,
     canvas: gtk::DrawingArea,
     timeline: relm::Component<TimelineWidget<ui_impl::TimelineComponentRenderer>>,
+    prop_viewer: relm::Component<PropertyViewerWidget>,
 }
 
 impl Update for App {
@@ -662,6 +661,19 @@ impl Update for App {
             },
             SelectComponent(index) => {
                 *self.model.selected_component_index.borrow_mut() = Some(index);
+
+                let editor = self.model.editor.borrow();
+                self.prop_viewer.stream().emit(PropertyMsg::SetWidget(
+                    0,
+                    serde_json::from_value::<Vec<_>>(editor.get_attr(Pointer::from_str(&format!(
+                        "/components/{}/common_and_prop",
+                        self.model.selected_component_index.borrow().unwrap()))
+                    )).unwrap().into_iter().map(|(key,value): (String, Attribute)| {
+                        (key.to_string(), gtk_impl::attribute_to_widget_type(value.clone()))
+                    }).collect(),
+                ));
+
+                self.timeline.widget().queue_draw();
             },
         }
     }
@@ -713,7 +725,10 @@ impl Widget for App {
         let canvas = gtk::DrawingArea::new();
         hbox.pack_start(&canvas, true, true, 0);
 
-        let _prop_viewer = hbox.add_widget::<PropertyViewerWidget>(250);
+        let prop_viewer = hbox.add_widget::<PropertyViewerWidget>(250);
+        prop_viewer.stream().emit(PropertyMsg::AppendPage("property"));
+        prop_viewer.stream().emit(PropertyMsg::AppendPage("effect"));
+
         // remove => (AppMsg::RemoveSelected, ()),
 
         let timeline = vbox.add_widget::<TimelineWidget<ui_impl::TimelineComponentRenderer>>((
@@ -753,10 +768,14 @@ impl Widget for App {
                 }))
             }
         ));
-        connect!(timeline@RulerSeekTime(time), relm, AppMsg::SeekTime(time as u64 * gst::MSECOND));
-        connect!(timeline@OnSetComponentAttr(index, name, ref attr), relm, AppMsg::SetComponentAttr(index, name, attr.clone()));
-        connect!(timeline@OnNewComponent(ref value), relm, AppMsg::NewComponent(value.clone()));
-        connect!(timeline@OnSelectComponent(index), relm, AppMsg::SelectComponent(index));
+
+        {
+            use self::TimelineMsg::*;
+            connect!(timeline@RulerSeekTime(time), relm, AppMsg::SeekTime(time as u64 * gst::MSECOND));
+            connect!(timeline@OnSetComponentAttr(index, name, ref attr), relm, AppMsg::SetComponentAttr(index, name, attr.clone()));
+            connect!(timeline@OnNewComponent(ref value), relm, AppMsg::NewComponent(value.clone()));
+            connect!(timeline@OnSelectComponent(index), relm, AppMsg::SelectComponent(index));
+        }
 
         let button = gtk::Button::new();
         button.set_label("start preview");
@@ -772,6 +791,7 @@ impl Widget for App {
             window: window,
             canvas: canvas,
             timeline: timeline,
+            prop_viewer: prop_viewer,
         }
     }
 }

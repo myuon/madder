@@ -6,6 +6,41 @@ extern crate gdk;
 use gtk::prelude::*;
 
 use madder_core::*;
+use widget::*;
+
+pub fn attribute_to_widget_type(attr: Attribute) -> WidgetType {
+    use Attribute::*;
+
+    match attr {
+        ReadOnly(s) => WidgetType::Label(s),
+        I32(n) => WidgetType::Entry(n.to_string()),
+        F64(n) => WidgetType::Entry(n.to_string()),
+        Usize(n) => WidgetType::Entry(n.to_string()),
+        Time(n) => WidgetType::Entry(n.mseconds().unwrap().to_string()),
+        Pair(box x, box y) => {
+            let widget_x = attribute_to_widget_type(x);
+            let widget_y = attribute_to_widget_type(y);
+
+            WidgetType::Expander(
+                format!(
+                    "({},{})",
+                    if let WidgetType::Entry(x) = &widget_x { x.as_str() } else { "-" },
+                    if let WidgetType::Entry(y) = &widget_y { y.as_str() } else { "-" },
+                ),
+                Box::new(WidgetType::VBox(vec![
+                    widget_x,
+                    widget_y,
+                ]))
+            )
+        },
+        FilePath(path) => WidgetType::FileChooser(path),
+        Document(doc) => WidgetType::TextArea(doc),
+        Font(font) => WidgetType::Font(font),
+        Color(color) => WidgetType::Color(color),
+        Choose(options, index) => WidgetType::Choose(options, index),
+        Sequence(seq) => WidgetType::VBox(seq.into_iter().map(attribute_to_widget_type).collect()),
+    }
+}
 
 #[derive(Clone, Debug)]
 pub enum Tracker {

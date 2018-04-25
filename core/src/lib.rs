@@ -340,6 +340,9 @@ impl Editor {
             &["components", ref n, "prop", ref key] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_prop(key)).unwrap()
             },
+            &["components", ref n, key] => {
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().get_prop(key)).unwrap()
+            },
             z => panic!("Call get_by_pointer_as_value with unexisting path: {:?}", z),
         }
     }
@@ -363,6 +366,14 @@ impl Editor {
             },
             &["components", ref n, "prop", ref key] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_attr(key)).unwrap()
+            },
+            &["components", ref n, "common"] => {
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().get_attrs()).unwrap()
+            },
+            &["components", ref n, "common_and_prop"] => {
+                let mut attrs = self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().get_attrs();
+                attrs.extend_from_slice(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_attrs().as_slice());
+                serde_json::to_value(attrs).unwrap()
             },
             &["components", ref n, key] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().get_attr(key)).unwrap()
