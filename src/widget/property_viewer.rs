@@ -131,17 +131,22 @@ impl AsWidget for BoxPage {
 }
 
 pub struct Model {
-    remove_button: gtk::Button,
     width: i32,
 }
 
 #[derive(Msg)]
 pub enum PropertyMsg {
+    OnRemove,
+    Clear,
+    AppendGridPage(&'static str, GridPage),
+    AppendBoxPage(&'static str, BoxPage),
 }
 
 pub struct PropertyViewerWidget {
     model: Model,
     vbox: gtk::Box,
+    notebook: gtk::Notebook,
+    remove_button: gtk::Button,
 }
 
 impl Update for PropertyViewerWidget {
@@ -151,12 +156,29 @@ impl Update for PropertyViewerWidget {
 
     fn model(_: &Relm<Self>, width: i32) -> Model {
         Model {
-            remove_button: gtk::Button::new(),
             width: width,
         }
     }
 
-    fn update(&mut self, _event: PropertyMsg) {
+    fn update(&mut self, event: PropertyMsg) {
+        use self::PropertyMsg::*;
+
+        match event {
+            Clear => {
+                for widget in self.notebook.get_children() {
+                    self.notebook.remove(&widget);
+                }
+            },
+            AppendGridPage(name, page) => {
+                self.notebook.append_page(&page.widget, Some(&gtk::Label::new(name)));
+                self.notebook.show_all();
+            },
+            AppendBoxPage(name, page) => {
+                self.notebook.append_page(&page.widget, Some(&gtk::Label::new(name)));
+                self.notebook.show_all();
+            },
+            _ => (),
+        }
     }
 }
 
@@ -167,65 +189,26 @@ impl Widget for PropertyViewerWidget {
         self.vbox.clone()
     }
 
-    fn view(_relm: &Relm<Self>, model: Self::Model) -> Self {
+    fn view(relm: &Relm<Self>, model: Self::Model) -> Self {
         let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
         vbox.pack_start(&gtk::Label::new("prop viewer"), false, false, 0);
+
+        let notebook = gtk::Notebook::new();
+        notebook.set_size_request(model.width, 100);
+
+        let remove_button = gtk::Button::new();
+        remove_button.set_label("Remove");
+        connect!(relm, remove_button, connect_clicked(_), PropertyMsg::OnRemove);
+
+        vbox.pack_start(&notebook, true, true, 0);
+        vbox.pack_start(&remove_button, false, false, 5);
 
         PropertyViewerWidget {
             model: model,
             vbox: vbox,
+            notebook: notebook,
+            remove_button: remove_button,
         }
     }
 }
 
-impl UpdateNew for PropertyViewerWidget {
-    fn new(relm: &Relm<Self>, model: Self::Model) -> Self {
-        Widget::view(relm, model)
-    }
-}
-
-/*
-impl PropertyViewerWidget {
-    pub fn new(width: i32) -> PropertyViewerWidget {
-        let self_ = PropertyViewerWidget {
-            view: gtk::Box::new(gtk::Orientation::Vertical, 0),
-            notebook: gtk::Notebook::new(),
-            remove_button: gtk::Button::new(),
-            width: width,
-        };
-        self_.create_ui();
-        self_
-    }
-
-    fn create_ui(&self) {
-        self.notebook.set_size_request(self.width, 100);
-        self.remove_button.set_label("Remove");
-
-        self.view.pack_start(&self.notebook, true, true, 0);
-        self.view.pack_start(&self.remove_button, false, false, 5);
-    }
-
-    pub fn connect_remove(&self, cont: Box<Fn()>) {
-        self.remove_button.connect_clicked(move |_| cont());
-    }
-
-    pub fn clear(&self) {
-        for widget in self.notebook.get_children() {
-            self.notebook.remove(&widget);
-        }
-    }
-
-    pub fn append_page<T: AsWidget>(&self, tab_name: &str, page: T) {
-        self.notebook.append_page(page.as_widget(), Some(&gtk::Label::new(tab_name)));
-        self.notebook.show_all();
-    }
-}
-
-impl AsWidget for PropertyViewerWidget {
-    type T = gtk::Box;
-
-    fn as_widget(&self) -> &Self::T {
-        &self.view
-    }
-}
- */
