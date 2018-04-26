@@ -663,13 +663,27 @@ impl Update for App {
                 *self.model.selected_component_index.borrow_mut() = Some(index);
 
                 let editor = self.model.editor.borrow();
-                self.prop_viewer.stream().emit(PropertyMsg::SetWidget(
+                self.prop_viewer.stream().emit(PropertyMsg::SetGridWidget(
                     0,
                     serde_json::from_value::<Vec<_>>(editor.get_attr(Pointer::from_str(&format!(
                         "/components/{}/common_and_prop",
                         self.model.selected_component_index.borrow().unwrap()))
                     )).unwrap().into_iter().map(|(key,value): (String, Attribute)| {
                         (key.to_string(), gtk_impl::attribute_to_widget_type(value.clone()))
+                    }).collect(),
+                ));
+                self.prop_viewer.stream().emit(PropertyMsg::SetVBoxWidget(
+                    1,
+                    serde_json::from_value::<Vec<Vec<_>>>(editor.get_attr(Pointer::from_str(&format!(
+                        "/components/{}/effect",
+                        self.model.selected_component_index.borrow().unwrap()))
+                    )).unwrap().into_iter().map(|attrs: Vec<Attribute>| {
+                        WidgetType::Expander(
+                            "effect".to_string(),
+                            Box::new(WidgetType::VBox(attrs.into_iter().map(|value| {
+                                gtk_impl::attribute_to_widget_type(value.clone())
+                            }).collect()))
+                        )
                     }).collect(),
                 ));
 

@@ -91,7 +91,8 @@ pub enum PropertyMsg {
     OnRemove,
     Clear,
     AppendPage(&'static str),
-    SetWidget(usize, Vec<(String, WidgetType)>),
+    SetVBoxWidget(usize, Vec<WidgetType>),
+    SetGridWidget(usize, Vec<(String, WidgetType)>),
 }
 
 pub struct PropertyViewerWidget {
@@ -129,7 +130,19 @@ impl Update for PropertyViewerWidget {
                 self.notebook.append_page(&grid, Some(&gtk::Label::new(name)));
                 self.notebook.show_all();
             },
-            SetWidget(index, widgets) => {
+            SetVBoxWidget(index, widgets) => {
+                let tab_widget = self.notebook.get_children()[index].clone().dynamic_cast::<gtk::Grid>().unwrap();
+                for child in tab_widget.get_children() {
+                    tab_widget.remove(&child);
+                }
+
+                for (i, widget_type) in widgets.into_iter().enumerate() {
+                    tab_widget.attach(&widget_type.to_widget(), 0, i as i32, 1, 1);
+                }
+
+                tab_widget.show_all();
+            },
+            SetGridWidget(index, widgets) => {
                 let tab_widget = self.notebook.get_children()[index].clone().dynamic_cast::<gtk::Grid>().unwrap();
                 for child in tab_widget.get_children() {
                     tab_widget.remove(&child);
