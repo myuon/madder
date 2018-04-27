@@ -58,7 +58,7 @@ pub enum PointerElement {
     KeyElement(String),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Pointer(pub Vec<String>);
 
 impl Pointer {

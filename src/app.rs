@@ -600,6 +600,7 @@ pub enum AppMsg {
     SetComponentAttr(usize, &'static str, Attribute),
     NewComponent(serde_json::Value),
     SelectComponent(usize),
+    SetAttr(WidgetType, Pointer),
 }
 
 pub struct App {
@@ -627,6 +628,9 @@ impl Update for App {
         use self::AppMsg::*;
 
         match event {
+            SetAttr(widget_type, pointer) => {
+                println!("{:?} {:?}", widget_type, pointer);
+            },
             Quit(window) => {
                 let window = &window;
                 window.destroy();
@@ -669,7 +673,7 @@ impl Update for App {
                         "/components/{}/common_and_prop",
                         self.model.selected_component_index.borrow().unwrap()))
                     )).unwrap().into_iter().map(|(key,value): (String, Attribute)| {
-                        (key.to_string(), gtk_impl::attribute_to_widget_type(value.clone()))
+                        (key.to_string(), gtk_impl::attribute_to_widget_type(value.clone()), format!("/components/{}/{}", self.model.selected_component_index.borrow().unwrap(), key))
                     }).collect(),
                 ));
                 self.prop_viewer.stream().emit(PropertyMsg::SetVBoxWidget(
@@ -677,13 +681,13 @@ impl Update for App {
                     serde_json::from_value::<Vec<Vec<_>>>(editor.get_attr(Pointer::from_str(&format!(
                         "/components/{}/effect",
                         self.model.selected_component_index.borrow().unwrap()))
-                    )).unwrap().into_iter().map(|attrs: Vec<Attribute>| {
-                        WidgetType::Expander(
+                    )).unwrap().into_iter().enumerate().map(|(i,attrs): (_,Vec<Attribute>)| {
+                        (WidgetType::Expander(
                             "effect".to_string(),
                             Box::new(WidgetType::VBox(attrs.into_iter().map(|value| {
                                 gtk_impl::attribute_to_widget_type(value.clone())
                             }).collect()))
-                        )
+                        ), format!("/components/{}/effect/{}/", self.model.selected_component_index.borrow().unwrap(), i))
                     }).collect(),
                 ));
 
@@ -742,6 +746,11 @@ impl Widget for App {
         let prop_viewer = hbox.add_widget::<PropertyViewerWidget>(250);
         prop_viewer.stream().emit(PropertyMsg::AppendPage("property"));
         prop_viewer.stream().emit(PropertyMsg::AppendPage("effect"));
+
+        {
+            use self::PropertyMsg::*;
+            connect!(prop_viewer@OnChangeAttr(ref widget_type, ref path), relm, AppMsg::SetAttr(widget_type.clone(), path.clone()));
+        }
 
         // remove => (AppMsg::RemoveSelected, ()),
 

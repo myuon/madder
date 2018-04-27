@@ -5,6 +5,9 @@ use gtk::prelude::*;
 extern crate relm;
 use relm::*;
 
+use madder_core::*;
+
+#[derive(Debug, Clone)]
 pub enum WidgetType {
     Entry(String),
     Choose(Vec<String>, Option<usize>),
@@ -18,13 +21,23 @@ pub enum WidgetType {
 }
 
 impl WidgetType {
-    fn to_widget(&self) -> gtk::Widget {
+    fn to_widget(&self, stream: EventStream<PropertyMsg>, path: String) -> gtk::Widget {
         use self::WidgetType::*;
 
         match self {
+            Label(label) => {
+                let label = gtk::Label::new(label.as_str());
+                label.dynamic_cast().unwrap()
+            },
             Entry(label) => {
                 let entry = gtk::Entry::new();
                 entry.set_text(label);
+                entry.connect_changed(move |entry| {
+                    stream.emit(PropertyMsg::OnChangeAttr(
+                        Entry(entry.get_text().unwrap()),
+                        Pointer::from_str(&path),
+                    ));
+                });
                 entry.dynamic_cast().unwrap()
             },
             Choose(options, index) => {
@@ -36,17 +49,21 @@ impl WidgetType {
                 if let Some(index) = index {
                     combo.set_active(*index as i32);
                 }
+
+                combo.connect_changed(move |combo| {
+                    stream.emit(PropertyMsg::OnChangeAttr(
+                        Choose(vec![], Some(combo.get_active() as usize)),
+                        Pointer::from_str(&path),
+                    ));
+                });
+
                 combo.dynamic_cast().unwrap()
-            },
-            Label(label) => {
-                let label = gtk::Label::new(label.as_str());
-                label.dynamic_cast().unwrap()
             },
             VBox(vec) => {
                 let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
                 for widget_type in vec {
-                    vbox.pack_start(&widget_type.to_widget(), false, false, 0);
+                    vbox.pack_start(&widget_type.to_widget(stream.clone(), path.clone()), false, false, 0);
                 }
 
                 vbox.dynamic_cast().unwrap()
@@ -56,26 +73,61 @@ impl WidgetType {
                 expander.set_margin_top(5);
                 expander.set_margin_bottom(5);
 
-                expander.add(&widget_type.to_widget());
+                expander.add(&widget_type.to_widget(stream, path));
                 expander.dynamic_cast().unwrap()
             },
-            FileChooser(path) => {
+            FileChooser(filename) => {
                 let btn = gtk::Button::new();
-                btn.set_label(path);
+                btn.set_label(filename);
+                btn.connect_clicked(move |_| {
+                    let dialog = gtk::FileChooserDialog::new(Some("Entity"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
+                    dialog.add_button("追加", 0);
+
+                    {
+                        let filter = gtk::FileFilter::new();
+                        filter.add_pattern("*.*");
+                        dialog.add_filter(&filter);
+                    }
+                    dialog.run();
+                    stream.emit(PropertyMsg::OnChangeAttr(
+                        FileChooser(dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string()),
+                        Pointer::from_str(&path),
+                    ));
+                    dialog.destroy();
+                });
                 btn.dynamic_cast().unwrap()
             },
             TextArea(doc) => {
                 let textarea = gtk::TextView::new();
+
                 let buffer = textarea.get_buffer().unwrap();
                 buffer.set_text(doc);
+                buffer.connect_changed(move |buffer| {
+                    stream.emit(PropertyMsg::OnChangeAttr(
+                        buffer.get_text(&buffer.get_start_iter(), &buffer.get_end_iter(), true).map(TextArea).unwrap(),
+                        Pointer::from_str(&path),
+                    ));
+                });
                 textarea.dynamic_cast().unwrap()
             },
             Font(font) => {
                 let fontbtn = gtk::FontButton::new_with_font(font);
+                fontbtn.connect_font_set(move |fontbtn| {
+                    stream.emit(PropertyMsg::OnChangeAttr(
+                        fontbtn.get_font().map(Font).unwrap(),
+                        Pointer::from_str(&path),
+                    ));
+                });
                 fontbtn.dynamic_cast().unwrap()
             },
             Color(color) => {
                 let colorbtn = gtk::ColorButton::new_with_rgba(color);
+                colorbtn.connect_color_set(move |colorbtn| {
+                    stream.emit(PropertyMsg::OnChangeAttr(
+                        Color(colorbtn.get_rgba()),
+                        Pointer::from_str(&path),
+                    ));
+                });
                 colorbtn.dynamic_cast().unwrap()
             },
         }
@@ -84,15 +136,17 @@ impl WidgetType {
 
 pub struct Model {
     width: i32,
+    relm: Relm<PropertyViewerWidget>,
 }
 
 #[derive(Msg)]
 pub enum PropertyMsg {
     OnRemove,
+    OnChangeAttr(WidgetType, Pointer),
     Clear,
     AppendPage(&'static str),
-    SetVBoxWidget(usize, Vec<WidgetType>),
-    SetGridWidget(usize, Vec<(String, WidgetType)>),
+    SetVBoxWidget(usize, Vec<(WidgetType, String)>),
+    SetGridWidget(usize, Vec<(String, WidgetType, String)>),
 }
 
 pub struct PropertyViewerWidget {
@@ -107,9 +161,10 @@ impl Update for PropertyViewerWidget {
     type ModelParam = i32;
     type Msg = PropertyMsg;
 
-    fn model(_: &Relm<Self>, width: i32) -> Model {
+    fn model(relm: &Relm<Self>, width: i32) -> Model {
         Model {
             width: width,
+            relm: relm.clone(),
         }
     }
 
@@ -136,8 +191,8 @@ impl Update for PropertyViewerWidget {
                     tab_widget.remove(&child);
                 }
 
-                for (i, widget_type) in widgets.into_iter().enumerate() {
-                    tab_widget.attach(&widget_type.to_widget(), 0, i as i32, 1, 1);
+                for (i, (widget_type, path)) in widgets.into_iter().enumerate() {
+                    tab_widget.attach(&widget_type.to_widget(self.model.relm.stream().clone(), path), 0, i as i32, 1, 1);
                 }
 
                 tab_widget.show_all();
@@ -148,12 +203,12 @@ impl Update for PropertyViewerWidget {
                     tab_widget.remove(&child);
                 }
 
-                for (i, (key, widget_type)) in widgets.into_iter().enumerate() {
+                for (i, (key, widget_type, path)) in widgets.into_iter().enumerate() {
                     let label = gtk::Label::new(key.as_str());
                     label.set_halign(gtk::Align::End);
 
                     tab_widget.attach(&label, 0, i as i32, 1, 1);
-                    tab_widget.attach(&widget_type.to_widget(), 1, i as i32, 1, 1);
+                    tab_widget.attach(&widget_type.to_widget(self.model.relm.stream().clone(), path), 1, i as i32, 1, 1);
                 }
 
                 tab_widget.show_all();
