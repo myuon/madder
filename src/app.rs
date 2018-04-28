@@ -628,9 +628,6 @@ impl Update for App {
         use self::AppMsg::*;
 
         match event {
-            SetAttr(widget_type, pointer) => {
-                println!("{:?} {:?}", widget_type, pointer);
-            },
             Quit(window) => {
                 let window = &window;
                 window.destroy();
@@ -690,6 +687,14 @@ impl Update for App {
                         ), format!("/components/{}/effect/{}/", self.model.selected_component_index.borrow().unwrap(), i))
                     }).collect(),
                 ));
+
+                self.timeline.widget().queue_draw();
+            },
+            SetAttr(widget_type, pointer) => {
+                self.model.editor.borrow_mut().patch_once(Operation::Add(
+                    pointer,
+                    gtk_impl::widget_type_to_value(widget_type),
+                ), ContentType::Value).unwrap();
 
                 self.timeline.widget().queue_draw();
             },

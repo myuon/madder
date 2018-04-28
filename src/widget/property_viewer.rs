@@ -5,11 +5,14 @@ use gtk::prelude::*;
 extern crate relm;
 use relm::*;
 
+extern crate serde_json;
+
 use madder_core::*;
 
 #[derive(Debug, Clone)]
 pub enum WidgetType {
-    Entry(String),
+    NumberEntry(serde_json::Number),
+    TextEntry(String),
     Choose(Vec<String>, Option<usize>),
     Label(String),
     VBox(Vec<WidgetType>),
@@ -29,12 +32,23 @@ impl WidgetType {
                 let label = gtk::Label::new(label.as_str());
                 label.dynamic_cast().unwrap()
             },
-            Entry(label) => {
+            NumberEntry(label) => {
+                let entry = gtk::Entry::new();
+                entry.set_text(&label.to_string());
+                entry.connect_changed(move |entry| {
+                    stream.emit(PropertyMsg::OnChangeAttr(
+                        NumberEntry(entry.get_text().and_then(|t| t.parse::<serde_json::Number>().ok()).unwrap()),
+                        Pointer::from_str(&path),
+                    ));
+                });
+                entry.dynamic_cast().unwrap()
+            },
+            TextEntry(label) => {
                 let entry = gtk::Entry::new();
                 entry.set_text(label);
                 entry.connect_changed(move |entry| {
                     stream.emit(PropertyMsg::OnChangeAttr(
-                        Entry(entry.get_text().unwrap()),
+                        TextEntry(entry.get_text().unwrap()),
                         Pointer::from_str(&path),
                     ));
                 });
