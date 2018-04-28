@@ -50,18 +50,6 @@ pub enum TimelineMsg {
     QueueDraw,
 }
 
-fn json_entity(component_type: &str, entity: &str) -> serde_json::Value {
-    json!({
-        "component_type": component_type,
-        "start_time": 0,
-        "length": 100,
-        "layer_index": 0,
-        "prop": {
-            "entity": entity,
-        },
-    })
-}
-
 pub struct TimelineWidget<Renderer: AsRef<BoxObject> + 'static> {
     model: Model<Renderer>,
     grid: gtk::Grid,
@@ -93,6 +81,18 @@ impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
 
     fn update(&mut self, event: TimelineMsg) {
         use self::TimelineMsg::*;
+
+        let json_entity = |component_type: &str, entity: &str| -> serde_json::Value {
+            json!({
+                "component_type": component_type,
+                "start_time": 0,
+                "length": 100,
+                "layer_index": 0,
+                "prop": {
+                    "entity": entity,
+                },
+            })
+        };
 
         match event {
             RulerSeekTime(time) => {

@@ -36,10 +36,12 @@ impl WidgetType {
                 let entry = gtk::Entry::new();
                 entry.set_text(&label.to_string());
                 entry.connect_changed(move |entry| {
-                    stream.emit(PropertyMsg::OnChangeAttr(
-                        NumberEntry(entry.get_text().and_then(|t| t.parse::<serde_json::Number>().ok()).unwrap()),
-                        Pointer::from_str(&path),
-                    ));
+                    if let Some(num) = entry.get_text().and_then(|t| t.parse::<serde_json::Number>().ok()) {
+                        stream.emit(PropertyMsg::OnChangeAttr(
+                            NumberEntry(num),
+                            Pointer::from_str(&path),
+                        ));
+                    }
                 });
                 entry.dynamic_cast().unwrap()
             },
