@@ -47,6 +47,7 @@ pub enum TimelineMsg {
     OnSetComponentAttr(usize, &'static str, Attribute),
     OnNewComponent(serde_json::Value),
     OnSelectComponent(usize),
+    QueueDraw,
 }
 
 fn json_entity(component_type: &str, entity: &str) -> serde_json::Value {
@@ -217,6 +218,9 @@ impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                     menu.popup_easy(0, gtk::get_current_event_time());
                     menu.show_all();
                 }
+            },
+            QueueDraw => {
+                self.tracker.queue_draw();
             },
             _ => (),
         }

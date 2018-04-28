@@ -696,7 +696,7 @@ impl Update for App {
                     gtk_impl::widget_type_to_value(widget_type),
                 ), ContentType::Value).unwrap();
 
-                self.timeline.widget().queue_draw();
+                self.timeline.stream().emit(TimelineMsg::QueueDraw);
             },
         }
     }
