@@ -366,56 +366,6 @@ impl App {
             self_.property.clear();
 
             let self__ = self_ as *mut Self;
-            self_.property.append_page("component", GridPage::new(
-                self_.property.width,
-                serde_json::from_value(self_.editor.get_attr(Pointer::from_str(&format!("/components/{}", index)))).unwrap(),
-                &|prop_name, prop: Attribute, _| {
-                    let self_ = unsafe { self__.as_mut().unwrap() };
-
-                    let prop_name = Rc::new(prop_name.to_string());
-
-                    let self__ = self_ as *mut Self;
-                    gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
-                        let self_ = unsafe { self__.as_mut().unwrap() };
-                        let prop = serde_json::from_value::<Attribute>(self_.editor.get_attr(Pointer::from_str(&format!("/components/{}/{}", index, *prop_name)))).unwrap().clone();
-                        if let Some(new_prop) = new_prop {
-                            self_.editor.patch_once(Operation::Add(
-                                Pointer::from_str(&format!("/components/{}/{}", index, prop_name.as_str())),
-                                json!(gtk_impl::recover_property(prop, tracker, new_prop)),
-                            ), ContentType::Attribute).unwrap();
-                        }
-
-                        self_.queue_draw();
-                    }))
-                },
-            ));
-
-            let self__ = self_ as *mut Self;
-            self_.property.append_page("property", GridPage::new(
-                self_.property.width,
-                serde_json::from_value(self_.editor.get_attr(Pointer::from_str(&format!("/components/{}/prop", index)))).unwrap(),
-                &|prop_name, prop, prop_index| {
-                    let self_ = unsafe { self__.as_mut().unwrap() };
-
-                    let prop_index = Rc::new(prop_index);
-                    let prop_name = Rc::new(prop_name.to_string());
-                    let self__ = self_ as *mut Self;
-                    gtk_impl::edit_type_as_widget(&prop, vec![], Rc::new(move |new_prop, tracker| {
-                        let self_ = unsafe { self__.as_mut().unwrap() };
-                        let prop = serde_json::from_value::<Vec<(String, Attribute)>>(self_.editor.get_attr(Pointer::from_str(&format!("/components/{}/prop", index)))).unwrap()[*prop_index].1.clone();
-                        if let Some(new_prop) = new_prop {
-                            self_.editor.patch_once(Operation::Add(
-                                Pointer::from_str(&format!("/components/{}/prop/{}", index, prop_name.as_str())),
-                                json!(gtk_impl::recover_property(prop, tracker, new_prop)),
-                            ), ContentType::Attribute).unwrap();
-                        }
-
-                        self_.queue_draw();
-                    }))
-                },
-            ));
-
-            let self__ = self_ as *mut Self;
             self_.property.append_page("effect", BoxPage::new(
                 self_.property.width,
                 serde_json::from_value::<Vec<Vec<(String, Attribute)>>>(self_.editor.get_attr(Pointer::from_str(&format!("/components/{}/effect", index)))).unwrap(),

@@ -28,15 +28,15 @@ fn main() {
     gtk::init().expect("Gtk initialization error");
     gst::init().expect("Gstreamer initialization error");
 
-    /*
     use std::env;
     let args = env::args().collect::<Vec<String>>();
 
-    let mut app =
+    let json =
         if args.len() >= 2 {
-            App::new_from_file(&args[1])
+            let file = ::std::fs::File::open(&args[1]).unwrap();
+            serde_json::from_reader(file).unwrap()
         } else {
-            App::new_from_json(serde_json::from_value(json!({
+            json!({
                 "width": 640,
                 "height": 480,
                 "length": 90000,
@@ -52,29 +52,8 @@ fn main() {
                         },
                     }
                 ],
-            })).unwrap())
+            })
         };
 
-    app.create_ui();
-
-    gtk::main();
-     */
-
-    App::run(json!({
-        "width": 640,
-        "height": 480,
-        "length": 90000,
-        "components": [
-            {
-                "component_type": "Text",
-                "start_time": 0,
-                "length": 100,
-                "layer_index": 0,
-                "prop": {
-                    "coordinate": [50,50],
-                    "entity": "[ここにテキストを挿入]",
-                },
-            }
-        ],
-    })).unwrap();
+    App::run(json).unwrap();
 }
