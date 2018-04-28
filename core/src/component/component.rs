@@ -161,7 +161,7 @@ impl HasPropertyBuilder for Component {
             "start_time" => self.start_time = prop.as_time().unwrap(),
             "length" => self.length = prop.as_time().unwrap(),
             "layer_index" => self.layer_index = prop.as_usize().unwrap(),
-            _ => unimplemented!(),
+            z => panic!("Has no such prop name: {}", z),
         }
     }
 }

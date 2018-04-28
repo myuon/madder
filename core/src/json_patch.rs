@@ -1,6 +1,9 @@
+use std::ops::Add;
+
 extern crate serde_json;
 use serde_json::Value;
 
+#[derive(Clone)]
 pub enum IndexRange {
     Index(usize),
     ReverseIndex(usize),
@@ -64,6 +67,17 @@ pub struct Pointer(pub Vec<String>);
 impl Pointer {
     pub fn from_str(path: &str) -> Pointer {
         Pointer(path.split('/').skip(1).map(|x| x.replace("~1", "/").replace("~0", "~")).collect::<Vec<_>>())
+    }
+}
+
+impl Add for Pointer {
+    type Output = Pointer;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        let mut vec = self.0;
+        let mut vec_r = rhs.0;
+        vec.append(&mut vec_r);
+        Pointer(vec)
     }
 }
 

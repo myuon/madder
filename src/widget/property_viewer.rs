@@ -78,8 +78,8 @@ impl WidgetType {
             VBox(vec) => {
                 let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
-                for widget_type in vec {
-                    vbox.pack_start(&widget_type.to_widget(stream.clone(), path.clone()), false, false, 0);
+                for (i, widget_type) in vec.iter().enumerate() {
+                    vbox.pack_start(&widget_type.to_widget(stream.clone(), format!("{}/{}", path, i)), false, false, 0);
                 }
 
                 vbox.dynamic_cast().unwrap()
@@ -159,10 +159,10 @@ pub struct Model {
 pub enum PropertyMsg {
     OnRemove,
     OnChangeAttr(WidgetType, Pointer),
-    Clear,
+    ClearPage(usize),
     AppendPage(&'static str),
-    SetVBoxWidget(usize, Vec<(WidgetType, String)>),
-    SetGridWidget(usize, Vec<(String, WidgetType, String)>),
+    AppendVBoxWidget(usize, Vec<(WidgetType, String)>),
+    AppendGridWidget(usize, Vec<(String, WidgetType, String)>),
 }
 
 pub struct PropertyViewerWidget {
@@ -188,9 +188,10 @@ impl Update for PropertyViewerWidget {
         use self::PropertyMsg::*;
 
         match event {
-            Clear => {
-                for widget in self.notebook.get_children() {
-                    self.notebook.remove(&widget);
+            ClearPage(index) => {
+                let tab_widget = self.notebook.get_children()[index].clone().dynamic_cast::<gtk::Grid>().unwrap();
+                for child in tab_widget.get_children() {
+                    tab_widget.remove(&child);
                 }
             },
             AppendPage(name) => {
@@ -201,7 +202,7 @@ impl Update for PropertyViewerWidget {
                 self.notebook.append_page(&grid, Some(&gtk::Label::new(name)));
                 self.notebook.show_all();
             },
-            SetVBoxWidget(index, widgets) => {
+            AppendVBoxWidget(index, widgets) => {
                 let tab_widget = self.notebook.get_children()[index].clone().dynamic_cast::<gtk::Grid>().unwrap();
                 for child in tab_widget.get_children() {
                     tab_widget.remove(&child);
@@ -213,18 +214,16 @@ impl Update for PropertyViewerWidget {
 
                 tab_widget.show_all();
             },
-            SetGridWidget(index, widgets) => {
+            AppendGridWidget(index, widgets) => {
                 let tab_widget = self.notebook.get_children()[index].clone().dynamic_cast::<gtk::Grid>().unwrap();
-                for child in tab_widget.get_children() {
-                    tab_widget.remove(&child);
-                }
+                let widget_num = tab_widget.get_children().len() as i32;
 
                 for (i, (key, widget_type, path)) in widgets.into_iter().enumerate() {
                     let label = gtk::Label::new(key.as_str());
                     label.set_halign(gtk::Align::End);
 
-                    tab_widget.attach(&label, 0, i as i32, 1, 1);
-                    tab_widget.attach(&widget_type.to_widget(self.model.relm.stream().clone(), path), 1, i as i32, 1, 1);
+                    tab_widget.attach(&label, 0, widget_num + i as i32, 1, 1);
+                    tab_widget.attach(&widget_type.to_widget(self.model.relm.stream().clone(), path), 1, widget_num + i as i32, 1, 1);
                 }
 
                 tab_widget.show_all();

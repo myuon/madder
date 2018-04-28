@@ -218,6 +218,20 @@ impl Editor {
         }
     }
 
+    fn add_components_key_n(&mut self, n: IndexRange, key: &str, i: IndexRange, value: Value, content_type: ContentType) {
+        match content_type {
+            ContentType::Value => {
+                let mut seq = self.elements.as_index_mut(n.clone()).get_prop(key).as_array().unwrap().clone();
+                *seq.as_index_mut(i) = serde_json::from_value(value).unwrap();
+
+                self.elements.as_index_mut(n).as_component_mut().set_prop(key, json!(seq));
+            },
+            ContentType::Attribute => {
+                self.elements.as_index_mut(n).as_component_mut().set_attr(key, serde_json::from_value(value).unwrap());
+            },
+        }
+    }
+
     fn add_components_n_effect(&mut self, index: IndexRange, value: Value, content_type: ContentType) {
         match content_type {
             ContentType::Value => {
@@ -232,6 +246,20 @@ impl Editor {
         match content_type {
             ContentType::Value => {
                 self.elements.as_index_mut(n).set_prop(key, serde_json::from_value(value).unwrap());
+            },
+            ContentType::Attribute => {
+                self.elements.as_index_mut(n).set_attr(key, serde_json::from_value(value).unwrap());
+            },
+        }
+    }
+
+    fn add_components_n_prop_key_n(&mut self, n: IndexRange, key: &str, i: IndexRange, value: Value, content_type: ContentType) {
+        match content_type {
+            ContentType::Value => {
+                let mut seq = self.elements.as_index_mut(n.clone()).get_prop(key).as_array().unwrap().clone();
+                *seq.as_index_mut(i) = serde_json::from_value(value).unwrap();
+
+                self.elements.as_index_mut(n).set_prop(key, json!(seq));
             },
             ContentType::Attribute => {
                 self.elements.as_index_mut(n).set_attr(key, serde_json::from_value(value).unwrap());
@@ -340,6 +368,9 @@ impl Editor {
             &["components", ref n, "prop", ref key] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_prop(key)).unwrap()
             },
+            &["components", ref n, "common", ref key] => {
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().get_prop(key)).unwrap()
+            },
             &["components", ref n, key] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().get_prop(key)).unwrap()
             },
@@ -422,7 +453,9 @@ impl Patch for Editor {
                     &["components", ref n, "effect", ref m, "intermeds"] => self.add_components_n_effect_n_intermeds(IndexRange::from_str(n).unwrap(), IndexRange::from_str(m).unwrap(), v, content_type),
                     &["components", ref n, "effect", ref m, key] => self.add_components_n_effect_n_key(IndexRange::from_str(n).unwrap(), IndexRange::from_str(m).unwrap(), key, v, content_type),
                     &["components", ref n, "prop", key] => self.add_components_n_prop_key(IndexRange::from_str(n).unwrap(), key, v, content_type),
+                    &["components", ref n, "prop", key, ref i] => self.add_components_n_prop_key_n(IndexRange::from_str(n).unwrap(), key, IndexRange::from_str(i).unwrap(), v, content_type),
                     &["components", ref n, key] => self.add_components_key(IndexRange::from_str(n).unwrap(), key, v, content_type),
+                    &["components", ref n, key, ref i] => self.add_components_key_n(IndexRange::from_str(n).unwrap(), key, IndexRange::from_str(i).unwrap(), v, content_type),
                     _ => unimplemented!(),
                 }
             },

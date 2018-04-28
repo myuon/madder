@@ -664,16 +664,29 @@ impl Update for App {
                 *self.model.selected_component_index.borrow_mut() = Some(index);
 
                 let editor = self.model.editor.borrow();
-                self.prop_viewer.stream().emit(PropertyMsg::SetGridWidget(
+                self.prop_viewer.stream().emit(PropertyMsg::ClearPage(0));
+                self.prop_viewer.stream().emit(PropertyMsg::ClearPage(1));
+
+                self.prop_viewer.stream().emit(PropertyMsg::AppendGridWidget(
                     0,
                     serde_json::from_value::<Vec<_>>(editor.get_attr(Pointer::from_str(&format!(
-                        "/components/{}/common_and_prop",
+                        "/components/{}/common",
                         self.model.selected_component_index.borrow().unwrap()))
                     )).unwrap().into_iter().map(|(key,value): (String, Attribute)| {
                         (key.to_string(), gtk_impl::attribute_to_widget_type(value.clone()), format!("/components/{}/{}", self.model.selected_component_index.borrow().unwrap(), key))
                     }).collect(),
                 ));
-                self.prop_viewer.stream().emit(PropertyMsg::SetVBoxWidget(
+                self.prop_viewer.stream().emit(PropertyMsg::AppendGridWidget(
+                    0,
+                    serde_json::from_value::<Vec<_>>(editor.get_attr(Pointer::from_str(&format!(
+                        "/components/{}/prop",
+                        self.model.selected_component_index.borrow().unwrap()))
+                    )).unwrap().into_iter().map(|(key,value): (String, Attribute)| {
+                        (key.to_string(), gtk_impl::attribute_to_widget_type(value.clone()), format!("/components/{}/prop/{}", self.model.selected_component_index.borrow().unwrap(), key))
+                    }).collect(),
+                ));
+
+                self.prop_viewer.stream().emit(PropertyMsg::AppendVBoxWidget(
                     1,
                     serde_json::from_value::<Vec<Vec<_>>>(editor.get_attr(Pointer::from_str(&format!(
                         "/components/{}/effect",
@@ -697,6 +710,7 @@ impl Update for App {
                 ), ContentType::Value).unwrap();
 
                 self.timeline.stream().emit(TimelineMsg::QueueDraw);
+                self.canvas.queue_draw();
             },
         }
     }
