@@ -493,42 +493,11 @@ impl App {
             serde_json::from_value(self_.editor.get_value(Pointer::from_str(&format!("/components/{}/effect/{}", self_.selected_component_index.expect("App::selected_component_index is None"), index)))).unwrap()
         });
 
-        let self_ = self as *mut Self;
-        self.effect_viewer.connect_get_objects(Box::new(move || {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            self_.editor
-                .get_value(Pointer::from_str(&format!("/components/{}/effect", self_.selected_component_index.unwrap())))
-                .as_array().unwrap()
-                .iter()
-                .map(|obj| serde_json::from_value::<Effect>(obj.clone()).unwrap())
-                .enumerate()
-                .map(|(i,obj)| { ui_impl::EffectComponentRenderer::new(i,obj) })
-                .collect()
-        }));
-
         self.effect_viewer.connect_render_object(Box::new(move |robj: ui_impl::EffectComponentRenderer, scaler, cr| {
             robj.renderer(scaler, cr)
         }));
 
         let self_ = self as *mut Self;
-        self.effect_viewer.connect_new_point = Box::new(move |eff_index, point| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-            let index = self_.selected_component_index.unwrap();
-            let current = self_.editor.get_value(Pointer::from_str(&format!("/components/{}/effect/{}/intermeds/value/{}", index, eff_index, point))).as_f64().unwrap();
-            self_.editor.patch_once(
-                Operation::Add(
-                    Pointer::from_str(&format!("/components/{}/effect/{}/intermeds", index, eff_index)),
-                    json!(EffectPoint {
-                        transition: Transition::Ease,
-                        position: point,
-                        value: current,
-                    }),
-                ), ContentType::Value
-            ).unwrap();
-
-            self_.effect_viewer.queue_draw();
-        });
 
         self.timeline.create_ui();
         self.timeline.connect_drag_component();
@@ -551,6 +520,7 @@ pub enum AppMsg {
     NewComponent(serde_json::Value),
     SelectComponent(usize),
     SetAttr(WidgetType, Pointer),
+    NewIntermedPoint(usize, f64),
 }
 
 pub struct App {
@@ -559,6 +529,7 @@ pub struct App {
     canvas: gtk::DrawingArea,
     timeline: relm::Component<TimelineWidget<ui_impl::TimelineComponentRenderer>>,
     prop_viewer: relm::Component<PropertyViewerWidget>,
+    effect_viewer: relm::Component<EffectViewerWidget<ui_impl::EffectComponentRenderer>>,
 }
 
 impl Update for App {
@@ -652,6 +623,7 @@ impl Update for App {
                 ));
 
                 self.timeline.stream().emit(TimelineMsg::QueueDraw);
+                self.effect_viewer.stream().emit(EffectMsg::QueueDraw);
             },
             SetAttr(widget_type, pointer) => {
                 self.model.editor.borrow_mut().patch_once(Operation::Add(
@@ -661,6 +633,23 @@ impl Update for App {
 
                 self.timeline.stream().emit(TimelineMsg::QueueDraw);
                 self.canvas.queue_draw();
+            },
+            NewIntermedPoint(eff_index, point) => {
+                let index = self.model.selected_component_index.borrow().unwrap();
+                let current = self.model.editor.borrow().get_value(Pointer::from_str(&format!("/components/{}/effect/{}/intermeds/value/{}", index, eff_index, point))).as_f64().unwrap();
+
+                self.model.editor.borrow_mut().patch_once(
+                    Operation::Add(
+                        Pointer::from_str(&format!("/components/{}/effect/{}/intermeds", index, eff_index)),
+                        json!(EffectPoint {
+                            transition: Transition::Ease,
+                            position: point,
+                            value: current,
+                        }),
+                    ), ContentType::Value
+                ).unwrap();
+
+                self.effect_viewer.widget().queue_draw();
             },
         }
     }
@@ -734,6 +723,33 @@ impl Widget for App {
 
         // remove => (AppMsg::RemoveSelected, ()),
 
+        let effect_viewer = stack.add_widget::<EffectViewerWidget<ui_impl::EffectComponentRenderer>>((
+            {
+                let editor = model.editor.clone();
+                let selected_component_index = model.selected_component_index.clone();
+                Rc::new(Box::new(move || {
+                    editor.borrow()
+                        .get_value(Pointer::from_str(&format!("/components/{}/effect", selected_component_index.borrow().unwrap())))
+                        .as_array().unwrap()
+                        .iter()
+                        .map(|obj| serde_json::from_value::<Effect>(obj.clone()).unwrap())
+                        .enumerate()
+                        .map(|(i,obj)| { ui_impl::EffectComponentRenderer::new(i,obj) })
+                        .collect()
+                }))
+            },
+            {
+                Rc::new(Box::new(move |robj, scaler, cr| {
+                    robj.renderer(scaler, &cr);
+                }))
+            },
+        ));
+        stack.set_child_title(effect_viewer.widget(), "Effect");
+        {
+            use self::EffectMsg::*;
+            connect!(effect_viewer@OnNewIntermedPoint(index, ratio), relm, AppMsg::NewIntermedPoint(index, ratio));
+        }
+
         let timeline = vbox.add_widget::<TimelineWidget<ui_impl::TimelineComponentRenderer>>((
             model.editor.borrow().width,
             130,
@@ -795,6 +811,7 @@ impl Widget for App {
             canvas: canvas,
             timeline: timeline,
             prop_viewer: prop_viewer,
+            effect_viewer: effect_viewer,
         }
     }
 }

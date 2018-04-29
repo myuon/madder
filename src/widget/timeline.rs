@@ -283,7 +283,7 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
 
         {
             use self::BoxViewerMsg::*;
-            connect!(box_viewer@OnSelect(ref index, ref event), relm, TimelineMsg::SelectComponent(*index, event.clone()));
+            connect!(box_viewer@OnSelect(ref object, ref event), relm, TimelineMsg::SelectComponent(object.index, event.clone()));
             connect!(box_viewer@OnSelectNoBox(ref event), relm, TimelineMsg::OpenMenu(event.clone()));
             connect!(box_viewer@Motion(ref event), relm, TimelineMsg::RulerMotionNotify(event.get_position().0));
             connect!(box_viewer@OnDrag(index, distance, layer_index), relm, TimelineMsg::DragComponent(index, distance, layer_index));

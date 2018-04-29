@@ -75,7 +75,7 @@ pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
 pub enum BoxViewerMsg {
     Motion(gdk::EventMotion),
     Select(gdk::EventButton),
-    OnSelect(usize, gdk::EventButton),
+    OnSelect(BoxObject, gdk::EventButton),
     OnSelectNoBox(gdk::EventButton),
     OnResize(usize, i32),
     OnDrag(usize, i32, usize),
@@ -118,7 +118,7 @@ impl<Renderer> Update for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
                 if let Some(object) = (self.model.on_get_object)().iter().find(|object| object.as_ref().clone().hscaled(scale).contains(x,y)) {
                     self.model.offset = x;
                     self.model.selecting_box_index = Some(object.as_ref().index);
-                    self.model.relm.stream().emit(BoxViewerMsg::OnSelect(object.as_ref().index, event.clone()));
+                    self.model.relm.stream().emit(BoxViewerMsg::OnSelect(object.as_ref().clone(), event.clone()));
                 } else {
                     self.model.relm.stream().emit(BoxViewerMsg::OnSelectNoBox(event.clone()));
                 }
