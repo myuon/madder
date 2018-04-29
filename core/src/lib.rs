@@ -456,7 +456,7 @@ impl Patch for Editor {
                     &["components", ref n, "prop", key, ref i] => self.add_components_n_prop_key_n(IndexRange::from_str(n).unwrap(), key, IndexRange::from_str(i).unwrap(), v, content_type),
                     &["components", ref n, key] => self.add_components_key(IndexRange::from_str(n).unwrap(), key, v, content_type),
                     &["components", ref n, key, ref i] => self.add_components_key_n(IndexRange::from_str(n).unwrap(), key, IndexRange::from_str(i).unwrap(), v, content_type),
-                    _ => unimplemented!(),
+                    z => panic!("Path Not Found: {:?}", z),
                 }
             },
             Remove(path) => {

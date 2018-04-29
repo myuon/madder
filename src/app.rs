@@ -647,7 +647,7 @@ impl Update for App {
                             Box::new(WidgetType::Grid(attrs.into_iter().map(|(key,value)| {
                                 (key, gtk_impl::attribute_to_widget_type(value.clone()))
                             }).collect()))
-                        ), format!("/components/{}/effect/{}/", self.model.selected_component_index.borrow().unwrap(), i))
+                        ), format!("/components/{}/effect/{}", self.model.selected_component_index.borrow().unwrap(), i))
                     }).collect(),
                 ));
 

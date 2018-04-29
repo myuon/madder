@@ -81,7 +81,7 @@ impl WidgetType {
 
                 for (i, (key, widget_type)) in vec.iter().enumerate() {
                     grid.attach(&gtk::Label::new(key.as_str()), 0, i as i32, 1, 1);
-                    grid.attach(&widget_type.to_widget(stream.clone(), format!("{}/{}", path, i)), 1, i as i32, 1, 1);
+                    grid.attach(&widget_type.to_widget(stream.clone(), format!("{}/{}", path, key)), 1, i as i32, 1, 1);
                 }
 
                 grid.dynamic_cast().unwrap()
