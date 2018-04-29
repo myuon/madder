@@ -651,7 +651,7 @@ impl Update for App {
                     }).collect(),
                 ));
 
-                self.timeline.widget().queue_draw();
+                self.timeline.stream().emit(TimelineMsg::QueueDraw);
             },
             SetAttr(widget_type, pointer) => {
                 self.model.editor.borrow_mut().patch_once(Operation::Add(
@@ -712,7 +712,18 @@ impl Widget for App {
         let canvas = gtk::DrawingArea::new();
         hbox.pack_start(&canvas, true, true, 0);
 
-        let prop_viewer = hbox.add_widget::<PropertyViewerWidget>(250);
+        let vbox_prop = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        hbox.pack_start(&vbox_prop, true, true, 0);
+
+        let switcher = gtk::StackSwitcher::new();
+        vbox_prop.pack_start(&switcher, false, false, 0);
+
+        let stack = gtk::Stack::new();
+        switcher.set_stack(&stack);
+        vbox_prop.pack_start(&stack, true, true, 0);
+
+        let prop_viewer = stack.add_widget::<PropertyViewerWidget>(500);
+        stack.set_child_title(prop_viewer.widget(), "Grid");
         prop_viewer.stream().emit(PropertyMsg::AppendPage("property"));
         prop_viewer.stream().emit(PropertyMsg::AppendPage("effect"));
 
