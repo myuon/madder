@@ -16,6 +16,7 @@ pub enum WidgetType {
     Choose(Vec<String>, Option<usize>),
     Label(String),
     VBox(Vec<WidgetType>),
+    Grid(Vec<(String, WidgetType)>),
     Expander(String, Box<WidgetType>),
     FileChooser(String),
     TextArea(String),
@@ -74,6 +75,16 @@ impl WidgetType {
                 });
 
                 combo.dynamic_cast().unwrap()
+            },
+            Grid(vec) => {
+                let grid = gtk::Grid::new();
+
+                for (i, (key, widget_type)) in vec.iter().enumerate() {
+                    grid.attach(&gtk::Label::new(key.as_str()), 0, i as i32, 1, 1);
+                    grid.attach(&widget_type.to_widget(stream.clone(), format!("{}/{}", path, i)), 1, i as i32, 1, 1);
+                }
+
+                grid.dynamic_cast().unwrap()
             },
             VBox(vec) => {
                 let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);

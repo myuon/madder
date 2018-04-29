@@ -641,11 +641,11 @@ impl Update for App {
                     serde_json::from_value::<Vec<Vec<_>>>(editor.get_attr(Pointer::from_str(&format!(
                         "/components/{}/effect",
                         self.model.selected_component_index.borrow().unwrap()))
-                    )).unwrap().into_iter().enumerate().map(|(i,attrs): (_,Vec<Attribute>)| {
+                    )).unwrap().into_iter().enumerate().map(|(i,attrs): (_,Vec<(String,Attribute)>)| {
                         (WidgetType::Expander(
                             "effect".to_string(),
-                            Box::new(WidgetType::VBox(attrs.into_iter().map(|value| {
-                                gtk_impl::attribute_to_widget_type(value.clone())
+                            Box::new(WidgetType::Grid(attrs.into_iter().map(|(key,value)| {
+                                (key, gtk_impl::attribute_to_widget_type(value.clone()))
                             }).collect()))
                         ), format!("/components/{}/effect/{}/", self.model.selected_component_index.borrow().unwrap(), i))
                     }).collect(),

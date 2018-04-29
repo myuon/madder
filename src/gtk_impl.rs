@@ -50,9 +50,12 @@ pub fn widget_type_to_value(widget_type: WidgetType) -> serde_json::Value {
         WidgetType::TextEntry(label) => json!(label),
         WidgetType::Choose(_, index) => json!(index),
         WidgetType::Label(_) => unreachable!(),
-        WidgetType::VBox(_) => {
-            unimplemented!()
+        WidgetType::Grid(vec) => {
+            json!(vec.into_iter().map(|(key,widget_type)| {
+                (key, widget_type_to_value(widget_type))
+            }).collect::<Vec<_>>())
         },
+        WidgetType::VBox(_) => unimplemented!(),
         WidgetType::Expander(_,_) => unimplemented!(),
         WidgetType::FileChooser(_) => unimplemented!(),
         WidgetType::TextArea(_) => unimplemented!(),
