@@ -238,7 +238,7 @@ impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                 component.start_time = position;
                 component.length = component.length - (position - component.start_time);
 
-                self.model.relm.stream().emit(TimelineMsg::OnNewComponent(json!(component)));
+//                self.model.relm.stream().emit(TimelineMsg::OnNewComponent(json!(component)));
             },
             QueueDraw => {
                 self.tracker.queue_draw();
