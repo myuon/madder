@@ -1,4 +1,5 @@
 extern crate serde_json;
+extern crate madder_util as util;
 
 use madder_core::*;
 use widget::*;
@@ -51,9 +52,9 @@ pub fn widget_type_to_value(widget_type: WidgetType) -> serde_json::Value {
         WidgetType::VBox(_) => unimplemented!(),
         WidgetType::Expander(_,_) => unimplemented!(),
         WidgetType::FileChooser(_) => unimplemented!(),
-        WidgetType::TextArea(_) => unimplemented!(),
-        WidgetType::Font(_) => unimplemented!(),
-        WidgetType::Color(_) => unimplemented!(),
+        WidgetType::TextArea(doc) => json!(doc),
+        WidgetType::Font(font) => json!(font),
+        WidgetType::Color(color) => json!(util::serde_impl::SerRGBA(color)),
     }
 }
 
