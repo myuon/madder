@@ -120,7 +120,7 @@ impl ComponentWrapper for TextComponent {
 
 impl HasPropertyBuilder for TextComponent {
     fn keys(_: PhantomData<Self>) -> Vec<String> {
-        vec_add!(CommonProperty::keys(PhantomData), strings!["entity"])
+        vec_add!(CommonProperty::keys(PhantomData), strings!["entity", "text_color", "text_font"])
     }
 
     fn getter<T: AsAttribute>(&self, name: &str) -> T {

@@ -95,9 +95,7 @@ impl ComponentWrapper for ImageComponent {
     }
 
     fn get_info(&self) -> String {
-        let mut w = 0;
-        let mut h = 0;
-        format!("image {:?}", gdk_pixbuf::Pixbuf::get_file_info(&self.prop.entity, &mut w, &mut h).unwrap().get_description())
+        format!("image {:?}", gdk_pixbuf::Pixbuf::get_file_info(&self.prop.entity).unwrap().0.get_description())
     }
 }
 

@@ -4,6 +4,7 @@ extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 extern crate serde_json;
 use gdk::prelude::*;
+use gdk_pixbuf::prelude::*;
 
 use madder_core::*;
 use widget::*;
@@ -44,7 +45,7 @@ impl TimelineComponentRenderer {
                 for i in 0..(self.object.size().0 / BoxObject::HEIGHT) {
                     if let Some(pixbuf) = peek((i * Self::HEIGHT) as u64 * gst::MSECOND) {
                         cr.set_source_pixbuf(
-                            &pixbuf.scale_simple(BoxObject::HEIGHT, BoxObject::HEIGHT, 0).unwrap(),
+                            &pixbuf.scale_simple(BoxObject::HEIGHT, BoxObject::HEIGHT, gdk_pixbuf::InterpType::Nearest).unwrap(),
                             (self.object.coordinate().0 + BoxObject::HEIGHT * i) as f64,
                             self.object.coordinate().1 as f64
                         );
@@ -60,7 +61,7 @@ impl TimelineComponentRenderer {
             },
             ComponentType::Image => {
                 let pixbuf = peek(0 * gst::MSECOND).unwrap();
-                cr.set_source_pixbuf(&pixbuf.scale_simple(50, 50, 0).unwrap(), self.object.coordinate().0 as f64, self.object.coordinate().1 as f64);
+                cr.set_source_pixbuf(&pixbuf.scale_simple(50, 50, gdk_pixbuf::InterpType::Nearest).unwrap(), self.object.coordinate().0 as f64, self.object.coordinate().1 as f64);
                 cr.rectangle(self.object.coordinate().0 as f64, self.object.coordinate().1 as f64, self.object.size().0 as f64, self.object.size().1 as f64);
                 cr.fill();
             },

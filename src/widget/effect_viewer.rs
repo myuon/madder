@@ -1,3 +1,6 @@
+use std::rc::Rc;
+use std::cell::RefCell;
+
 extern crate gtk;
 extern crate gdk;
 extern crate glib;
@@ -6,131 +9,148 @@ extern crate gstreamer as gst;
 use gtk::prelude::*;
 use gdk::prelude::*;
 
+extern crate relm;
+use relm::*;
+
 extern crate madder_core;
 use madder_core::*;
-use widget::{AsWidget, BoxObject, BoxViewerWidget};
+use widget::*;
 
-pub struct EffectViewer<Renderer: AsRef<BoxObject>> {
-    viewer: BoxViewerWidget<Renderer>,
-    window: gtk::Window,
-    overlay: gtk::Overlay,
-    tracker: gtk::DrawingArea,
-    tracking_position: (f64, usize),
+pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
+    tracking_position: Rc<RefCell<f64>>,
     name_list: gtk::Box,
-    pub connect_get_effect: Box<Fn(usize) -> component::Effect>,
-    pub connect_new_point: Box<Fn(usize, f64)>,
+    connect_get_effect: Box<Fn(usize) -> component::Effect>,
+    connect_new_point: Box<Fn(usize, f64)>,
+    on_get_object: Rc<Box<Fn() -> Vec<Renderer>>>,
+    on_render: Rc<Box<Fn(&Renderer, f64, &cairo::Context)>>,
+    relm: Relm<EffectViewerWidget<Renderer>>,
 }
 
-impl<Renderer: 'static + AsRef<BoxObject>> EffectViewer<Renderer> {
-    pub fn new() -> EffectViewer<Renderer> {
-        let mut viewer = EffectViewer {
-            viewer: BoxViewerWidget::new(200),
-            window: gtk::Window::new(gtk::WindowType::Toplevel),
-            overlay: gtk::Overlay::new(),
-            tracker: gtk::DrawingArea::new(),
-            tracking_position: (0.0, 0),
+#[derive(Msg)]
+pub enum EffectMsg {
+    QueueDraw,
+    Select(BoxObject, gdk::EventButton),
+    OnNewIntermedPoint(usize, f64),
+}
+
+pub struct EffectViewerWidget<Renderer: AsRef<BoxObject> + 'static> {
+    model: Model<Renderer>,
+    scrolled: gtk::ScrolledWindow,
+    box_viewer: relm::Component<BoxViewerWidget<Renderer>>,
+    vbox: gtk::Box,
+    graph: relm::Component<BezierGraphWidget>,
+}
+
+impl<Renderer> Update for EffectViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
+    type Model = Model<Renderer>;
+    type ModelParam = (Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(&Renderer, f64, &cairo::Context)>>);
+    type Msg = EffectMsg;
+
+    fn model(relm: &Relm<Self>, (on_get_object, on_render): Self::ModelParam) -> Model<Renderer> {
+        Model {
+            tracking_position: Rc::new(RefCell::new(0.0)),
             name_list: gtk::Box::new(gtk::Orientation::Vertical, 0),
             connect_get_effect: Box::new(|_| unreachable!()),
             connect_new_point: Box::new(|_,_| unreachable!()),
-        };
-
-        viewer.create_ui();
-        viewer
-    }
-
-    pub fn connect_get_objects(&mut self, cont: Box<Fn() -> Vec<Renderer>>) {
-        self.viewer.connect_get_objects = cont;
-    }
-
-    pub fn connect_render_object(&mut self, cont: Box<Fn(Renderer, f64, &cairo::Context)>) {
-        self.viewer.connect_render_object = cont;
-    }
-
-    pub fn get_objects(&self) -> Vec<Renderer> {
-        (self.viewer.connect_get_objects)()
-    }
-
-    pub fn get_effect(&self, index: usize) -> component::Effect {
-        (self.connect_get_effect)(index)
-    }
-
-    pub fn setup(&mut self) {
-        for child in &self.name_list.get_children() {
-            self.name_list.remove(child);
+            on_get_object: on_get_object,
+            on_render: on_render,
+            relm: relm.clone(),
         }
-
-        for obj in self.get_objects() {
-            let label = gtk::Label::new(format!("{}: {}", obj.as_ref().index, self.get_effect(obj.as_ref().index).value(0.75)).as_str());
-            label.set_size_request(-1, BoxObject::HEIGHT);
-            self.name_list.pack_start(&label, false, false, 0);
-        }
-
-        self.viewer.setup();
     }
 
-    fn create_ui(&mut self) {
-        let self_ = self as *mut Self;
-        self.viewer.connect_select_box = Box::new(move |index, event| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-            self_.tracking_position = (event.get_position().0, index);
-            self_.queue_draw();
+    fn update(&mut self, event: EffectMsg) {
+        use self::EffectMsg::*;
 
-            if event.get_button() == 3 {
-                (self_.connect_new_point)(index, event.get_position().0 / self_.viewer.get_selected_object().unwrap().size().0 as f64);
-            }
-        });
+        match event {
+            QueueDraw => {
+                self.graph.widget().queue_draw();
+            },
+            Select(object, event) => {
+                *self.model.tracking_position.borrow_mut() = event.get_position().0;
+                self.box_viewer.widget().queue_draw();
 
-        self.name_list.set_size_request(30,-1);
+                if event.get_button() == 3 {
+                    let ratio = event.get_position().0 / object.size().0 as f64;
+                    self.model.relm.stream().emit(EffectMsg::OnNewIntermedPoint(object.index, ratio));
+                }
+            },
+            _ => (),
+        }
+    }
+}
 
-        self.overlay.add(self.viewer.as_widget());
-        self.overlay.add_overlay(&self.tracker);
-        self.overlay.set_overlay_pass_through(&self.tracker, true);
+impl<Renderer> Widget for EffectViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
+    type Root = gtk::ScrolledWindow;
 
-        self.tracker.set_size_request(-1, -1);
-        self.tracker.connect_realize(move |tracker| {
+    fn root(&self) -> Self::Root {
+        self.scrolled.clone()
+    }
+
+    fn view(relm: &Relm<Self>, model: Self::Model) -> Self {
+        let scrolled = gtk::ScrolledWindow::new(None, None);
+
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        scrolled.add(&vbox);
+
+        let label = gtk::Label::new("▶ Effect Timeline");
+        label.set_halign(gtk::Align::Start);
+        vbox.pack_start(&label, false, false, 5);
+
+        let overlay = gtk::Overlay::new();
+        vbox.pack_start(&overlay, false, false, 0);
+
+        let tracker = gtk::DrawingArea::new();
+        tracker.set_size_request(-1, -1);
+        tracker.connect_realize(move |tracker| {
             let window = tracker.get_window().unwrap();
             window.set_pass_through(true);
         });
+        overlay.add_overlay(&tracker);
+        overlay.set_overlay_pass_through(&tracker, true);
 
-        let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-        hbox.pack_start(&self.name_list, false, false, 0);
-        hbox.pack_start(&self.overlay, true, true, 0);
+        let tracking_position = model.tracking_position.clone();
+        tracker.connect_draw(move |tracker,cr| {
+            cr.set_source_rgb(200.0, 0.0, 0.0);
 
-        self.window.set_size_request(500, 200);
-        self.window.add(&hbox);
-        self.window.connect_delete_event(move |window,_| {
-            window.hide();
-            gtk::Inhibit(true)
-        });
-
-        let self_ = self as *mut Self;
-        self.tracker.connect_draw(move |tracker,cr| {
-            let self_ = unsafe { self_.as_ref().unwrap() };
-
-            cr.set_source_rgb(200f64, 0f64, 0f64);
-
-            cr.move_to(self_.tracking_position.0, 0.0);
+            cr.move_to(*tracking_position.borrow(), 0.0);
             cr.rel_line_to(0.0, tracker.get_allocation().height as f64);
             cr.stroke();
 
             Inhibit(false)
         });
-    }
 
-    pub fn popup(&self) {
-        self.window.show_all();
-    }
+        let box_viewer = overlay.add_widget::<BoxViewerWidget<Renderer>>((
+            200,
+            Rc::new(gtk::Scale::new_with_range(gtk::Orientation::Horizontal, 1.0, 10.0, 0.1)),
+            model.on_get_object.clone(),
+            model.on_render.clone(),
+        ));
+        {
+            use self::BoxViewerMsg::*;
+            connect!(box_viewer@OnSelect(ref object, ref event), relm, EffectMsg::Select(object.clone(), event.clone()));
+        }
 
-    pub fn queue_draw(&self) {
-        self.as_widget().queue_draw();
-    }
-}
+        let label = gtk::Label::new("▶ Effect");
+        label.set_halign(gtk::Align::Start);
+        vbox.pack_start(&label, false, false, 5);
 
-impl<M: AsRef<BoxObject>> AsWidget for EffectViewer<M> {
-    type T = gtk::Window;
+        let combo = gtk::ComboBoxText::new();
+        vbox.pack_start(&combo, false, false, 0);
 
-    fn as_widget(&self) -> &Self::T {
-        &self.window
+        for item in &["Transition 1", "Transition 2"] {
+            combo.append_text(item);
+        }
+        combo.set_active(0);
+
+        let graph = vbox.add_widget::<BezierGraphWidget>(());
+
+        EffectViewerWidget {
+            model: model,
+            box_viewer: box_viewer,
+            vbox: vbox,
+            graph: graph,
+            scrolled: scrolled,
+        }
     }
 }
 

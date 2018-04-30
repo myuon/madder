@@ -1,56 +1,88 @@
+use std::rc::Rc;
+use std::cell::RefCell;
+
 extern crate gstreamer as gst;
 extern crate gtk;
 extern crate cairo;
 use gtk::prelude::*;
 
-use widget::AsWidget;
+extern crate relm;
+use relm::*;
 
-pub struct RulerWidget {
-    canvas: gtk::DrawingArea,
-    pointer: f64,
+#[derive(Clone)]
+pub struct Model {
+    pointer: Rc<RefCell<f64>>,
     width: i32,
     height: i32,
-    pub connect_get_scale: Box<Fn() -> f64>,
+    scale: Rc<gtk::Scale>,
 }
 
-impl RulerWidget {
-    pub fn new(width: i32, height: i32) -> RulerWidget {
-        let ruler = gtk::DrawingArea::new();
-        ruler.set_size_request(-1, height);
+#[derive(Msg)]
+pub enum RulerMsg {
+    MovePointer(f64),
+}
 
-        RulerWidget {
-            canvas: ruler,
-            pointer: 0.0,
+pub struct RulerWidget {
+    model: Model,
+    canvas: gtk::DrawingArea,
+}
+
+impl Update for RulerWidget {
+    type Model = Model;
+    type ModelParam = (i32, i32, Rc<gtk::Scale>);
+    type Msg = RulerMsg;
+
+    fn model(_: &Relm<Self>, (width, height, scale): (i32, i32, Rc<gtk::Scale>)) -> Model {
+        Model {
+            pointer: Rc::new(RefCell::new(0.0)),
             width: width,
             height: height,
-            connect_get_scale: Box::new(|| { 1.0 }),
+            scale: scale,
         }
     }
 
-    pub fn create_ui(&mut self) {
-        let self_ = self as *mut Self;
-        self.canvas.connect_draw(move |_, cr| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-            let width = self_.width;
-            let height = self_.height;
+    fn update(&mut self, event: RulerMsg) {
+        use self::RulerMsg::*;
 
+        match event {
+            MovePointer(pos) => {
+                *self.model.pointer.borrow_mut() = pos;
+            },
+        }
+    }
+}
+
+impl Widget for RulerWidget {
+    type Root = gtk::DrawingArea;
+
+    fn root(&self) -> Self::Root {
+        self.canvas.clone()
+    }
+
+    fn view(_relm: &Relm<Self>, model: Self::Model) -> Self {
+        let canvas = gtk::DrawingArea::new();
+        canvas.set_size_request(-1, model.height);
+
+        let model_ = Rc::new(model.clone());
+        canvas.connect_draw(move |_,cr| {
+            let model = model_.as_ref();
             cr.set_line_width(1.0);
-            cr.set_source_rgb(0f64, 0f64, 0f64);
+            cr.set_source_rgb(0.0, 0.0, 0.0);
 
-            cr.move_to(0f64, height as f64);
-            cr.line_to(width as f64, height as f64);
+            cr.move_to(0.0, model.height as f64);
+            cr.line_to(model.width as f64, model.height as f64);
 
             cr.select_font_face("Serif", cairo::FontSlant::Normal, cairo::FontWeight::Bold);
             cr.set_font_size(10 as f64);
 
-            let interval_large_height = height as f64;
-            let interval_height = height as f64 * 0.5;
-            let interval_small_height = height as f64 * 0.25;
+            let interval_large_height = model.height as f64;
+            let interval_height = model.height as f64 * 0.5;
+            let interval_small_height = model.height as f64 * 0.25;
             let interval = 10;
 
-            let scaler = (self_.connect_get_scale)();
+            let scaler = model.scale.get_value();
 
-            for x in (0..(((width / interval) as f64) / scaler) as i32).map(|x| x * interval) {
+            for x in (0..(((model.width / interval) as f64) / scaler) as i32).map(|x| x * interval) {
                 cr.move_to(x as f64, interval_large_height);
 
                 let h = if x % (interval * 10) == 0 {
@@ -73,32 +105,23 @@ impl RulerWidget {
 
             let width = 10.0;
             let height = 5.0;
-            cr.move_to(self_.pointer, interval_large_height);
+            cr.move_to(*model.pointer.borrow(), interval_large_height);
             cr.rel_line_to(-width/2.0, -height);
             cr.rel_line_to(width, 0.0);
             cr.rel_line_to(-width/2.0, height);
             cr.fill();
 
             cr.stroke();
+
             Inhibit(false)
         });
-    }
 
-    pub fn send_pointer_position(&mut self, x: f64) {
-        self.pointer = x;
-    }
-
-    pub fn queue_draw(&self) {
-        self.canvas.queue_draw();
+        RulerWidget {
+            model: model,
+            canvas: canvas,
+        }
     }
 }
 
-impl AsWidget for RulerWidget {
-    type T = gtk::DrawingArea;
-
-    fn as_widget(&self) -> &gtk::DrawingArea {
-        &self.canvas
-    }
-}
 
 
