@@ -1,8 +1,3 @@
-extern crate gstreamer as gst;
-extern crate gtk;
-extern crate gdk;
-use gtk::prelude::*;
-
 extern crate serde_json;
 
 use madder_core::*;

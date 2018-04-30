@@ -1,17 +1,13 @@
 extern crate gtk;
-extern crate gdk;
 extern crate glib;
 extern crate cairo;
 extern crate gstreamer as gst;
 use gtk::prelude::*;
-use gdk::prelude::*;
 
 extern crate relm;
 use relm::*;
 
 extern crate madder_core;
-use madder_core::*;
-use widget::*;
 
 pub struct Model {
 }
@@ -35,8 +31,6 @@ impl Update for BezierGraphWidget {
     }
 
     fn update(&mut self, event: BezierGraphMsg) {
-        use self::BezierGraphMsg::*;
-
         match event {
         }
     }
@@ -49,7 +43,7 @@ impl Widget for BezierGraphWidget {
         self.canvas.clone()
     }
 
-    fn view(_relm: &Relm<Self>, model: Self::Model) -> Self {
+    fn view(_relm: &Relm<Self>, _model: Self::Model) -> Self {
         let canvas = gtk::DrawingArea::new();
         canvas.set_size_request(-1, 300);
         canvas.connect_draw(move |_,cr| {
