@@ -36,63 +36,6 @@ use ui_impl;
 
 use WINDOW_NUMBER;
 
-/*
-impl App {
-    pub fn create_ui(&mut self) {
-
-        let self_ = self as *mut Self;
-        self.timeline.connect_select_component_menu = Box::new(move |index, position| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-            let menu = gtk::Menu::new();
-            let split_component_here = {
-                let split_component_here = gtk::MenuItem::new_with_label("オブジェクトをこの位置で分割");
-
-                let self__ = self_ as *mut Self;
-                split_component_here.connect_activate(move |_| {
-                    let self_ = unsafe { self__.as_mut().unwrap() };
-                    let this_component = serde_json::from_value::<Component>(self_.editor.get_value(Pointer::from_str(&format!("/components/{}", index)))).unwrap();
-                    let mut this = self_.editor.get_value(Pointer::from_str(&format!("/components/{}", index)));
-                    this.as_object_mut().unwrap()["start_time"] = json!(position.mseconds().unwrap());
-                    this.as_object_mut().unwrap()["length"] = json!(this_component.length.mseconds().unwrap() - position.mseconds().unwrap());
-
-                    self_.editor.patch(vec![
-                        Operation::Add(
-                            Pointer::from_str(&format!("/components/{}/length", index)),
-                            json!((position - this_component.start_time).mseconds().unwrap()),
-                        ),
-                        Operation::Add(
-                            Pointer::from_str("/components"),
-                            this,
-                        ),
-                    ], ContentType::Value).unwrap();
-
-                    self_.queue_draw();
-                });
-
-                split_component_here
-            };
-            let open_effect_window = {
-                let open_effect_window = gtk::MenuItem::new_with_label("エフェクトウィンドウを開く");
-
-                let self__ = self_ as *mut Self;
-                open_effect_window.connect_activate(move |_| {
-                    let self_ = unsafe { self__.as_mut().unwrap() };
-                    self_.effect_viewer.setup();
-                    self_.effect_viewer.popup();
-                });
-
-                open_effect_window
-            };
-
-            menu.append(&split_component_here);
-            menu.append(&open_effect_window);
-            menu
-        });
-
-    }
-}
- */
-
 pub struct Model {
     editor: Rc<RefCell<Editor>>,
     selected_component_index: Rc<RefCell<Option<usize>>>,

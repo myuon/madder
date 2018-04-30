@@ -48,6 +48,7 @@ pub enum TimelineMsg {
     OnNewComponent(serde_json::Value),
     OnSelectComponent(usize),
     QueueDraw,
+    SplitComponent(usize, gst::ClockTime),
 }
 
 pub struct TimelineWidget<Renderer: AsRef<BoxObject> + 'static> {
@@ -212,12 +213,32 @@ impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                 if event.get_button() == 1 {
                     self.model.relm.stream().emit(TimelineMsg::OnSelectComponent(index));
                 } else if event.get_button() == 3 {
-                    let _length = (event.get_position().0 / self.scaler.get_value()) as u64 * gst::MSECOND;
                     let menu = gtk::Menu::new();
-                    menu.append(&gtk::MenuItem::new_with_label("piyo"));
+                    let split_component_here = {
+                        let split_component_here = gtk::MenuItem::new_with_label("オブジェクトをこの位置で分割");
+                        let position = (event.get_position().0 / self.scaler.get_value()) as u64 * gst::MSECOND;
+                        connect!(self.model.relm, split_component_here, connect_activate(_), TimelineMsg::SplitComponent(index, position));
+
+                        split_component_here
+                    };
+
+                    menu.append(&split_component_here);
                     menu.popup_easy(0, gtk::get_current_event_time());
                     menu.show_all();
                 }
+            },
+            SplitComponent(index, position) => {
+                let mut component = (self.model.get_component)(index);
+                self.model.relm.stream().emit(TimelineMsg::OnSetComponentAttr(
+                    index,
+                    "length",
+                    Attribute::Time(position - component.start_time),
+                ));
+
+                component.start_time = position;
+                component.length = component.length - (position - component.start_time);
+
+                self.model.relm.stream().emit(TimelineMsg::OnNewComponent(json!(component)));
             },
             QueueDraw => {
                 self.tracker.queue_draw();
