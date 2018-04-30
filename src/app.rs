@@ -486,21 +486,6 @@ impl App {
             menu
         });
 
-        let self_ = self as *mut Self;
-        self.effect_viewer.connect_get_effect = Box::new(move |index| {
-            let self_ = unsafe { self_.as_mut().unwrap() };
-
-            serde_json::from_value(self_.editor.get_value(Pointer::from_str(&format!("/components/{}/effect/{}", self_.selected_component_index.expect("App::selected_component_index is None"), index)))).unwrap()
-        });
-
-        self.effect_viewer.connect_render_object(Box::new(move |robj: ui_impl::EffectComponentRenderer, scaler, cr| {
-            robj.renderer(scaler, cr)
-        }));
-
-        let self_ = self as *mut Self;
-
-        self.timeline.create_ui();
-        self.timeline.connect_drag_component();
     }
 }
  */

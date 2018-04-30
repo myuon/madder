@@ -38,7 +38,7 @@ pub struct EffectViewerWidget<Renderer: AsRef<BoxObject> + 'static> {
     scrolled: gtk::ScrolledWindow,
     box_viewer: relm::Component<BoxViewerWidget<Renderer>>,
     vbox: gtk::Box,
-    graph: gtk::DrawingArea,
+    graph: relm::Component<BezierGraphWidget>,
 }
 
 impl<Renderer> Update for EffectViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
@@ -63,7 +63,7 @@ impl<Renderer> Update for EffectViewerWidget<Renderer> where Renderer: AsRef<Box
 
         match event {
             QueueDraw => {
-                self.graph.queue_draw();
+                self.graph.widget().queue_draw();
             },
             Select(object, event) => {
                 *self.model.tracking_position.borrow_mut() = event.get_position().0;
@@ -142,24 +142,7 @@ impl<Renderer> Widget for EffectViewerWidget<Renderer> where Renderer: AsRef<Box
         }
         combo.set_active(0);
 
-        let graph = gtk::DrawingArea::new();
-        graph.set_size_request(-1, 300);
-        graph.connect_draw(move |_,cr| {
-            cr.move_to(0.0, 150.0);
-            cr.set_line_width(1.0);
-            cr.set_source_rgb(0.8, 0.8, 0.8);
-            cr.rel_line_to(500.0, 0.0);
-            cr.stroke();
-
-            cr.move_to(0.0, 150.0);
-            cr.set_line_width(2.0);
-            cr.set_source_rgb(0.4, 0.4, 0.4);
-            cr.curve_to(50.0, 150.0, 400.0, 50.0, 500.0, 0.0);
-            cr.stroke();
-
-            Inhibit(false)
-        });
-        vbox.pack_start(&graph, false, false, 0);
+        let graph = vbox.add_widget::<BezierGraphWidget>(());
 
         EffectViewerWidget {
             model: model,

@@ -13,6 +13,9 @@ pub use self::timeline::*;
 mod property_viewer;
 pub use self::property_viewer::*;
 
+mod bezier_graph;
+pub use self::bezier_graph::*;
+
 mod effect_viewer;
 pub use self::effect_viewer::*;
 
