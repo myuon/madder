@@ -1,6 +1,5 @@
 use std::ops::{Deref, DerefMut};
 use std::marker::PhantomData;
-use std::collections::HashMap;
 
 extern crate gdk;
 extern crate gdk_pixbuf;
@@ -92,12 +91,6 @@ pub struct Component {
     pub effect: Vec<Effect>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct PropComponent {
-    pub component: Component,
-    pub property: HashMap<String, Attribute>,
-}
-
 pub trait ComponentWrapper {
     fn as_value(&self) -> serde_json::Value;
 
@@ -169,26 +162,6 @@ impl HasPropertyBuilder for Component {
             "length" => self.length = prop.as_time().unwrap(),
             "layer_index" => self.layer_index = prop.as_usize().unwrap(),
             z => panic!("Has no such prop name: {}", z),
-        }
-    }
-}
-
-impl HasPropertyBuilder for PropComponent {
-    fn keys(_: PhantomData<Self>) -> Vec<String> {
-        vec_add!(Component::keys(PhantomData), strings!["property"])
-    }
-
-    fn getter<T: AsAttribute>(&self, name: &str) -> T {
-        match name {
-            "property" => AsAttribute::from_map(self.property.clone().into_iter().map(|(k,v)| (k, AsAttribute::from_attribute(v))).collect()),
-            z => self.component.getter(z),
-        }
-    }
-
-    fn setter<T: AsAttribute>(&mut self, name: &str, prop: T) {
-        match name {
-            "property" => self.property = prop.as_map().unwrap().into_iter().map(|(k,v)| (k, v.as_attribute().unwrap())).collect(),
-            z => self.component.setter(z, prop),
         }
     }
 }
