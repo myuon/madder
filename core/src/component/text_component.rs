@@ -8,55 +8,58 @@ extern crate pango;
 extern crate pangocairo;
 extern crate serde;
 extern crate serde_json;
-extern crate madder_util as util;
 
+use util::serde_impl::SerRGBA;
+use serde::*;
 use component::attribute::*;
 use component::property::*;
-use component::component::*;
-use util::serde_impl::*;
+use component::interface::*;
 
-#[derive(Deserialize, Debug, Clone)]
-struct TextProperty {
-    #[serde(default)]
-    common: CommonProperty,
-
-    #[serde(serialize_with = "SerRGBA::serialize_rgba")]
-    #[serde(deserialize_with = "SerRGBA::deserialize_rgba")]
-    #[serde(default = "gdk::RGBA::white")]
+pub struct TextComponent {
+    component: ComponentProperty,
+    geometry: GeometryProperty,
     text_color: gdk::RGBA,
-
-    #[serde(default = "default_text_font")]
     text_font: String,
-
     entity: String,
+    data: gdk_pixbuf::Pixbuf,
 }
 
-impl TextProperty {
-    fn from_value(mut json: serde_json::Value) -> TextProperty {
-        let json_ = json.clone();
-        json.as_object_mut().unwrap().insert("common".to_string(), json_);
-        serde_json::from_value(json).unwrap()
+impl Serialize for TextComponent {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut map = serde_json::Map::new();
+        map.extend(serde_json::to_value(self.component.clone()).unwrap().as_object().unwrap().clone());
+        map.extend(serde_json::to_value(self.geometry.clone()).unwrap().as_object().unwrap().clone());
+        map.extend(vec![
+            ("text_color".to_string(), json!(SerRGBA(self.text_color))),
+            ("text_font".to_string(), json!(self.text_font)),
+            ("entity".to_string(), json!(self.entity)),
+        ]);
+
+        serde_json::Value::Object(map).serialize(serializer)
     }
 }
 
-fn default_text_font() -> String {
-    "Serif 24".to_string()
-}
+impl<'de> Deserialize<'de> for TextComponent {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<TextComponent, D::Error> {
+        let json: serde_json::Value = Deserialize::deserialize(deserializer)?;
 
-pub struct TextComponent {
-    component: Component,
-    data: gdk_pixbuf::Pixbuf,
-    prop: TextProperty,
+        Ok(TextComponent::new_from_json(json))
+    }
 }
 
 impl TextComponent {
     pub fn new_from_json(json: serde_json::Value) -> TextComponent {
-        let prop = TextProperty::from_value(json.as_object().unwrap()["prop"].clone());
+        let entity = json.as_object().unwrap()["entity"].as_str().unwrap();
+        let text_color = serde_json::from_value::<SerRGBA>(json.as_object().unwrap()["text_color"].clone()).unwrap_or(SerRGBA(gdk::RGBA::white())).0;
+        let text_font = json.as_object().unwrap()["text_font"].as_str().unwrap_or("Serif 24");
 
         TextComponent {
-            component: serde_json::from_value(json).unwrap(),
-            data: TextComponent::create_data(&prop.entity, &prop.text_font, prop.text_color),
-            prop: prop,
+            component: serde_json::from_value(json.clone()).unwrap(),
+            geometry: serde_json::from_value(json.clone()).unwrap(),
+            text_color: text_color,
+            text_font: text_font.to_string(),
+            entity: entity.to_string(),
+            data: TextComponent::create_data(entity, text_font, text_color),
         }
     }
 
@@ -75,7 +78,7 @@ impl TextComponent {
     }
 
     pub fn reload(&mut self) {
-        self.data = TextComponent::create_data(&self.prop.entity, &self.prop.text_font, self.prop.text_color);
+        self.data = TextComponent::create_data(&self.entity, &self.text_font, self.text_color);
     }
 }
 
@@ -89,6 +92,25 @@ impl Peekable for TextComponent {
     }
 }
 
+impl AsProperty for TextComponent {
+    fn as_component(&self) -> &ComponentProperty {
+        &self.component
+    }
+
+    fn as_component_mut(&mut self) -> &mut ComponentProperty {
+        &mut self.component
+    }
+
+    fn as_geometry(&self) -> Option<&GeometryProperty> {
+        Some(&self.geometry)
+    }
+
+    fn as_geometry_mut(&mut self) -> Option<&mut GeometryProperty> {
+        Some(&mut self.geometry)
+    }
+}
+
+/*
 impl ComponentWrapper for TextComponent {
     fn as_component(&self) -> &Component {
         &self.component
@@ -117,36 +139,41 @@ impl ComponentWrapper for TextComponent {
         format!("text")
     }
 }
+*/
 
 impl HasPropertyBuilder for TextComponent {
-    fn keys(_: PhantomData<Self>) -> Vec<String> {
-        vec_add!(CommonProperty::keys(PhantomData), strings!["entity", "text_color", "text_font"])
+    fn keys(_: PhantomData<Self>) -> Vec<&'static str> {
+        vec_add!(ComponentProperty::keys(PhantomData), vec!["entity", "text_color", "text_font"])
     }
 
     fn getter<T: AsAttribute>(&self, name: &str) -> T {
         match name {
-            "entity" => AsAttribute::from_document(self.prop.entity.clone()),
-            "text_color" => AsAttribute::from_color(self.prop.text_color.clone()),
-            "text_font" => AsAttribute::from_font(self.prop.text_font.clone()),
-            _ => self.prop.common.getter(name),
+            "entity" => AsAttribute::from_document(self.entity.clone()),
+            "text_color" => AsAttribute::from_color(self.text_color.clone()),
+            "text_font" => AsAttribute::from_font(self.text_font.clone()),
+            k if ComponentProperty::keys(PhantomData).contains(&k) => self.component.getter(k),
+            k if GeometryProperty::keys(PhantomData).contains(&k) => self.geometry.getter(k),
+            _ => unimplemented!(),
         }
     }
 
     fn setter<T: AsAttribute>(&mut self, name: &str, prop: T) {
         match name {
             "entity" => {
-                self.prop.entity = prop.as_document().unwrap();
+                self.entity = prop.as_document().unwrap();
                 self.reload();
             },
             "text_color" => {
-                self.prop.text_color = prop.as_color().unwrap();
+                self.text_color = prop.as_color().unwrap();
                 self.reload();
             },
             "text_font" => {
-                self.prop.text_font = prop.as_font().unwrap();
+                self.text_font = prop.as_font().unwrap();
                 self.reload();
             },
-            name => self.prop.common.setter(name, prop),
+            k if ComponentProperty::keys(PhantomData).contains(&k) => self.component.setter(k, prop),
+            k if GeometryProperty::keys(PhantomData).contains(&k) => self.geometry.setter(k, prop),
+            _ => unimplemented!(),
         }
     }
 }

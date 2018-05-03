@@ -1,185 +1,149 @@
-use std::ops::{Deref, DerefMut};
-use std::marker::PhantomData;
-
-extern crate gdk;
-extern crate gdk_pixbuf;
-extern crate gstreamer as gst;
 extern crate serde;
 extern crate serde_json;
-extern crate madder_util as util;
+extern crate gstreamer as gst;
+extern crate gdk_pixbuf;
 
-use util::serde_impl::*;
-use component::effect::*;
-use component::property::*;
+use serde::*;
 use component::attribute::*;
+use component::interface::*;
+use component::property::*;
+use component::video_component::*;
+use component::image_component::*;
+use component::text_component::*;
+use component::sound_component::*;
 
-pub trait EffectOn {
-    fn effect_on_component(&self, component: CommonProperty, current: f64) -> CommonProperty;
+pub enum Component {
+    Video(VideoFileComponent),
+    Image(ImageComponent),
+    Text(TextComponent),
+    Sound(SoundComponent),
 }
 
-impl EffectOn for Effect {
-    fn effect_on_component(&self, component: CommonProperty, current: f64) -> CommonProperty {
-        use EffectType::*;
+macro_rules! component_repeat {
+    ($e:expr, ($i:ident) => $b:block) => {{
+        use Component::*;
 
-        match self.effect_type {
-            CoordinateX => {
-                let mut comp = component;
-                comp.coordinate.0 += self.value(current) as i32;
-                comp
-            },
-            CoordinateY => {
-                let mut comp = component;
-                comp.coordinate.1 += self.value(current) as i32;
-                comp
-            },
-            ScaleX => {
-                let mut comp = component;
-                comp.scale.0 *= self.value(current);
-                comp
-            },
-            ScaleY => {
-                let mut comp = component;
-                comp.scale.1 *= self.value(current);
-                comp
-            },
-            Alpha => {
-                let mut comp = component;
-                comp.alpha = (comp.alpha as f64 * self.value(current) / 255.0) as i32;
-                comp
-            },
-            _ => component,
+        match $e {
+            Video($i) => $b,
+            Image($i) => $b,
+            Text($i) => $b,
+            Sound($i) => $b,
         }
+    }};
+}
+
+impl Serialize for Component {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use Component::*;
+
+        let mut map = serde_json::Map::new();
+        map.insert("component_type".to_string(), json!(match self {
+            Video(_) => "Video",
+            Image(_) => "Image",
+            Text(_) => "Text",
+            Sound(_) => "Sound",
+        }));
+
+        component_repeat!(self, (c) => {
+            map.extend(serde_json::to_value(c).unwrap().as_object().unwrap().clone())
+        });
+
+        serde_json::Value::Object(map).serialize(serializer)
     }
 }
 
-pub trait Peekable {
-    fn get_duration(&self) -> gst::ClockTime;
-    fn peek(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf>;
-}
+impl<'de> Deserialize<'de> for Component {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Component, D::Error> {
+        let json: serde_json::Value = Deserialize::deserialize(deserializer)?;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum ComponentType {
-    Video,
-    Image,
-    Text,
-    Sound,
-}
-
-impl ComponentType {
-    fn types() -> Vec<ComponentType> {
-        use ComponentType::*;
-
-        vec![Video, Image, Text, Sound]
+        Ok(Component::new_from_json(json))
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Component {
-    pub component_type: ComponentType,
-
-    #[serde(serialize_with = "SerTime::serialize_time")]
-    #[serde(deserialize_with = "SerTime::deserialize_time")]
-    pub start_time: gst::ClockTime,
-
-    #[serde(serialize_with = "SerTime::serialize_time")]
-    #[serde(deserialize_with = "SerTime::deserialize_time")]
-    pub length: gst::ClockTime,
-
-    pub layer_index: usize,
-
-    #[serde(default = "Vec::new")]
-    pub effect: Vec<Effect>,
+impl Component {
+    pub fn get_info(&self) -> String {
+        "info".to_string()
+    }
 }
 
-pub trait ComponentWrapper {
-    fn as_value(&self) -> serde_json::Value;
-
-    fn as_component(&self) -> &Component;
-    fn as_component_mut(&mut self) -> &mut Component;
-
-    fn as_effect_value(&self) -> Vec<serde_json::Value> {
-        self.as_effect().iter().map(|vec| {
-            serde_json::Value::Object(vec.iter().cloned().collect())
-        }).collect()
+impl AsProperty for Component {
+    fn as_component(&self) -> &ComponentProperty {
+        component_repeat!(self, (c) => {
+            c.as_component()
+        })
     }
 
-    fn as_effect(&self) -> Vec<Vec<(String, serde_json::Value)>> {
-        self.as_component().effect.iter().map(|eff| eff.get_props()).collect()
+    fn as_component_mut(&mut self) -> &mut ComponentProperty {
+        component_repeat!(self, (c) => {
+            c.as_component_mut()
+        })
     }
 
-    fn as_effect_attrs(&self) -> Vec<Vec<(String, Attribute)>> {
-        self.as_component().effect.iter().map(|eff| eff.get_attrs()).collect()
+    fn as_geometry(&self) -> Option<&GeometryProperty> {
+        component_repeat!(self, (c) => {
+            c.as_geometry()
+        })
     }
 
-    fn as_effect_mut(&mut self) -> &mut Vec<serde_json::Value> {
+    fn as_geometry_mut(&mut self) -> Option<&mut GeometryProperty> {
+        component_repeat!(self, (c) => {
+            c.as_geometry_mut()
+        })
+    }
+}
+
+impl Peekable for Component {
+    fn get_duration(&self) -> gst::ClockTime {
         unimplemented!()
     }
 
-    fn get_info(&self) -> String;
+    fn peek(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
+        use Component::*;
 
-    fn get_audio_pipeline(&self) -> Option<&gst::Pipeline> {
-        None
-    }
-}
-
-impl ComponentWrapper for Component {
-    fn as_component(&self) -> &Component {
-        self
-    }
-
-    fn as_component_mut(&mut self) -> &mut Component {
-        self
-    }
-
-    fn as_value(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap()
-    }
-
-    fn get_info(&self) -> String {
-        format!("Component")
-    }
-}
-
-impl HasPropertyBuilder for Component {
-    fn keys(_: PhantomData<Self>) -> Vec<String> {
-        strings!["component_type", "start_time", "length", "layer_index"]
-    }
-
-    fn getter<T: AsAttribute>(&self, name: &str) -> T {
-        match name {
-            "component_type" => AsAttribute::from_choose(ComponentType::types().iter().map(|v| format!("{:?}", v)).collect(), ComponentType::types().iter().position(|v| v == &self.component_type)),
-            "start_time" => AsAttribute::from_time(self.start_time),
-            "length" => AsAttribute::from_time(self.length),
-            "layer_index" => AsAttribute::from_usize(self.layer_index),
-            _ => unimplemented!(),
-        }
-    }
-
-    fn setter<T: AsAttribute>(&mut self, name: &str, prop: T) {
-        match name {
-            "component_type" => self.component_type = ComponentType::types()[prop.as_choose().unwrap()].clone(),
-            "start_time" => self.start_time = prop.as_time().unwrap(),
-            "length" => self.length = prop.as_time().unwrap(),
-            "layer_index" => self.layer_index = prop.as_usize().unwrap(),
-            z => panic!("Has no such prop name: {}", z),
+        match self {
+            Video(c) => c.peek(time),
+            Image(c) => c.peek(time),
+            Text(c) => c.peek(time),
+            Sound(c) => c.peek(time),
         }
     }
 }
 
-pub trait ComponentLike: ComponentWrapper + Peekable + HasProperty {}
-impl<T: ComponentWrapper + Peekable + HasProperty> ComponentLike for T {}
-
-impl Deref for ComponentLike {
-    type Target = Component;
-
-    fn deref(&self) -> &Component {
-        self.as_component()
+impl HasProperty for Component {
+    fn get_attrs(&self) -> Vec<(String, Attribute)> {
+        component_repeat!(self, (c) => {
+            c.get_attrs()
+        })
     }
-}
 
-impl DerefMut for ComponentLike {
-    fn deref_mut(&mut self) -> &mut Component {
-        self.as_component_mut()
+    fn get_attr(&self, name: &str) -> Attribute {
+        component_repeat!(self, (c) => {
+            c.get_attr(name)
+        })
+    }
+
+    fn set_attr(&mut self, name: &str, attr: Attribute) {
+        component_repeat!(self, (c) => {
+            c.set_attr(name, attr)
+        })
+    }
+
+    fn get_props(&self) -> Vec<(String, serde_json::Value)> {
+        component_repeat!(self, (c) => {
+            c.get_props()
+        })
+    }
+
+    fn get_prop(&self, name: &str) -> serde_json::Value {
+        component_repeat!(self, (c) => {
+            c.get_prop(name)
+        })
+    }
+
+    fn set_prop(&mut self, name: &str, prop: serde_json::Value) {
+        component_repeat!(self, (c) => {
+            c.set_prop(name, prop)
+        })
     }
 }
 

@@ -3,7 +3,9 @@ extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 extern crate serde;
 extern crate serde_json;
+extern crate madder_util as util;
 
+use util::serde_impl::*;
 use std::marker::PhantomData;
 use component::*;
 
@@ -18,14 +20,14 @@ pub trait HasProperty {
 }
 
 pub trait HasPropertyBuilder {
-    fn keys(_: PhantomData<Self>) -> Vec<String>;
+    fn keys(_: PhantomData<Self>) -> Vec<&'static str>;
     fn setter<T: AsAttribute>(&mut self, name: &str, prop: T);
     fn getter<T: AsAttribute>(&self, name: &str) -> T;
 }
 
 impl<P: HasPropertyBuilder> HasProperty for P {
     fn get_attrs(&self) -> Vec<(String, Attribute)> {
-        <P as HasPropertyBuilder>::keys(PhantomData).into_iter().map(|key| (key.clone(), self.getter(&key))).collect()
+        <P as HasPropertyBuilder>::keys(PhantomData).into_iter().map(|key| (key.to_string(), self.getter(key))).collect()
     }
 
     fn get_attr(&self, name: &str) -> Attribute {
@@ -37,7 +39,7 @@ impl<P: HasPropertyBuilder> HasProperty for P {
     }
 
     fn get_props(&self) -> Vec<(String, serde_json::Value)> {
-        <P as HasPropertyBuilder>::keys(PhantomData).into_iter().map(|key| (key.clone(), self.getter(&key))).collect()
+        <P as HasPropertyBuilder>::keys(PhantomData).into_iter().map(|key| (key.to_string(), self.getter(key))).collect()
     }
 
     fn get_prop(&self, name: &str) -> serde_json::Value {
@@ -50,7 +52,47 @@ impl<P: HasPropertyBuilder> HasProperty for P {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct CommonProperty {
+pub struct ComponentProperty {
+    #[serde(serialize_with = "SerTime::serialize_time")]
+    #[serde(deserialize_with = "SerTime::deserialize_time")]
+    pub start_time: gst::ClockTime,
+
+    #[serde(serialize_with = "SerTime::serialize_time")]
+    #[serde(deserialize_with = "SerTime::deserialize_time")]
+    pub length: gst::ClockTime,
+
+    pub layer_index: usize,
+
+    #[serde(default = "Vec::new")]
+    pub effect: Vec<Effect>,
+}
+
+impl HasPropertyBuilder for ComponentProperty {
+    fn keys(_: PhantomData<Self>) -> Vec<&'static str> {
+        vec!["component_type", "start_time", "length", "layer_index"]
+    }
+
+    fn getter<T: AsAttribute>(&self, name: &str) -> T {
+        match name {
+            "start_time" => AsAttribute::from_time(self.start_time),
+            "length" => AsAttribute::from_time(self.length),
+            "layer_index" => AsAttribute::from_usize(self.layer_index),
+            _ => unimplemented!(),
+        }
+    }
+
+    fn setter<T: AsAttribute>(&mut self, name: &str, prop: T) {
+        match name {
+            "start_time" => self.start_time = prop.as_time().unwrap(),
+            "length" => self.length = prop.as_time().unwrap(),
+            "layer_index" => self.layer_index = prop.as_usize().unwrap(),
+            z => panic!("Has no such prop name: {}", z),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct GeometryProperty {
     #[serde(default = "coordinate_default")]
     pub coordinate: (i32,i32),
 
@@ -64,9 +106,9 @@ pub struct CommonProperty {
     pub scale: (f64, f64),
 }
 
-impl HasPropertyBuilder for CommonProperty {
-    fn keys(_: PhantomData<Self>) -> Vec<String> {
-        strings!["coordinate", "rotate", "alpha", "scale"]
+impl HasPropertyBuilder for GeometryProperty {
+    fn keys(_: PhantomData<Self>) -> Vec<&'static str> {
+        vec!["coordinate", "rotate", "alpha", "scale"]
     }
 
     fn getter<T: AsAttribute>(&self, name: &str) -> T {
@@ -107,9 +149,9 @@ impl HasPropertyBuilder for CommonProperty {
 }
 
 use std::default::Default;
-impl Default for CommonProperty {
-    fn default() -> CommonProperty {
-        CommonProperty {
+impl Default for GeometryProperty {
+    fn default() -> GeometryProperty {
+        GeometryProperty {
             coordinate: coordinate_default(),
             rotate: rotate_default(),
             alpha: alpha_default(),

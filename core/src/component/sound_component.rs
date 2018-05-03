@@ -1,33 +1,48 @@
 extern crate gstreamer as gst;
 extern crate gdk_pixbuf;
-extern crate serde_json;
 extern crate glib;
-use gst::prelude::*;
-use std::marker::PhantomData;
+extern crate serde;
+extern crate serde_json;
 
+use std::marker::PhantomData;
+use gst::prelude::*;
+use serde::*;
 use component::property::*;
 use component::attribute::*;
-use component::component::*;
-
-#[derive(Deserialize, Debug, Clone)]
-struct SoundProperty {
-    entity: String,
-}
+use component::interface::*;
 
 pub struct SoundComponent {
-    component: Component,
+    component: ComponentProperty,
+    entity: String,
     data: gst::Pipeline,
-    prop: SoundProperty,
+}
+
+impl Serialize for SoundComponent {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut map = serde_json::Map::new();
+        map.extend(serde_json::to_value(self.component.clone()).unwrap().as_object().unwrap().clone());
+        map.extend(vec![("entity".to_string(), json!(self.entity))]);
+
+        serde_json::Value::Object(map).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for SoundComponent {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<SoundComponent, D::Error> {
+        let json: serde_json::Value = Deserialize::deserialize(deserializer)?;
+
+        Ok(SoundComponent::new_from_json(json))
+    }
 }
 
 impl SoundComponent {
     pub fn new_from_json(json: serde_json::Value) -> SoundComponent {
-        let prop = serde_json::from_value::<SoundProperty>(json.as_object().unwrap()["prop"].clone()).unwrap();
+        let entity = json.as_object().unwrap()["entity"].as_str().unwrap();
 
         SoundComponent {
-            component: serde_json::from_value(json).unwrap(),
-            data: SoundComponent::create_data(&prop.entity),
-            prop: prop,
+            component: serde_json::from_value(json.clone()).unwrap(),
+            entity: entity.to_string(),
+            data: SoundComponent::create_data(entity),
         }
     }
 
@@ -69,6 +84,25 @@ impl Peekable for SoundComponent {
     }
 }
 
+impl AsProperty for SoundComponent {
+    fn as_component(&self) -> &ComponentProperty {
+        &self.component
+    }
+
+    fn as_component_mut(&mut self) -> &mut ComponentProperty {
+        &mut self.component
+    }
+
+    fn as_geometry(&self) -> Option<&GeometryProperty> {
+        None
+    }
+
+    fn as_geometry_mut(&mut self) -> Option<&mut GeometryProperty> {
+        None
+    }
+}
+
+/*
 impl ComponentWrapper for SoundComponent {
     fn as_component(&self) -> &Component {
         &self.component
@@ -101,15 +135,17 @@ impl ComponentWrapper for SoundComponent {
         Some(&self.data)
     }
 }
+*/
 
 impl HasPropertyBuilder for SoundComponent {
-    fn keys(_: PhantomData<Self>) -> Vec<String> {
-        strings!["entity"]
+    fn keys(_: PhantomData<Self>) -> Vec<&'static str> {
+        vec!["entity"]
     }
 
     fn getter<T: AsAttribute>(&self, name: &str) -> T {
         match name {
-            "entity" => AsAttribute::from_filepath(self.prop.entity.clone()),
+            "entity" => AsAttribute::from_filepath(self.entity.clone()),
+            k if ComponentProperty::keys(PhantomData).contains(&k) => self.component.getter(k),
             _ => unimplemented!(),
         }
     }
@@ -119,8 +155,9 @@ impl HasPropertyBuilder for SoundComponent {
             "entity" => {
                 let uri = prop.as_filepath().unwrap();
                 self.reload(&uri);
-                self.prop.entity = uri;
+                self.entity = uri;
             },
+            k if ComponentProperty::keys(PhantomData).contains(&k) => self.component.setter(k, prop),
             _ => unimplemented!(),
         }
     }

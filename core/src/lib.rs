@@ -18,8 +18,6 @@ mod avi_renderer;
 use avi_renderer::AviRenderer;
 
 extern crate serde;
-use serde::ser::SerializeSeq;
-use serde::de::{Deserialize, Deserializer};
 
 #[macro_use] extern crate serde_derive;
 #[macro_use] extern crate serde_json;
@@ -36,10 +34,8 @@ pub use self::json_patch::*;
 
 #[derive(Serialize, Deserialize)]
 pub struct Editor {
-    #[serde(serialize_with = "vec_componentlike_serialize")]
-    #[serde(deserialize_with = "vec_componentlike_deserialize")]
     #[serde(rename = "components")]
-    pub elements: Vec<Box<ComponentLike>>,
+    pub elements: Vec<Component>,
 
     #[serde(serialize_with = "SerTime::serialize_time")]
     #[serde(deserialize_with = "SerTime::deserialize_time")]
@@ -61,6 +57,7 @@ fn position_default() -> gst::ClockTime {
     gst::ClockTime::from_mseconds(0)
 }
 
+/*
 fn vec_componentlike_serialize<S: serde::Serializer>(g: &Vec<Box<ComponentLike>>, serializer: S) -> Result<S::Ok, S::Error> {
     let mut seq = serializer.serialize_seq(Some(g.len()))?;
     for c in g {
@@ -74,6 +71,7 @@ fn vec_componentlike_deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> 
         vec.into_iter().map(|json| Component::new_from_json(json.clone())).collect()
     })
 }
+*/
 
 impl Editor {
     pub fn new(width: i32, height: i32, length: gst::ClockTime) -> Editor {
@@ -100,7 +98,7 @@ impl Editor {
         serde_json::from_str(&contents).unwrap()
     }
 
-    fn register(&mut self, component: Box<ComponentLike>) -> usize {
+    fn register(&mut self, component: Component) -> usize {
         self.elements.push(component);
         self.elements.len() - 1
     }
@@ -120,13 +118,13 @@ impl Editor {
 
         let mut elems = self.elements.iter().filter(|&elem| {
             elem.as_component().start_time <= self.position
-            && self.position <= elem.start_time + elem.length
+            && self.position <= elem.as_component().start_time + elem.as_component().length
         }).collect::<Vec<_>>();
-        elems.sort_by_key(|elem| elem.layer_index);
+        elems.sort_by_key(|elem| elem.as_component().layer_index);
 
         for elem in elems.iter().rev() {
             if let Some(mut dest) = elem.peek(self.position) {
-                let mut common_prop = serde_json::from_value::<CommonProperty>(elem.as_ref().as_value().as_object().unwrap()["prop"].clone()).unwrap_or(std::default::Default::default());
+                let mut common_prop = elem.as_geometry().cloned().unwrap_or(::std::default::Default::default());
                 let mut elem = elem.as_component().clone();
                 dest = Effect::get_rotated_pixbuf(dest, common_prop.rotate);
 
@@ -236,7 +234,7 @@ impl Editor {
         match content_type {
             ContentType::Value => {
                 let effect = serde_json::from_value::<Effect>(value).unwrap();
-                self.elements.as_index_mut(index).effect.push(effect);
+                self.elements.as_index_mut(index).as_component_mut().effect.push(effect);
             },
             _ => unimplemented!(),
         }
@@ -270,10 +268,10 @@ impl Editor {
     fn add_components_n_effect_n_key(&mut self, n: IndexRange, m: IndexRange, key: &str, value: Value, content_type: ContentType) {
         match content_type {
             ContentType::Value => {
-                self.elements.as_index_mut(n).effect.as_index_mut(m).set_prop(key, serde_json::from_value(value).unwrap());
+                self.elements.as_index_mut(n).as_component_mut().effect.as_index_mut(m).set_prop(key, serde_json::from_value(value).unwrap());
             },
             ContentType::Attribute => {
-                self.elements.as_index_mut(n).effect.as_index_mut(m).set_attr(key, serde_json::from_value(value).unwrap());
+                self.elements.as_index_mut(n).as_component_mut().effect.as_index_mut(m).set_attr(key, serde_json::from_value(value).unwrap());
             },
         }
     }
@@ -281,7 +279,7 @@ impl Editor {
     fn add_components_n_effect_n_intermeds(&mut self, n: IndexRange, m: IndexRange, value: Value, content_type: ContentType) {
         match content_type {
             ContentType::Value => {
-                self.elements.as_index_mut(n).effect.as_index_mut(m).intermeds.push(serde_json::from_value(value).unwrap());
+                self.elements.as_index_mut(n).as_component_mut().effect.as_index_mut(m).intermeds.push(serde_json::from_value(value).unwrap());
             },
             ContentType::Attribute => {
                 unimplemented!();
@@ -311,15 +309,15 @@ impl Editor {
 
         match index2 {
             Index(i) => {
-                self.elements.as_index_mut(index).effect.remove(i);
+                self.elements.as_index_mut(index).as_component_mut().effect.remove(i);
             },
             ReverseIndex(i) => {
-                let effect = &mut self.elements.as_index_mut(index).effect;
+                let effect = &mut self.elements.as_index_mut(index).as_component_mut().effect;
                 let n = effect.len();
                 effect.remove(n-i);
             },
             All => {
-                self.elements.as_index_mut(index).effect.clear();
+                self.elements.as_index_mut(index).as_component_mut().effect.clear();
             },
         }
     }
@@ -342,22 +340,22 @@ impl Editor {
                 json!(self.position.mseconds().unwrap())
             },
             &["components"] => {
-                serde_json::to_value(self.elements.iter().map(|c: &Box<ComponentLike>| c.as_value()).collect::<Vec<_>>()).unwrap()
+                serde_json::to_value(self.elements.iter().map(|c| serde_json::to_value(c).unwrap()).collect::<Vec<_>>()).unwrap()
             },
             &["components", ref n] => {
-                self.elements.as_index(IndexRange::from_str(n).unwrap()).as_value()
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap())).unwrap()
             },
             &["components", ref n, "effect"] => {
-                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.clone()).unwrap()
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().effect.clone()).unwrap()
             },
             &["components", ref n, "effect", ref m] => {
-                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap())).unwrap()
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().effect.as_index(IndexRange::from_str(m).unwrap())).unwrap()
             },
             &["components", ref n, "effect", ref m, "intermeds", "value", ref v] => {
-                json!(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap()).value(v.parse().unwrap()))
+                json!(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().effect.as_index(IndexRange::from_str(m).unwrap()).value(v.parse().unwrap()))
             },
             &["components", ref n, "effect", ref m, key] => {
-                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap())).unwrap().as_object().unwrap()[key].clone()
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().effect.as_index(IndexRange::from_str(m).unwrap())).unwrap().as_object().unwrap()[key].clone()
             },
             &["components", ref n, "info"] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_info()).unwrap()
@@ -384,13 +382,13 @@ impl Editor {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().get_attrs()).unwrap()
             },
             &["components", ref n, "effect"] => {
-                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_effect_attrs()).unwrap()
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().effect.iter().map(|x| x.get_props()).collect::<Vec<_>>()).unwrap()
             },
             &["components", ref n, "effect", ref m] => {
-                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap()).get_attrs()).unwrap()
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().effect.as_index(IndexRange::from_str(m).unwrap()).get_attrs()).unwrap()
             },
             &["components", ref n, "effect", ref m, key] => {
-                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).effect.as_index(IndexRange::from_str(m).unwrap()).get_attr(key)).unwrap()
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().effect.as_index(IndexRange::from_str(m).unwrap()).get_attr(key)).unwrap()
             },
             &["components", ref n, "prop"] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).get_attrs()).unwrap()

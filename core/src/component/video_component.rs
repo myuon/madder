@@ -8,11 +8,13 @@ extern crate gstreamer_video as gstv;
 extern crate gstreamer_app as gsta;
 use gstv::prelude::*;
 
+extern crate serde;
 extern crate serde_json;
 
+use serde::*;
 use component::property::*;
 use component::attribute::*;
-use component::component::*;
+use component::interface::*;
 
 impl Peekable for gst::Element {
     fn get_duration(&self) -> gst::ClockTime {
@@ -27,12 +29,12 @@ impl Peekable for gst::Element {
 }
 
 pub struct VideoTestComponent {
-    component: Component,
+    component: ComponentProperty,
     data: gst::Element,
 }
 
 impl VideoTestComponent {
-    pub fn new_from_structure(component: &Component) -> VideoTestComponent {
+    pub fn new_from_structure(component: &ComponentProperty) -> VideoTestComponent {
         let pipeline = gst::Pipeline::new(None);
         let src = gst::ElementFactory::make("videotestsrc", None).unwrap();
         let pixbufsink = gst::ElementFactory::make("gdkpixbufsink", None).unwrap();
@@ -59,48 +61,41 @@ impl Peekable for VideoTestComponent {
     }
 }
 
-impl AsRef<Component> for VideoTestComponent {
-    fn as_ref(&self) -> &Component {
-        &self.component
-    }
-}
-
-impl AsMut<Component> for VideoTestComponent {
-    fn as_mut(&mut self) -> &mut Component {
-        &mut self.component
-    }
-}
-
-#[derive(Deserialize, Debug, Clone)]
-struct VideoFileProperty {
-    #[serde(default)]
-    common: CommonProperty,
-
-    entity: String,
-}
-
-impl VideoFileProperty {
-    fn from_value(mut json: serde_json::Value) -> VideoFileProperty {
-        let json_ = json.clone();
-        json.as_object_mut().unwrap().insert("common".to_string(), json_);
-        serde_json::from_value(json).unwrap()
-    }
-}
-
 pub struct VideoFileComponent {
-    component: Component,
+    component: ComponentProperty,
+    geometry: GeometryProperty,
+    entity: String,
     data: gst::Element,
-    prop: VideoFileProperty,
+}
+
+impl Serialize for VideoFileComponent {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut map = serde_json::Map::new();
+        map.extend(serde_json::to_value(self.component.clone()).unwrap().as_object().unwrap().clone());
+        map.extend(serde_json::to_value(self.geometry.clone()).unwrap().as_object().unwrap().clone());
+        map.extend(vec![("entity".to_string(), json!(self.entity))]);
+
+        serde_json::Value::Object(map).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for VideoFileComponent {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<VideoFileComponent, D::Error> {
+        let json: serde_json::Value = Deserialize::deserialize(deserializer)?;
+
+        Ok(VideoFileComponent::new_from_json(json))
+    }
 }
 
 impl VideoFileComponent {
     pub fn new_from_json(json: serde_json::Value) -> VideoFileComponent {
-        let prop = VideoFileProperty::from_value(json.as_object().unwrap()["prop"].clone());
+        let entity = json.as_object().unwrap()["entity"].as_str().unwrap();
 
         VideoFileComponent {
-            component: serde_json::from_value(json).unwrap(),
-            data: VideoFileComponent::create_data(&prop.entity),
-            prop: prop,
+            component: serde_json::from_value(json.clone()).unwrap(),
+            geometry: serde_json::from_value(json.clone()).unwrap(),
+            entity: entity.to_string(),
+            data: VideoFileComponent::create_data(&entity),
         }
     }
 
@@ -143,7 +138,26 @@ impl Peekable for VideoFileComponent {
     }
 }
 
-impl ComponentWrapper for VideoFileComponent {
+impl AsProperty for VideoFileComponent {
+    fn as_component(&self) -> &ComponentProperty {
+        &self.component
+    }
+
+    fn as_component_mut(&mut self) -> &mut ComponentProperty {
+        &mut self.component
+    }
+
+    fn as_geometry(&self) -> Option<&GeometryProperty> {
+        Some(&self.geometry)
+    }
+
+    fn as_geometry_mut(&mut self) -> Option<&mut GeometryProperty> {
+        Some(&mut self.geometry)
+    }
+}
+
+/*
+impl AsProperty for VideoFileComponent {
     fn as_component(&self) -> &Component {
         &self.component
     }
@@ -174,16 +188,19 @@ impl ComponentWrapper for VideoFileComponent {
         )
     }
 }
+*/
 
 impl HasPropertyBuilder for VideoFileComponent {
-    fn keys(_: PhantomData<Self>) -> Vec<String> {
-        vec_add!(CommonProperty::keys(PhantomData), strings!["entity"])
+    fn keys(_: PhantomData<Self>) -> Vec<&'static str> {
+        vec_add!(ComponentProperty::keys(PhantomData), vec!["entity"])
     }
 
     fn getter<T: AsAttribute>(&self, name: &str) -> T {
         match name {
-            "entity" => AsAttribute::from_filepath(self.prop.entity.clone()),
-            _ => self.prop.common.getter(name),
+            "entity" => AsAttribute::from_filepath(self.entity.clone()),
+            k if ComponentProperty::keys(PhantomData).contains(&k) => self.component.getter(k),
+            k if GeometryProperty::keys(PhantomData).contains(&k) => self.geometry.getter(k),
+            _ => unimplemented!(),
         }
     }
 
@@ -192,9 +209,11 @@ impl HasPropertyBuilder for VideoFileComponent {
             "entity" => {
                 let uri = prop.as_filepath().unwrap();
                 self.reload(&uri);
-                self.prop.entity = uri;
+                self.entity = uri;
             },
-            name => self.prop.common.setter(name, prop),
+            k if ComponentProperty::keys(PhantomData).contains(&k) => self.component.setter(k, prop),
+            k if GeometryProperty::keys(PhantomData).contains(&k) => self.geometry.setter(k, prop),
+            _ => unimplemented!(),
         }
     }
 }
