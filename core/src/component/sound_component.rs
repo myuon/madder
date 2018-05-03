@@ -72,6 +72,10 @@ impl SoundComponent {
     pub fn reload(&mut self, uri: &str) {
         self.data = SoundComponent::create_data(uri);
     }
+
+    pub fn get_audio_pipeline(&self) -> Option<&gst::Pipeline> {
+        Some(&self.data)
+    }
 }
 
 impl Peekable for SoundComponent {
@@ -101,41 +105,6 @@ impl AsProperty for SoundComponent {
         None
     }
 }
-
-/*
-impl ComponentWrapper for SoundComponent {
-    fn as_component(&self) -> &Component {
-        &self.component
-    }
-
-    fn as_component_mut(&mut self) -> &mut Component {
-        &mut self.component
-    }
-
-    fn as_value(&self) -> serde_json::Value {
-        let mut json = serde_json::to_value(self.as_component()).unwrap();
-        let props = {
-            let mut props = serde_json::Map::new();
-            for (k,v) in self.get_props() {
-                props.insert(k, serde_json::to_value(v).unwrap());
-            }
-
-            props
-        };
-
-        json.as_object_mut().unwrap().insert("prop".to_string(), json!(props));
-        json
-    }
-
-    fn get_info(&self) -> String {
-        format!("sound")
-    }
-
-    fn get_audio_pipeline(&self) -> Option<&gst::Pipeline> {
-        Some(&self.data)
-    }
-}
-*/
 
 impl HasPropertyBuilder for SoundComponent {
     fn keys(_: PhantomData<Self>) -> Vec<&'static str> {

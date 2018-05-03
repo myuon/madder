@@ -50,16 +50,23 @@ impl<'de> Deserialize<'de> for TextComponent {
 impl TextComponent {
     pub fn new_from_json(json: serde_json::Value) -> TextComponent {
         let entity = json.as_object().unwrap()["entity"].as_str().unwrap();
-        let text_color = serde_json::from_value::<SerRGBA>(json.as_object().unwrap()["text_color"].clone()).unwrap_or(SerRGBA(gdk::RGBA::white())).0;
-        let text_font = json.as_object().unwrap()["text_font"].as_str().unwrap_or("Serif 24");
+        let text_color = json.as_object().unwrap().get("text_color").map_or_else(
+            || SerRGBA(gdk::RGBA::white()),
+            |v| serde_json::from_value::<SerRGBA>(v.clone()).unwrap()
+        ).0;
+        let text_font = json.as_object().unwrap().get("text_font").map_or_else(
+            || "Serif 24".to_string(),
+            |v| serde_json::from_value(v.clone()).unwrap()
+        );
+        let data = TextComponent::create_data(entity, &text_font, text_color);
 
         TextComponent {
             component: serde_json::from_value(json.clone()).unwrap(),
             geometry: serde_json::from_value(json.clone()).unwrap(),
             text_color: text_color,
-            text_font: text_font.to_string(),
+            text_font: text_font,
             entity: entity.to_string(),
-            data: TextComponent::create_data(entity, text_font, text_color),
+            data: data,
         }
     }
 

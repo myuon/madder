@@ -129,7 +129,7 @@ impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                 self.model.relm.stream().emit(TimelineMsg::OnSetComponentAttr(
                     index,
                     "start_time",
-                    Attribute::Time(add_time(component.start_time, distance as f64)),
+                    Attribute::Time(add_time(component.as_component().start_time, distance as f64)),
                 ));
                 self.model.relm.stream().emit(TimelineMsg::OnSetComponentAttr(
                     index,
@@ -157,7 +157,7 @@ impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                 self.model.relm.stream().emit(TimelineMsg::OnSetComponentAttr(
                     index,
                     "length",
-                    Attribute::Time(add_time(component.length, distance as f64)),
+                    Attribute::Time(add_time(component.as_component().length, distance as f64)),
                 ));
 
                 self.box_viewer.widget().queue_draw();
@@ -232,11 +232,11 @@ impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
                 self.model.relm.stream().emit(TimelineMsg::OnSetComponentAttr(
                     index,
                     "length",
-                    Attribute::Time(position - component.start_time),
+                    Attribute::Time(position - component.as_component().start_time),
                 ));
 
-                component.start_time = position;
-                component.length = component.length - (position - component.start_time);
+                component.as_component_mut().start_time = position;
+                component.as_component_mut().length = component.as_component().length - (position - component.as_component().start_time);
 
 //                self.model.relm.stream().emit(TimelineMsg::OnNewComponent(json!(component)));
             },

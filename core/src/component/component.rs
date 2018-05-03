@@ -19,6 +19,40 @@ pub enum Component {
     Sound(SoundComponent),
 }
 
+impl Component {
+    pub fn new_from_json(json: serde_json::Value) -> Component {
+        use Component::*;
+
+        match json.as_object().unwrap()["component_type"].as_str().unwrap() {
+            "Video" => Video(VideoFileComponent::new_from_json(json)),
+            "Image" => Image(ImageComponent::new_from_json(json)),
+            "Text" => Text(TextComponent::new_from_json(json)),
+            "Sound" => Sound(SoundComponent::new_from_json(json)),
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn get_component_type(&self) -> &'static str {
+        use Component::*;
+
+        match self {
+            Video(_) => "Video",
+            Image(_) => "Image",
+            Text(_) => "Text",
+            Sound(_) => "Sound",
+        }
+    }
+
+    pub fn get_audio_pipeline(&self) -> Option<&gst::Pipeline> {
+        use Component::*;
+
+        match self {
+            Sound(c) => c.get_audio_pipeline(),
+            _ => None,
+        }
+    }
+}
+
 macro_rules! component_repeat {
     ($e:expr, ($i:ident) => $b:block) => {{
         use Component::*;
@@ -34,15 +68,8 @@ macro_rules! component_repeat {
 
 impl Serialize for Component {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        use Component::*;
-
         let mut map = serde_json::Map::new();
-        map.insert("component_type".to_string(), json!(match self {
-            Video(_) => "Video",
-            Image(_) => "Image",
-            Text(_) => "Text",
-            Sound(_) => "Sound",
-        }));
+        map.insert("component_type".to_string(), json!(self.get_component_type()));
 
         component_repeat!(self, (c) => {
             map.extend(serde_json::to_value(c).unwrap().as_object().unwrap().clone())

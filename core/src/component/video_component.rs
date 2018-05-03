@@ -29,7 +29,7 @@ impl Peekable for gst::Element {
 }
 
 pub struct VideoTestComponent {
-    component: ComponentProperty,
+    pub component: ComponentProperty,
     data: gst::Element,
 }
 

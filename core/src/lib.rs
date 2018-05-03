@@ -57,22 +57,6 @@ fn position_default() -> gst::ClockTime {
     gst::ClockTime::from_mseconds(0)
 }
 
-/*
-fn vec_componentlike_serialize<S: serde::Serializer>(g: &Vec<Box<ComponentLike>>, serializer: S) -> Result<S::Ok, S::Error> {
-    let mut seq = serializer.serialize_seq(Some(g.len()))?;
-    for c in g {
-        seq.serialize_element(&c.as_value()).unwrap();
-    }
-    seq.end()
-}
-
-fn vec_componentlike_deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<Box<ComponentLike>>, D::Error> {
-    Deserialize::deserialize(deserializer).map(|vec: Vec<Value>| {
-        vec.into_iter().map(|json| Component::new_from_json(json.clone())).collect()
-    })
-}
-*/
-
 impl Editor {
     pub fn new(width: i32, height: i32, length: gst::ClockTime) -> Editor {
         Editor {

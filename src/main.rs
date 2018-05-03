@@ -46,10 +46,8 @@ fn main() {
                         "start_time": 0,
                         "length": 100,
                         "layer_index": 0,
-                        "prop": {
-                            "coordinate": [50,50],
-                            "entity": "[ここにテキストを挿入]",
-                        },
+                        "coordinate": [50,50],
+                        "entity": "[ここにテキストを挿入]",
                     }
                 ],
             })

@@ -399,16 +399,16 @@ impl Widget for App {
                         let entity = serde_json::from_value::<Attribute>(editor.borrow().get_attr(Pointer::from_str(&format!("/components/{}/prop/entity", i)))).unwrap();
 
                         let obj = BoxObject::new(
-                            component.start_time.mseconds().unwrap() as i32,
-                            component.length.mseconds().unwrap() as i32,
+                            component.as_component().start_time.mseconds().unwrap() as i32,
+                            component.as_component().length.mseconds().unwrap() as i32,
                             i
                         ).label(format!("{:?}", entity))
                             .selected(Some(i) == selected_component_index)
-                            .layer_index(component.layer_index);
+                            .layer_index(component.as_component().layer_index);
 
                         ui_impl::TimelineComponentRenderer {
                             object: obj,
-                            object_type: component.component_type.clone(),
+                            object_type: component.get_component_type().to_string(),
                         }
                     }).collect()
                 }))
@@ -598,9 +598,9 @@ impl App {
             let editor_ptr = &editor.borrow();
             let position = editor_ptr.get_value(Pointer::from_str("/position")).as_time().unwrap();
             let elems = editor_ptr.elements.iter().filter(|&elem| {
-                elem.component_type == ComponentType::Sound
-                    && elem.as_ref().start_time <= position
-                    && position <= elem.start_time + elem.length
+                elem.get_component_type() == "Sound"
+                    && elem.as_component().start_time <= position
+                    && position <= elem.as_component().start_time + elem.as_component().length
             }).collect::<Vec<_>>().clone();
 
             elems.iter().for_each(|elem| {

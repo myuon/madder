@@ -11,7 +11,7 @@ use widget::*;
 
 pub struct TimelineComponentRenderer {
     pub object: BoxObject,
-    pub object_type: ComponentType,
+    pub object_type: String,
 }
 
 impl TimelineComponentRenderer {
@@ -40,8 +40,8 @@ impl TimelineComponentRenderer {
         cr.rectangle(self.object.coordinate().0 as f64 + self.object.size().0 as f64 - Self::EDGE_WIDTH as f64, self.object.coordinate().1.into(), Self::EDGE_WIDTH as f64, self.object.size().1.into());
         cr.fill();
 
-        match self.object_type {
-            ComponentType::Video => {
+        match self.object_type.as_str() {
+            "Video" => {
                 for i in 0..(self.object.size().0 / BoxObject::HEIGHT) {
                     if let Some(pixbuf) = peek((i * Self::HEIGHT) as u64 * gst::MSECOND) {
                         cr.set_source_pixbuf(
@@ -59,7 +59,7 @@ impl TimelineComponentRenderer {
                     }
                 }
             },
-            ComponentType::Image => {
+            "Image" => {
                 let pixbuf = peek(0 * gst::MSECOND).unwrap();
                 cr.set_source_pixbuf(&pixbuf.scale_simple(50, 50, gdk_pixbuf::InterpType::Nearest).unwrap(), self.object.coordinate().0 as f64, self.object.coordinate().1 as f64);
                 cr.rectangle(self.object.coordinate().0 as f64, self.object.coordinate().1 as f64, self.object.size().0 as f64, self.object.size().1 as f64);
