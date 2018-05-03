@@ -35,6 +35,7 @@ pub fn attribute_to_widget_type(attr: Attribute) -> WidgetType {
         Color(color) => WidgetType::Color(color),
         Choose(options, index) => WidgetType::Choose(options, index),
         Sequence(seq) => WidgetType::VBox(seq.into_iter().map(attribute_to_widget_type).collect()),
+        HashMap(hmap) => WidgetType::Grid(hmap.into_iter().map(|(k,v)| (k, attribute_to_widget_type(v))).collect()),
     }
 }
 

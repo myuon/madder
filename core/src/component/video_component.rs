@@ -95,10 +95,10 @@ pub struct VideoFileComponent {
 
 impl VideoFileComponent {
     pub fn new_from_json(json: serde_json::Value) -> VideoFileComponent {
-        let prop = VideoFileProperty::from_value(json.as_object().unwrap()["prop"].clone());
+        let component = serde_json::from_value(json).unwrap();
 
         VideoFileComponent {
-            component: serde_json::from_value(json).unwrap(),
+            component: component,
             data: VideoFileComponent::create_data(&prop.entity),
             prop: prop,
         }

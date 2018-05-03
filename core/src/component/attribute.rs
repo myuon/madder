@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 extern crate gstreamer as gst;
 extern crate gdk;
 extern crate serde;
@@ -30,6 +32,7 @@ pub enum Attribute {
     ReadOnly(String),
     Choose(Vec<String>,Option<usize>),
     Sequence(Vec<Attribute>),
+    HashMap(HashMap<String, Attribute>),
 }
 
 pub trait AsAttribute {
@@ -45,6 +48,8 @@ pub trait AsAttribute {
     fn as_readonly(self) -> Option<String>;
     fn as_choose(self) -> Option<usize>;
     fn as_sequence(self) -> Option<Vec<Self>> where Self: Sized;
+    fn as_map(self) -> Option<HashMap<String, Self>> where Self: Sized;
+    fn as_attribute(self) -> Option<Attribute>;
 
     fn from_i32(arg: i32) -> Self;
     fn from_f64(arg: f64) -> Self;
@@ -58,6 +63,8 @@ pub trait AsAttribute {
     fn from_readonly(arg: String) -> Self;
     fn from_choose(arg: Vec<String>, arg2: Option<usize>) -> Self;
     fn from_sequence(arg: Vec<Self>) -> Self where Self: Sized;
+    fn from_map(arg: HashMap<String, Self>) -> Self where Self: Sized;
+    fn from_attribute(attr: Attribute) -> Self;
 }
 
 use Attribute::*;
@@ -147,6 +154,15 @@ impl AsAttribute for Attribute {
         }
     }
 
+    fn as_map(self) -> Option<HashMap<String, Attribute>> {
+        match self {
+            HashMap(kv) => Some(kv),
+            _ => None,
+        }
+    }
+
+    fn as_attribute(self) -> Option<Attribute> { Some(self) }
+
     fn from_i32(arg: i32) -> Self { I32(arg) }
     fn from_f64(arg: f64) -> Self { F64(arg) }
     fn from_usize(arg: usize) -> Self { Usize(arg) }
@@ -159,6 +175,8 @@ impl AsAttribute for Attribute {
     fn from_readonly(arg: String) -> Self { ReadOnly(arg) }
     fn from_choose(arg: Vec<String>, arg2: Option<usize>) -> Self { Choose(arg, arg2) }
     fn from_sequence(arg: Vec<Attribute>) -> Self { Sequence(arg) }
+    fn from_map(arg: HashMap<String, Self>) -> Self { HashMap(arg) }
+    fn from_attribute(attr: Attribute) -> Self { attr }
 }
 
 
@@ -211,6 +229,12 @@ impl AsAttribute for Value {
         self.as_array().cloned()
     }
 
+    fn as_map(self) -> Option<HashMap<String, serde_json::Value>> {
+        self.as_object().cloned().map(|x| x.into_iter().collect())
+    }
+
+    fn as_attribute(self) -> Option<Attribute> { serde_json::from_value(self).ok() }
+
     fn from_i32(arg: i32) -> Self { serde_json::to_value(arg).unwrap() }
     fn from_f64(arg: f64) -> Self { serde_json::to_value(arg).unwrap() }
     fn from_usize(arg: usize) -> Self { serde_json::to_value(arg).unwrap() }
@@ -223,4 +247,6 @@ impl AsAttribute for Value {
     fn from_readonly(arg: String) -> Self { serde_json::to_value(arg).unwrap() }
     fn from_choose(arg: Vec<String>, i: Option<usize>) -> Self { serde_json::to_value(arg[i.unwrap()].clone()).unwrap() }
     fn from_sequence(arg: Vec<Value>) -> Self { serde_json::to_value(arg).unwrap() }
+    fn from_map(arg: HashMap<String, serde_json::Value>) -> Self { json!(arg) }
+    fn from_attribute(attr: Attribute) -> Self { json!(attr) }
 }
