@@ -95,40 +95,9 @@ impl AsProperty for ImageComponent {
     }
 }
 
-/*
-impl ComponentWrapper for ImageComponent {
-    fn as_component(&self) -> &Component {
-        &self.component
-    }
-
-    fn as_component_mut(&mut self) -> &mut Component {
-        &mut self.component
-    }
-
-    fn as_value(&self) -> serde_json::Value {
-        let mut json = serde_json::to_value(self.as_component()).unwrap();
-        let props = {
-            let mut props = serde_json::Map::new();
-            for (k,v) in self.get_props() {
-                props.insert(k, serde_json::to_value(v).unwrap());
-            }
-
-            props
-        };
-
-        json.as_object_mut().unwrap().insert("prop".to_string(), json!(props));
-        json
-    }
-
-    fn get_info(&self) -> String {
-        format!("image {:?}", gdk_pixbuf::Pixbuf::get_file_info(&self.prop.entity).unwrap().0.get_description())
-    }
-}
- */
-
 impl HasPropertyBuilder for ImageComponent {
     fn keys(_: PhantomData<Self>) -> Vec<&'static str> {
-        vec_add!(ComponentProperty::keys(PhantomData), vec!["entity"])
+        vec_add!(ComponentProperty::keys(PhantomData), vec_add!(GeometryProperty::keys(PhantomData), vec!["entity"]))
     }
 
     fn getter<T: AsAttribute>(&self, name: &str) -> T {

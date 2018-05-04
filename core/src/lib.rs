@@ -191,10 +191,10 @@ impl Editor {
     fn add_components_key(&mut self, n: IndexRange, key: &str, value: Value, content_type: ContentType) {
         match content_type {
             ContentType::Value => {
-                self.components.as_index_mut(n).as_component_mut().set_prop(key, serde_json::from_value(value).unwrap());
+                self.components.as_index_mut(n).set_prop(key, serde_json::from_value(value).unwrap());
             },
             ContentType::Attribute => {
-                self.components.as_index_mut(n).as_component_mut().set_attr(key, serde_json::from_value(value).unwrap());
+                self.components.as_index_mut(n).set_attr(key, serde_json::from_value(value).unwrap());
             },
         }
     }
@@ -205,10 +205,10 @@ impl Editor {
                 let mut seq = self.components.as_index_mut(n.clone()).get_prop(key).as_array().unwrap().clone();
                 *seq.as_index_mut(i) = serde_json::from_value(value).unwrap();
 
-                self.components.as_index_mut(n).as_component_mut().set_prop(key, json!(seq));
+                self.components.as_index_mut(n).set_prop(key, json!(seq));
             },
             ContentType::Attribute => {
-                self.components.as_index_mut(n).as_component_mut().set_attr(key, serde_json::from_value(value).unwrap());
+                self.components.as_index_mut(n).set_attr(key, serde_json::from_value(value).unwrap());
             },
         }
     }
@@ -220,31 +220,6 @@ impl Editor {
                 self.components.as_index_mut(index).as_component_mut().effect.push(effect);
             },
             _ => unimplemented!(),
-        }
-    }
-
-    fn add_components_n_prop_key(&mut self, n: IndexRange, key: &str, value: Value, content_type: ContentType) {
-        match content_type {
-            ContentType::Value => {
-                self.components.as_index_mut(n).set_prop(key, serde_json::from_value(value).unwrap());
-            },
-            ContentType::Attribute => {
-                self.components.as_index_mut(n).set_attr(key, serde_json::from_value(value).unwrap());
-            },
-        }
-    }
-
-    fn add_components_n_prop_key_n(&mut self, n: IndexRange, key: &str, i: IndexRange, value: Value, content_type: ContentType) {
-        match content_type {
-            ContentType::Value => {
-                let mut seq = self.components.as_index_mut(n.clone()).get_prop(key).as_array().unwrap().clone();
-                *seq.as_index_mut(i) = serde_json::from_value(value).unwrap();
-
-                self.components.as_index_mut(n).set_prop(key, json!(seq));
-            },
-            ContentType::Attribute => {
-                self.components.as_index_mut(n).set_attr(key, serde_json::from_value(value).unwrap());
-            },
         }
     }
 
@@ -328,6 +303,9 @@ impl Editor {
             &["components", ref n] => {
                 serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap())).unwrap()
             },
+            &["components", ref n, "list"] => {
+                serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap()).get_props()).unwrap()
+            },
             &["components", ref n, "effect"] => {
                 serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap()).as_component().effect.clone()).unwrap()
             },
@@ -343,17 +321,8 @@ impl Editor {
             &["components", ref n, "info"] => {
                 serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap()).get_info()).unwrap()
             },
-            &["components", ref n, "prop"] => {
-                serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap()).get_props()).unwrap()
-            },
-            &["components", ref n, "prop", ref key] => {
-                serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap()).get_prop(key)).unwrap()
-            },
-            &["components", ref n, "common", ref key] => {
-                serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap()).as_component().get_prop(key)).unwrap()
-            },
             &["components", ref n, key] => {
-                serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap()).as_component().get_prop(key)).unwrap()
+                serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap()).get_prop(key)).unwrap()
             },
             z => panic!("Call get_by_pointer_as_value with unexisting path: {:?}", z),
         }
@@ -362,7 +331,10 @@ impl Editor {
     fn get_by_pointer_as_attr(&self, path: Pointer) -> Value {
         match path.0.iter().map(|ref x| x.as_str()).collect::<Vec<&str>>().as_slice() {
             &["components", ref n] => {
-                serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap()).as_component().get_attrs()).unwrap()
+                serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap())).unwrap()
+            },
+            &["components", ref n, "list"] => {
+                serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap()).get_attrs()).unwrap()
             },
             &["components", ref n, "effect"] => {
                 serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap()).as_component().effect.iter().map(|x| x.get_attrs()).collect::<Vec<_>>()).unwrap()
@@ -373,22 +345,13 @@ impl Editor {
             &["components", ref n, "effect", ref m, key] => {
                 serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap()).as_component().effect.as_index(IndexRange::from_str(m).unwrap()).get_attr(key)).unwrap()
             },
-            &["components", ref n, "prop"] => {
-                serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap()).get_attrs()).unwrap()
-            },
-            &["components", ref n, "prop", ref key] => {
-                serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap()).get_attr(key)).unwrap()
-            },
-            &["components", ref n, "common"] => {
-                serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap()).as_component().get_attrs()).unwrap()
-            },
             &["components", ref n, "common_and_prop"] => {
                 let mut attrs = self.components.as_index(IndexRange::from_str(n).unwrap()).as_component().get_attrs();
                 attrs.extend_from_slice(self.components.as_index(IndexRange::from_str(n).unwrap()).get_attrs().as_slice());
                 serde_json::to_value(attrs).unwrap()
             },
             &["components", ref n, key] => {
-                serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap()).as_component().get_attr(key)).unwrap()
+                serde_json::to_value(self.components.as_index(IndexRange::from_str(n).unwrap()).get_attr(key)).unwrap()
             },
             z => panic!("Call get_by_pointer_as_attr with unexisting path: {:?}", z),
         }
@@ -433,8 +396,6 @@ impl Patch for Editor {
                     &["components", ref n, "effect"] => self.add_components_n_effect(IndexRange::from_str(n).unwrap(), v, content_type),
                     &["components", ref n, "effect", ref m, "intermeds"] => self.add_components_n_effect_n_intermeds(IndexRange::from_str(n).unwrap(), IndexRange::from_str(m).unwrap(), v, content_type),
                     &["components", ref n, "effect", ref m, key] => self.add_components_n_effect_n_key(IndexRange::from_str(n).unwrap(), IndexRange::from_str(m).unwrap(), key, v, content_type),
-                    &["components", ref n, "prop", key] => self.add_components_n_prop_key(IndexRange::from_str(n).unwrap(), key, v, content_type),
-                    &["components", ref n, "prop", key, ref i] => self.add_components_n_prop_key_n(IndexRange::from_str(n).unwrap(), key, IndexRange::from_str(i).unwrap(), v, content_type),
                     &["components", ref n, key] => self.add_components_key(IndexRange::from_str(n).unwrap(), key, v, content_type),
                     &["components", ref n, key, ref i] => self.add_components_key_n(IndexRange::from_str(n).unwrap(), key, IndexRange::from_str(i).unwrap(), v, content_type),
                     z => panic!("Path Not Found: {:?}", z),

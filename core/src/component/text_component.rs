@@ -117,40 +117,9 @@ impl AsProperty for TextComponent {
     }
 }
 
-/*
-impl ComponentWrapper for TextComponent {
-    fn as_component(&self) -> &Component {
-        &self.component
-    }
-
-    fn as_component_mut(&mut self) -> &mut Component {
-        &mut self.component
-    }
-
-    fn as_value(&self) -> serde_json::Value {
-        let mut json = serde_json::to_value(self.as_component()).unwrap();
-        let props = {
-            let mut props = serde_json::Map::new();
-            for (k,v) in self.get_props() {
-                props.insert(k, serde_json::to_value(v).unwrap());
-            }
-
-            props
-        };
-
-        json.as_object_mut().unwrap().insert("prop".to_string(), json!(props));
-        json
-    }
-
-    fn get_info(&self) -> String {
-        format!("text")
-    }
-}
-*/
-
 impl HasPropertyBuilder for TextComponent {
     fn keys(_: PhantomData<Self>) -> Vec<&'static str> {
-        vec_add!(ComponentProperty::keys(PhantomData), vec!["entity", "text_color", "text_font"])
+        vec_add!(ComponentProperty::keys(PhantomData), vec_add!(GeometryProperty::keys(PhantomData), vec!["entity", "text_color", "text_font"]))
     }
 
     fn getter<T: AsAttribute>(&self, name: &str) -> T {
@@ -160,7 +129,7 @@ impl HasPropertyBuilder for TextComponent {
             "text_font" => AsAttribute::from_font(self.text_font.clone()),
             k if ComponentProperty::keys(PhantomData).contains(&k) => self.component.getter(k),
             k if GeometryProperty::keys(PhantomData).contains(&k) => self.geometry.getter(k),
-            _ => unimplemented!(),
+            z => panic!("TextComponent does not have the key: {}", z),
         }
     }
 

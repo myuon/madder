@@ -156,43 +156,9 @@ impl AsProperty for VideoFileComponent {
     }
 }
 
-/*
-impl AsProperty for VideoFileComponent {
-    fn as_component(&self) -> &Component {
-        &self.component
-    }
-
-    fn as_component_mut(&mut self) -> &mut Component {
-        &mut self.component
-    }
-
-    fn as_value(&self) -> serde_json::Value {
-        let mut json = serde_json::to_value(self.as_component()).unwrap();
-        let props = {
-            let mut props = serde_json::Map::new();
-            for (k,v) in self.get_props() {
-                props.insert(k, serde_json::to_value(v).unwrap());
-            }
-
-            props
-        };
-
-        json.as_object_mut().unwrap().insert("prop".to_string(), json!(props));
-        json
-    }
-
-    fn get_info(&self) -> String {
-        format!("video\ndata_uri:\t{}\nclock:\t{:?}\n",
-                self.prop.entity,
-                self.data.get_clock()
-        )
-    }
-}
-*/
-
 impl HasPropertyBuilder for VideoFileComponent {
     fn keys(_: PhantomData<Self>) -> Vec<&'static str> {
-        vec_add!(ComponentProperty::keys(PhantomData), vec!["entity"])
+        vec_add!(ComponentProperty::keys(PhantomData), vec_add!(GeometryProperty::keys(PhantomData), vec!["entity"]))
     }
 
     fn getter<T: AsAttribute>(&self, name: &str) -> T {
@@ -200,7 +166,7 @@ impl HasPropertyBuilder for VideoFileComponent {
             "entity" => AsAttribute::from_filepath(self.entity.clone()),
             k if ComponentProperty::keys(PhantomData).contains(&k) => self.component.getter(k),
             k if GeometryProperty::keys(PhantomData).contains(&k) => self.geometry.getter(k),
-            _ => unimplemented!(),
+            z => panic!("Not found the key: {}", z),
         }
     }
 
