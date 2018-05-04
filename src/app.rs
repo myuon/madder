@@ -416,7 +416,7 @@ impl Widget for App {
             {
                 let editor = model.editor.clone();
                 Rc::new(Box::new(move |robj, scaler, cr| {
-                    robj.hscaled(scaler).renderer(&cr, &|p| editor.borrow().elements[robj.object.index].peek(p));
+                    robj.hscaled(scaler).renderer(&cr, &|p| editor.borrow().components[robj.object.index].peek(p));
                 }))
             }
         ));
@@ -597,7 +597,7 @@ impl App {
 
             let editor_ptr = &editor.borrow();
             let position = editor_ptr.get_value(Pointer::from_str("/position")).as_time().unwrap();
-            let elems = editor_ptr.elements.iter().filter(|&elem| {
+            let elems = editor_ptr.components.iter().filter(|&elem| {
                 elem.get_component_type() == "Sound"
                     && elem.as_component().start_time <= position
                     && position <= elem.as_component().start_time + elem.as_component().length
