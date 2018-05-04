@@ -28,7 +28,7 @@ impl Component {
             "Image" => Image(ImageComponent::new_from_json(json)),
             "Text" => Text(TextComponent::new_from_json(json)),
             "Sound" => Sound(SoundComponent::new_from_json(json)),
-            _ => unimplemented!(),
+            _ => unreachable!(),
         }
     }
 

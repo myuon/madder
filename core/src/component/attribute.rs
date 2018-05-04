@@ -204,7 +204,7 @@ impl AsAttribute for Value {
     }
 
     fn as_choose(self) -> Option<usize> {
-        unimplemented!()
+        self.as_u64().map(|x| x as usize)
     }
 
     fn as_sequence(self) -> Option<Vec<Value>> {
@@ -221,6 +221,6 @@ impl AsAttribute for Value {
     fn from_font(arg: String) -> Self { serde_json::to_value(arg).unwrap() }
     fn from_color(arg: gdk::RGBA) -> Self { serde_json::to_value(SerRGBA(arg)).unwrap() }
     fn from_readonly(arg: String) -> Self { serde_json::to_value(arg).unwrap() }
-    fn from_choose(arg: Vec<String>, i: Option<usize>) -> Self { serde_json::to_value(arg[i.unwrap()].clone()).unwrap() }
+    fn from_choose(_arg: Vec<String>, i: Option<usize>) -> Self { json!(i) }
     fn from_sequence(arg: Vec<Value>) -> Self { serde_json::to_value(arg).unwrap() }
 }

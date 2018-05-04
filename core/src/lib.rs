@@ -366,7 +366,7 @@ impl Editor {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().get_attrs()).unwrap()
             },
             &["components", ref n, "effect"] => {
-                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().effect.iter().map(|x| x.get_props()).collect::<Vec<_>>()).unwrap()
+                serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().effect.iter().map(|x| x.get_attrs()).collect::<Vec<_>>()).unwrap()
             },
             &["components", ref n, "effect", ref m] => {
                 serde_json::to_value(self.elements.as_index(IndexRange::from_str(n).unwrap()).as_component().effect.as_index(IndexRange::from_str(m).unwrap()).get_attrs()).unwrap()
