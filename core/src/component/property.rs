@@ -77,7 +77,7 @@ impl HasPropertyBuilder for ComponentProperty {
             "start_time" => AsAttribute::from_time(self.start_time),
             "length" => AsAttribute::from_time(self.length),
             "layer_index" => AsAttribute::from_usize(self.layer_index),
-            _ => unimplemented!(),
+            z => panic!("Has no such prop name: {}", z),
         }
     }
 
