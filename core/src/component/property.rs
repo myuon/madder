@@ -69,7 +69,7 @@ pub struct ComponentProperty {
 
 impl HasPropertyBuilder for ComponentProperty {
     fn keys(_: PhantomData<Self>) -> Vec<&'static str> {
-        vec!["component_type", "start_time", "length", "layer_index"]
+        vec!["start_time", "length", "layer_index"]
     }
 
     fn getter<T: AsAttribute>(&self, name: &str) -> T {
