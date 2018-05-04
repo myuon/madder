@@ -352,14 +352,16 @@ impl Widget for App {
                 let editor = model.editor.clone();
                 let selected_component_index = model.selected_component_index.clone();
                 Rc::new(Box::new(move || {
-                    editor.borrow()
-                        .get_value(Pointer::from_str(&format!("/components/{}/effect", selected_component_index.borrow().unwrap())))
-                        .as_array().unwrap()
-                        .iter()
-                        .map(|obj| serde_json::from_value::<Effect>(obj.clone()).unwrap())
-                        .enumerate()
-                        .map(|(i,obj)| { ui_impl::EffectComponentRenderer::new(i,obj) })
-                        .collect()
+                    if let Some(index) = *selected_component_index.borrow() {
+                        editor.borrow()
+                            .get_value(Pointer::from_str(&format!("/components/{}/effect", index)))
+                            .as_array().unwrap()
+                            .iter()
+                            .map(|obj| serde_json::from_value::<Effect>(obj.clone()).unwrap())
+                            .enumerate()
+                            .map(|(i,obj)| { ui_impl::EffectComponentRenderer::new(i,obj) })
+                            .collect()
+                    } else { vec![] }
                 }))
             },
             {

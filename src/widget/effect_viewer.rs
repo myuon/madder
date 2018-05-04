@@ -37,6 +37,7 @@ pub struct EffectViewerWidget<Renderer: AsRef<BoxObject> + 'static> {
     model: Model<Renderer>,
     scrolled: gtk::ScrolledWindow,
     box_viewer: relm::Component<BoxViewerWidget<Renderer>>,
+    ruler: relm::Component<RulerWidget>,
     vbox: gtk::Box,
     graph: relm::Component<BezierGraphWidget>,
 }
@@ -119,7 +120,16 @@ impl<Renderer> Widget for EffectViewerWidget<Renderer> where Renderer: AsRef<Box
             Inhibit(false)
         });
 
-        let box_viewer = overlay.add_widget::<BoxViewerWidget<Renderer>>((
+        let vbox_overlay = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        overlay.add(&vbox_overlay);
+
+        let ruler = vbox_overlay.add_widget::<RulerWidget>((
+            200,
+            20,
+            Rc::new(gtk::Scale::new_with_range(gtk::Orientation::Horizontal, 1.0, 10.0, 0.1)),
+        ));
+
+        let box_viewer = vbox_overlay.add_widget::<BoxViewerWidget<Renderer>>((
             200,
             Rc::new(gtk::Scale::new_with_range(gtk::Orientation::Horizontal, 1.0, 10.0, 0.1)),
             model.on_get_object.clone(),
@@ -146,8 +156,9 @@ impl<Renderer> Widget for EffectViewerWidget<Renderer> where Renderer: AsRef<Box
 
         EffectViewerWidget {
             model: model,
-            box_viewer: box_viewer,
             vbox: vbox,
+            ruler: ruler,
+            box_viewer: box_viewer,
             graph: graph,
             scrolled: scrolled,
         }

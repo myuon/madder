@@ -114,7 +114,7 @@ impl EffectComponentRenderer {
         cr.select_font_face("Serif", cairo::FontSlant::Normal, cairo::FontWeight::Normal);
         cr.set_font_size(15.0);
 
-        cr.set_source_rgba(0.0, 0.5, 1.0, 0.5);
+        cr.set_source_rgba(1.0, 0.5, 0.0, 0.5);
         cr.rectangle(self.object.coordinate().0 as f64, self.object.coordinate().1.into(), self.object.size().0 as f64, self.object.size().1.into());
         cr.fill();
         cr.stroke();
