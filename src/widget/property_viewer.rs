@@ -233,8 +233,16 @@ impl Update for PropertyViewerWidget {
                     let label = gtk::Label::new(key.as_str());
                     label.set_halign(gtk::Align::End);
 
-                    tab_widget.attach(&label, 0, widget_num + i as i32, 1, 1);
-                    tab_widget.attach(&widget_type.to_widget(self.model.relm.stream().clone(), path), 1, widget_num + i as i32, 1, 1);
+                    let index = widget_num + i as i32;
+                    tab_widget.attach(&label, 0, index, 1, 1);
+                    tab_widget.attach(&widget_type.to_widget(self.model.relm.stream().clone(), path), 1, index, 1, 1);
+
+                    match widget_type {
+                        WidgetType::NumberEntry(_) => {
+                            tab_widget.attach(&gtk::CheckButton::new(), 2, index, 1, 1);
+                        },
+                        _ => (),
+                    }
                 }
 
                 tab_widget.show_all();
