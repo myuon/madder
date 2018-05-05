@@ -143,3 +143,9 @@ impl AsRef<BoxObject> for EffectComponentRenderer {
     }
 }
 
+impl HasEffect for EffectComponentRenderer {
+    fn as_effect(&self) -> &Effect {
+        &self.effect
+    }
+}
+

@@ -16,7 +16,11 @@ extern crate madder_core;
 use madder_core::*;
 use widget::*;
 
-pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
+pub trait HasEffect {
+    fn as_effect(&self) -> &Effect;
+}
+
+pub struct Model<Renderer: AsRef<BoxObject> + HasEffect + 'static> {
     tracking_position: Rc<RefCell<f64>>,
     name_list: gtk::Box,
     connect_get_effect: Box<Fn(usize) -> component::Effect>,
@@ -33,7 +37,7 @@ pub enum EffectMsg {
     OnNewIntermedPoint(usize, f64),
 }
 
-pub struct EffectViewerWidget<Renderer: AsRef<BoxObject> + 'static> {
+pub struct EffectViewerWidget<Renderer: AsRef<BoxObject> + HasEffect + 'static> {
     model: Model<Renderer>,
     scrolled: gtk::ScrolledWindow,
     box_viewer: relm::Component<BoxViewerWidget<Renderer>>,
@@ -42,7 +46,7 @@ pub struct EffectViewerWidget<Renderer: AsRef<BoxObject> + 'static> {
     graph: relm::Component<BezierGraphWidget>,
 }
 
-impl<Renderer> Update for EffectViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
+impl<Renderer> Update for EffectViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + HasEffect + 'static {
     type Model = Model<Renderer>;
     type ModelParam = (Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(&Renderer, f64, &cairo::Context)>>);
     type Msg = EffectMsg;
@@ -80,7 +84,7 @@ impl<Renderer> Update for EffectViewerWidget<Renderer> where Renderer: AsRef<Box
     }
 }
 
-impl<Renderer> Widget for EffectViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
+impl<Renderer> Widget for EffectViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + HasEffect + 'static {
     type Root = gtk::ScrolledWindow;
 
     fn root(&self) -> Self::Root {
