@@ -20,7 +20,7 @@ pub trait HasEffect {
     fn as_effect(&self) -> &Effect;
 }
 
-pub struct Model<Renderer: AsRef<BoxObject> + HasEffect + 'static> {
+pub struct Model<Renderer: AsRef<BoxObject> + Clone + HasEffect + 'static> {
     tracking_position: Rc<RefCell<f64>>,
     name_list: gtk::Box,
     connect_get_effect: Box<Fn(usize) -> component::Effect>,
@@ -31,25 +31,26 @@ pub struct Model<Renderer: AsRef<BoxObject> + HasEffect + 'static> {
 }
 
 #[derive(Msg)]
-pub enum EffectMsg {
+pub enum EffectMsg<Renderer: AsRef<BoxObject> + 'static> {
     QueueDraw,
-    Select(BoxObject, gdk::EventButton),
+    Select(Renderer, gdk::EventButton),
     OnNewIntermedPoint(usize, f64),
 }
 
-pub struct EffectViewerWidget<Renderer: AsRef<BoxObject> + HasEffect + 'static> {
+pub struct EffectViewerWidget<Renderer: AsRef<BoxObject> + Clone + HasEffect + 'static> {
     model: Model<Renderer>,
     scrolled: gtk::ScrolledWindow,
     box_viewer: relm::Component<BoxViewerWidget<Renderer>>,
     ruler: relm::Component<RulerWidget>,
     vbox: gtk::Box,
     graph: relm::Component<BezierGraphWidget>,
+    combo: gtk::ComboBoxText,
 }
 
-impl<Renderer> Update for EffectViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + HasEffect + 'static {
+impl<Renderer> Update for EffectViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + Clone + HasEffect + 'static {
     type Model = Model<Renderer>;
     type ModelParam = (Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(&Renderer, f64, &cairo::Context)>>);
-    type Msg = EffectMsg;
+    type Msg = EffectMsg<Renderer>;
 
     fn model(relm: &Relm<Self>, (on_get_object, on_render): Self::ModelParam) -> Model<Renderer> {
         Model {
@@ -63,14 +64,18 @@ impl<Renderer> Update for EffectViewerWidget<Renderer> where Renderer: AsRef<Box
         }
     }
 
-    fn update(&mut self, event: EffectMsg) {
+    fn update(&mut self, event: Self::Msg) {
         use self::EffectMsg::*;
 
         match event {
             QueueDraw => {
                 self.graph.widget().queue_draw();
             },
-            Select(object, event) => {
+            Select(renderer, event) => {
+                let (_current, _start, _end, transition) = renderer.as_effect().find_interval(event.get_position().0 / renderer.as_ref().width as f64);
+                self.combo.set_active(Transition::transitions().into_iter().position(|x| x == transition).unwrap() as i32);
+
+                let object = renderer.as_ref();
                 *self.model.tracking_position.borrow_mut() = event.get_position().0;
                 self.box_viewer.widget().queue_draw();
 
@@ -84,7 +89,7 @@ impl<Renderer> Update for EffectViewerWidget<Renderer> where Renderer: AsRef<Box
     }
 }
 
-impl<Renderer> Widget for EffectViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + HasEffect + 'static {
+impl<Renderer> Widget for EffectViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + Clone + HasEffect + 'static {
     type Root = gtk::ScrolledWindow;
 
     fn root(&self) -> Self::Root {
@@ -151,10 +156,9 @@ impl<Renderer> Widget for EffectViewerWidget<Renderer> where Renderer: AsRef<Box
         let combo = gtk::ComboBoxText::new();
         vbox.pack_start(&combo, false, false, 0);
 
-        for item in &["Transition 1", "Transition 2"] {
-            combo.append_text(item);
+        for item in Transition::transitions() {
+            combo.append_text(&format!("{:?}", item));
         }
-        combo.set_active(0);
 
         let graph = vbox.add_widget::<BezierGraphWidget>(());
 
@@ -165,6 +169,7 @@ impl<Renderer> Widget for EffectViewerWidget<Renderer> where Renderer: AsRef<Box
             box_viewer: box_viewer,
             graph: graph,
             scrolled: scrolled,
+            combo: combo,
         }
     }
 }

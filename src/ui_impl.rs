@@ -9,6 +9,7 @@ use gdk_pixbuf::prelude::*;
 use madder_core::*;
 use widget::*;
 
+#[derive(Clone)]
 pub struct TimelineComponentRenderer {
     pub object: BoxObject,
     pub object_type: String,
@@ -91,6 +92,7 @@ impl AsRef<BoxObject> for TimelineComponentRenderer {
     }
 }
 
+#[derive(Clone)]
 pub struct EffectComponentRenderer {
     effect: Effect,
     object: BoxObject,

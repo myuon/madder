@@ -18,7 +18,7 @@ extern crate madder_core;
 use madder_core::*;
 use widget::*;
 
-pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
+pub struct Model<Renderer: AsRef<BoxObject> + Clone + 'static> {
     tracking_position: Rc<RefCell<f64>>,
     width: i32,
     height: i32,
@@ -51,7 +51,7 @@ pub enum TimelineMsg {
     SplitComponent(usize, gst::ClockTime),
 }
 
-pub struct TimelineWidget<Renderer: AsRef<BoxObject> + 'static> {
+pub struct TimelineWidget<Renderer: AsRef<BoxObject> + Clone + 'static> {
     model: Model<Renderer>,
     grid: gtk::Grid,
     overlay: gtk::Overlay,
@@ -61,7 +61,7 @@ pub struct TimelineWidget<Renderer: AsRef<BoxObject> + 'static> {
     box_viewer: relm::Component<BoxViewerWidget<Renderer>>,
 }
 
-impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
+impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObject> + Clone + 'static {
     type Model = Model<Renderer>;
     type ModelParam = (i32, i32, i32, Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(&Renderer, f64, &cairo::Context)>>);
     type Msg = TimelineMsg;
@@ -248,7 +248,7 @@ impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
     }
 }
 
-impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
+impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObject> + Clone + 'static {
     type Root = gtk::Grid;
 
     fn root(&self) -> Self::Root {
@@ -304,7 +304,7 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
 
         {
             use self::BoxViewerMsg::*;
-            connect!(box_viewer@OnSelect(ref object, ref event), relm, TimelineMsg::SelectComponent(object.index, event.clone()));
+            connect!(box_viewer@OnSelect(ref object, ref event), relm, TimelineMsg::SelectComponent(object.as_ref().index, event.clone()));
             connect!(box_viewer@OnSelectNoBox(ref event), relm, TimelineMsg::OpenMenu(event.clone()));
             connect!(box_viewer@Motion(ref event), relm, TimelineMsg::RulerMotionNotify(event.get_position().0));
             connect!(box_viewer@OnDrag(index, distance, layer_index), relm, TimelineMsg::DragComponent(index, distance, layer_index));

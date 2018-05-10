@@ -60,7 +60,7 @@ impl BoxObject {
     }
 }
 
-pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
+pub struct Model<Renderer: AsRef<BoxObject> + Clone + 'static> {
     offset: i32,
     selecting_box_index: Option<usize>,
     flag_resize: bool,
@@ -72,24 +72,24 @@ pub struct Model<Renderer: AsRef<BoxObject> + 'static> {
 }
 
 #[derive(Msg)]
-pub enum BoxViewerMsg {
+pub enum BoxViewerMsg<Renderer: AsRef<BoxObject> + 'static> {
     Motion(gdk::EventMotion),
     Select(gdk::EventButton),
-    OnSelect(BoxObject, gdk::EventButton),
+    OnSelect(Renderer, gdk::EventButton),
     OnSelectNoBox(gdk::EventButton),
     OnResize(usize, i32),
     OnDrag(usize, i32, usize),
 }
 
-pub struct BoxViewerWidget<Renderer: AsRef<BoxObject> + 'static> {
+pub struct BoxViewerWidget<Renderer: AsRef<BoxObject> + Clone + 'static> {
     model: Model<Renderer>,
     canvas: gtk::DrawingArea,
 }
 
-impl<Renderer> Update for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
+impl<Renderer> Update for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + Clone + 'static {
     type Model = Model<Renderer>;
     type ModelParam = (i32, Rc<gtk::Scale>, Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(&Renderer, f64, &cairo::Context)>>);
-    type Msg = BoxViewerMsg;
+    type Msg = BoxViewerMsg<Renderer>;
 
     fn model(relm: &Relm<Self>, (height, scale, on_get_object, on_render): Self::ModelParam) -> Model<Renderer> {
         Model {
@@ -104,7 +104,7 @@ impl<Renderer> Update for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
         }
     }
 
-    fn update(&mut self, msg: BoxViewerMsg) {
+    fn update(&mut self, msg: BoxViewerMsg<Renderer>) {
         use self::BoxViewerMsg::*;
 
         match msg {
@@ -118,7 +118,7 @@ impl<Renderer> Update for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
                 if let Some(object) = (self.model.on_get_object)().iter().find(|object| object.as_ref().clone().hscaled(scale).contains(x,y)) {
                     self.model.offset = x;
                     self.model.selecting_box_index = Some(object.as_ref().index);
-                    self.model.relm.stream().emit(BoxViewerMsg::OnSelect(object.as_ref().clone(), event.clone()));
+                    self.model.relm.stream().emit(BoxViewerMsg::OnSelect(object.clone(), event.clone()));
                 } else {
                     self.model.relm.stream().emit(BoxViewerMsg::OnSelectNoBox(event.clone()));
                 }
@@ -160,7 +160,7 @@ impl<Renderer> Update for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObj
     }
 }
 
-impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + 'static {
+impl<Renderer> Widget for BoxViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + Clone + 'static {
     type Root = gtk::DrawingArea;
 
     fn root(&self) -> Self::Root {

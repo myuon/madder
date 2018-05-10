@@ -248,24 +248,24 @@ impl Effect {
     }
 
     pub fn value(&self, current: f64) -> f64 {
-        let find_corresponding_interval = || -> (f64, f64, f64, Transition) {
-            let mut prev_time = 0.0;
-            let mut prev_value = self.start_value;
+        let (current, start, end, transition) = self.find_interval(current);
+        start + transition.get_in_interval(current) * (end - start)
+    }
 
-            for intermed in &self.intermeds {
-                if current <= intermed.position {
-                    return ((current - prev_time) / (intermed.position - prev_time), prev_value, intermed.value, intermed.transition.clone())
-                }
+    pub fn find_interval(&self, current: f64) -> (f64, f64, f64, Transition) {
+        let mut prev_time = 0.0;
+        let mut prev_value = self.start_value;
 
-                prev_time = intermed.position;
-                prev_value = intermed.value;
+        for intermed in &self.intermeds {
+            if current <= intermed.position {
+                return ((current - prev_time) / (intermed.position - prev_time), prev_value, intermed.value, intermed.transition.clone())
             }
 
-            (current, prev_value, self.end_value, self.transition.clone())
-        };
+            prev_time = intermed.position;
+            prev_value = intermed.value;
+        }
 
-        let (current, start, end, transition) = find_corresponding_interval();
-        start + transition.get_in_interval(current) * (end - start)
+        (current, prev_value, self.end_value, self.transition.clone())
     }
 }
 
