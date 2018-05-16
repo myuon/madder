@@ -53,6 +53,7 @@ pub enum AppMsg {
     SelectComponent(usize),
     SetAttr(WidgetType, Pointer),
     NewIntermedPoint(usize, f64),
+    NewEffect(EffectType),
 
     NewProject,
     OpenProject,
@@ -181,6 +182,21 @@ impl Update for App {
                 ).unwrap();
 
                 self.effect_viewer.widget().queue_draw();
+            },
+            NewEffect(effect_type) => {
+                let index = self.model.selected_component_index.borrow().unwrap();
+                self.model.editor.borrow_mut().patch_once(
+                    Operation::Add(
+                        Pointer::from_str(&format!("/components/{}/effect", index)),
+                        json!(Effect {
+                            effect_type: effect_type,
+                            transition: Transition::Ease,
+                            start_value: 0.0,
+                            end_value: 100.0,
+                            intermeds: vec![],
+                        }),
+                    ), ContentType::Value
+                ).unwrap();
             },
             NewProject => {
                 let json = json!({
@@ -374,6 +390,7 @@ impl Widget for App {
         {
             use self::EffectMsg::*;
             connect!(effect_viewer@OnNewIntermedPoint(index, ratio), relm, AppMsg::NewIntermedPoint(index, ratio));
+            connect!(effect_viewer@OnNewEffect(ref eff), relm, AppMsg::NewEffect(eff.clone()));
         }
 
         let timeline = vbox.add_widget::<TimelineWidget<ui_impl::TimelineComponentRenderer>>((

@@ -34,7 +34,9 @@ pub struct Model<Renderer: AsRef<BoxObject> + Clone + HasEffect + 'static> {
 pub enum EffectMsg<Renderer: AsRef<BoxObject> + 'static> {
     QueueDraw,
     Select(Renderer, gdk::EventButton),
+    SelectNoBox(gdk::EventButton),
     OnNewIntermedPoint(usize, f64),
+    OnNewEffect(EffectType),
 }
 
 pub struct EffectViewerWidget<Renderer: AsRef<BoxObject> + Clone + HasEffect + 'static> {
@@ -83,6 +85,18 @@ impl<Renderer> Update for EffectViewerWidget<Renderer> where Renderer: AsRef<Box
                     let ratio = event.get_position().0 / object.size().0 as f64;
                     self.model.relm.stream().emit(EffectMsg::OnNewIntermedPoint(object.index, ratio));
                 }
+            },
+            SelectNoBox(_) => {
+                let menu = gtk::Menu::new();
+
+                for effect in EffectType::types() {
+                    let item = gtk::MenuItem::new_with_label(&format!("エフェクト:{:?}を追加", effect));
+                    menu.append(&item);
+                    connect!(self.model.relm, item, connect_activate(_), return (EffectMsg::OnNewEffect(effect.clone()), ()));
+                }
+
+                menu.popup_easy(0, gtk::get_current_event_time());
+                menu.show_all();
             },
             _ => (),
         }
@@ -144,9 +158,11 @@ impl<Renderer> Widget for EffectViewerWidget<Renderer> where Renderer: AsRef<Box
             model.on_get_object.clone(),
             model.on_render.clone(),
         ));
+
         {
             use self::BoxViewerMsg::*;
             connect!(box_viewer@OnSelect(ref object, ref event), relm, EffectMsg::Select(object.clone(), event.clone()));
+            connect!(box_viewer@OnSelectNoBox(ref event), relm, EffectMsg::SelectNoBox(event.clone()));
         }
 
         let label = gtk::Label::new("▶ Effect");
