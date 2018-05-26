@@ -24,10 +24,10 @@ pub struct Model<Renderer: AsRef<BoxObject> + Clone + 'static> {
     height: i32,
     length: i32,
     get_component: Box<Fn(usize) -> component::Component>,
-    menu: gtk::Menu,
     relm: Relm<TimelineWidget<Renderer>>,
     on_get_object: Rc<Box<Fn() -> Vec<Renderer>>>,
     on_render: Rc<Box<Fn(&Renderer, f64, &cairo::Context)>>,
+    menu: gtk::Menu,
 }
 
 #[derive(Msg)]
@@ -37,16 +37,13 @@ pub enum TimelineMsg {
     RulerQueueDraw,
     OpenMenu(gdk::EventButton),
     ChangeScale,
-    SelectComponent(usize, gdk::EventButton),
     DragComponent(usize, i32, usize),
     ResizeComponent(usize, i32),
     ConnectGetComponent(Box<Fn(usize) -> component::Component>),
-    OpenVideoItem,
-    OpenImageItem,
-    OpenTextItem,
+    SelectNoBox(gdk::EventButton),
     OnSetComponentAttr(usize, &'static str, Attribute),
+    OnSelectBox(usize, gdk::EventButton),
     OnNewComponent(serde_json::Value),
-    OnSelectComponent(usize),
     QueueDraw,
     SplitComponent(usize, gst::ClockTime),
 }
@@ -63,37 +60,25 @@ pub struct TimelineWidget<Renderer: AsRef<BoxObject> + Clone + 'static> {
 
 impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObject> + Clone + 'static {
     type Model = Model<Renderer>;
-    type ModelParam = (i32, i32, i32, Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(&Renderer, f64, &cairo::Context)>>);
+    type ModelParam = (i32, i32, i32, Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(&Renderer, f64, &cairo::Context)>>, gtk::Menu);
     type Msg = TimelineMsg;
 
-    fn model(relm: &Relm<Self>, (width, height, length, on_get_object, on_render): Self::ModelParam) -> Model<Renderer> {
+    fn model(relm: &Relm<Self>, (width, height, length, on_get_object, on_render, menu): Self::ModelParam) -> Model<Renderer> {
         Model {
             tracking_position: Rc::new(RefCell::new(0.0)),
             width: width,
             height: height,
             length: length,
             get_component: Box::new(|_| unreachable!()),
-            menu: gtk::Menu::new(),
             relm: relm.clone(),
             on_get_object: on_get_object,
             on_render: on_render,
+            menu: menu,
         }
     }
 
     fn update(&mut self, event: TimelineMsg) {
         use self::TimelineMsg::*;
-
-        let json_entity = |component_type: &str, entity: &str| -> serde_json::Value {
-            json!({
-                "component_type": component_type,
-                "start_time": 0,
-                "length": 100,
-                "layer_index": 0,
-                "prop": {
-                    "entity": entity,
-                },
-            })
-        };
 
         match event {
             RulerSeekTime(time) => {
@@ -165,81 +150,6 @@ impl<Renderer> Update for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
             ConnectGetComponent(callback) => {
                 self.model.get_component = callback;
             },
-            OpenMenu(event) => {
-                if event.get_button() == 3 {
-                    self.model.menu.popup_easy(0, gtk::get_current_event_time());
-                    self.model.menu.show_all();
-                }
-            },
-            OpenVideoItem => {
-                let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
-                dialog.add_button("追加", 0);
-
-                {
-                    let filter = gtk::FileFilter::new();
-                    filter.add_pattern("*.mkv");
-                    dialog.add_filter(&filter);
-                }
-                dialog.run();
-
-                let entity = dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string();
-                self.model.relm.stream().emit(TimelineMsg::OnNewComponent(json_entity("Video", &entity)));
-
-                self.box_viewer.widget().queue_draw();
-                dialog.destroy();
-            },
-            OpenImageItem => {
-                let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
-                dialog.add_button("追加", 0);
-
-                {
-                    let filter = gtk::FileFilter::new();
-                    filter.add_pattern("*.png");
-                    dialog.add_filter(&filter);
-                }
-                dialog.run();
-
-                let entity = dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string();
-                self.model.relm.stream().emit(TimelineMsg::OnNewComponent(json_entity("Image", &entity)));
-
-                self.box_viewer.widget().queue_draw();
-                dialog.destroy();
-            },
-            OpenTextItem => {
-                self.model.relm.stream().emit(TimelineMsg::OnNewComponent(json_entity("Text", "dummy entity")));
-                self.box_viewer.widget().queue_draw();
-            },
-            SelectComponent(index, event) => {
-                if event.get_button() == 1 {
-                    self.model.relm.stream().emit(TimelineMsg::OnSelectComponent(index));
-                } else if event.get_button() == 3 {
-                    let menu = gtk::Menu::new();
-                    let split_component_here = {
-                        let split_component_here = gtk::MenuItem::new_with_label("オブジェクトをこの位置で分割");
-                        let position = (event.get_position().0 / self.scaler.get_value()) as u64 * gst::MSECOND;
-                        connect!(self.model.relm, split_component_here, connect_activate(_), TimelineMsg::SplitComponent(index, position));
-
-                        split_component_here
-                    };
-
-                    menu.append(&split_component_here);
-                    menu.popup_easy(0, gtk::get_current_event_time());
-                    menu.show_all();
-                }
-            },
-            SplitComponent(index, position) => {
-                let mut component = (self.model.get_component)(index);
-                self.model.relm.stream().emit(TimelineMsg::OnSetComponentAttr(
-                    index,
-                    "length",
-                    Attribute::Time(position - component.as_component().start_time),
-                ));
-
-                component.as_component_mut().start_time = position;
-                component.as_component_mut().length = component.as_component().length - (position - component.as_component().start_time);
-
-//                self.model.relm.stream().emit(TimelineMsg::OnNewComponent(json!(component)));
-            },
             QueueDraw => {
                 self.tracker.queue_draw();
             },
@@ -303,9 +213,14 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
         ));
 
         {
+            let menu = model.menu.clone();
+
             use self::BoxViewerMsg::*;
-            connect!(box_viewer@OnSelect(ref object, ref event), relm, TimelineMsg::SelectComponent(object.as_ref().index, event.clone()));
-            connect!(box_viewer@OnSelectNoBox(ref event), relm, TimelineMsg::OpenMenu(event.clone()));
+            connect!(box_viewer@OnSelect(ref object, ref event), relm, TimelineMsg::OnSelectBox(object.as_ref().index, event.clone()));
+            connect!(box_viewer@OnSelectNoBox(ref _event), relm, {
+                menu.popup_easy(0, gtk::get_current_event_time());
+                menu.show_all();
+            });
             connect!(box_viewer@Motion(ref event), relm, TimelineMsg::RulerMotionNotify(event.get_position().0));
             connect!(box_viewer@OnDrag(index, distance, layer_index), relm, TimelineMsg::DragComponent(index, distance, layer_index));
             connect!(box_viewer@OnResize(index, distance), relm, TimelineMsg::ResizeComponent(index, distance));
@@ -321,19 +236,6 @@ impl<Renderer> Widget for TimelineWidget<Renderer> where Renderer: AsRef<BoxObje
 
             Inhibit(false)
         });
-
-        {
-            let video_item = gtk::MenuItem::new_with_label("動画");
-            let image_item = gtk::MenuItem::new_with_label("画像");
-            let text_item = gtk::MenuItem::new_with_label("テキスト");
-            model.menu.append(&video_item);
-            model.menu.append(&image_item);
-            model.menu.append(&text_item);
-
-            connect!(relm, video_item, connect_activate(_), return (TimelineMsg::OpenVideoItem, ()));
-            connect!(relm, image_item, connect_activate(_), return (TimelineMsg::OpenImageItem, ()));
-            connect!(relm, text_item, connect_activate(_), return (TimelineMsg::OpenTextItem, ()));
-        }
 
         TimelineWidget {
             model: model,

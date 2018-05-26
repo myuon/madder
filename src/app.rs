@@ -50,7 +50,7 @@ pub enum AppMsg {
     SeekTime(gst::ClockTime),
     SetComponentAttr(usize, &'static str, Attribute),
     NewComponent(serde_json::Value),
-    SelectComponent(usize),
+    SelectComponent(usize, gdk::EventButton),
     SetAttr(WidgetType, Pointer),
     NewIntermedPoint(usize, f64),
     NewEffect(EffectType),
@@ -61,6 +61,10 @@ pub enum AppMsg {
     SaveAsProject,
     ProjectInfo,
     OutputMovie,
+
+    OpenVideoItem,
+    OpenImageItem,
+    OpenTextItem,
 }
 
 pub struct App {
@@ -88,6 +92,16 @@ impl Update for App {
 
     fn update(&mut self, event: AppMsg) {
         use self::AppMsg::*;
+
+        let json_entity = |component_type: &str, entity: &str| -> serde_json::Value {
+            json!({
+                "component_type": component_type,
+                "start_time": 0,
+                "length": 100,
+                "layer_index": 0,
+                "entity": entity,
+            })
+        };
 
         match event {
             Quit(window) => {
@@ -122,40 +136,73 @@ impl Update for App {
                     value,
                 ), ContentType::Value).unwrap();
             },
-            SelectComponent(index) => {
-                *self.model.selected_component_index.borrow_mut() = Some(index);
+            SelectComponent(index, event) => {
+                if event.get_button() == 1 {
+                    *self.model.selected_component_index.borrow_mut() = Some(index);
 
-                let editor = self.model.editor.borrow();
-                self.prop_viewer.stream().emit(PropertyMsg::ClearPage(0));
-                self.prop_viewer.stream().emit(PropertyMsg::ClearPage(1));
+                    let editor = self.model.editor.borrow();
+                    self.prop_viewer.stream().emit(PropertyMsg::ClearPage(0));
+                    self.prop_viewer.stream().emit(PropertyMsg::ClearPage(1));
 
-                self.prop_viewer.stream().emit(PropertyMsg::AppendGridWidget(
-                    0,
-                    serde_json::from_value::<Vec<_>>(editor.get_attr(Pointer::from_str(&format!(
-                        "/components/{}/list",
-                        self.model.selected_component_index.borrow().unwrap()))
-                    )).unwrap().into_iter().map(|(key,value): (String, Attribute)| {
-                        (key.to_string(), gtk_impl::attribute_to_widget_type(value.clone()), format!("/components/{}/{}", self.model.selected_component_index.borrow().unwrap(), key))
-                    }).collect(),
-                ));
+                    self.prop_viewer.stream().emit(PropertyMsg::AppendGridWidget(
+                        0,
+                        serde_json::from_value::<Vec<_>>(editor.get_attr(Pointer::from_str(&format!(
+                            "/components/{}/list",
+                            self.model.selected_component_index.borrow().unwrap()))
+                        )).unwrap().into_iter().map(|(key,value): (String, Attribute)| {
+                            (key.to_string(), gtk_impl::attribute_to_widget_type(value.clone()), format!("/components/{}/{}", self.model.selected_component_index.borrow().unwrap(), key))
+                        }).collect(),
+                    ));
 
-                self.prop_viewer.stream().emit(PropertyMsg::AppendVBoxWidget(
-                    1,
-                    serde_json::from_value::<Vec<Vec<_>>>(editor.get_attr(Pointer::from_str(&format!(
-                        "/components/{}/effect",
-                        self.model.selected_component_index.borrow().unwrap()))
-                    )).unwrap().into_iter().enumerate().map(|(i,attrs): (_,Vec<(String,Attribute)>)| {
-                        (WidgetType::Expander(
-                            "effect".to_string(),
-                            Box::new(WidgetType::Grid(attrs.into_iter().map(|(key,value)| {
-                                (key, gtk_impl::attribute_to_widget_type(value.clone()))
-                            }).collect()))
-                        ), format!("/components/{}/effect/{}", self.model.selected_component_index.borrow().unwrap(), i))
-                    }).collect(),
-                ));
+                    self.prop_viewer.stream().emit(PropertyMsg::AppendVBoxWidget(
+                        1,
+                        serde_json::from_value::<Vec<Vec<_>>>(editor.get_attr(Pointer::from_str(&format!(
+                            "/components/{}/effect",
+                            self.model.selected_component_index.borrow().unwrap()))
+                        )).unwrap().into_iter().enumerate().map(|(i,attrs): (_,Vec<(String,Attribute)>)| {
+                            (WidgetType::Expander(
+                                "effect".to_string(),
+                                Box::new(WidgetType::Grid(attrs.into_iter().map(|(key,value)| {
+                                    (key, gtk_impl::attribute_to_widget_type(value.clone()))
+                                }).collect()))
+                            ), format!("/components/{}/effect/{}", self.model.selected_component_index.borrow().unwrap(), i))
+                        }).collect(),
+                    ));
 
-                self.timeline.stream().emit(TimelineMsg::QueueDraw);
-                self.effect_viewer.stream().emit(EffectMsg::QueueDraw);
+                    self.timeline.stream().emit(TimelineMsg::QueueDraw);
+                    self.effect_viewer.stream().emit(EffectMsg::QueueDraw);
+                } else if event.get_button() == 3 {
+                    let menu = gtk::Menu::new();
+                    let split_component_here = gtk::MenuItem::new_with_label("オブジェクトをこの位置で分割");
+                    menu.append(&split_component_here);
+
+                    // timeline scaler
+                    let position = (event.get_position().0 / 1.0) as u64 * gst::MSECOND;
+                    let editor = self.model.editor.clone();
+                    let relm = self.model.relm.clone();
+
+                    connect!(self.model.relm, split_component_here, connect_activate(_), {
+                        let component = &editor.borrow().components[index];
+                        let props = component.as_component().clone();
+
+                        relm.stream().emit(AppMsg::SetComponentAttr(
+                            index,
+                            "length",
+                            Attribute::Time(position - props.start_time),
+                        ));
+
+                        relm.stream().emit(AppMsg::NewComponent(json!({
+                            "component_type": component.get_component_type(),
+                            "start_time": position.mseconds(),
+                            "length": (props.length - (position - props.start_time)).mseconds(),
+                            "layer_index": props.layer_index,
+                            "entity": component.get_prop("entity"),
+                        })));
+                    });
+
+                    menu.popup_easy(0, gtk::get_current_event_time());
+                    menu.show_all();
+                }
             },
             SetAttr(widget_type, pointer) => {
                 self.model.editor.borrow_mut().patch_once(Operation::Add(
@@ -291,6 +338,44 @@ impl Update for App {
                     }
                     Continue(cont)
                 });
+            },
+            OpenVideoItem => {
+                let dialog = gtk::FileChooserDialog::new(Some("動画を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
+                dialog.add_button("追加", 0);
+
+                {
+                    let filter = gtk::FileFilter::new();
+                    filter.add_pattern("*.mkv");
+                    dialog.add_filter(&filter);
+                }
+                dialog.run();
+
+                let entity = dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string();
+                self.model.relm.stream().emit(AppMsg::NewComponent(json_entity("Video", &entity)));
+
+                self.timeline.stream().emit(TimelineMsg::QueueDraw);
+                dialog.destroy();
+            },
+            OpenImageItem => {
+                let dialog = gtk::FileChooserDialog::new(Some("画像を選択"), None as Option<&gtk::Window>, gtk::FileChooserAction::Open);
+                dialog.add_button("追加", 0);
+
+                {
+                    let filter = gtk::FileFilter::new();
+                    filter.add_pattern("*.png");
+                    dialog.add_filter(&filter);
+                }
+                dialog.run();
+
+                let entity = dialog.get_filename().unwrap().as_path().to_str().unwrap().to_string();
+                self.model.relm.stream().emit(AppMsg::NewComponent(json_entity("Image", &entity)));
+
+                self.timeline.stream().emit(TimelineMsg::QueueDraw);
+                dialog.destroy();
+            },
+            OpenTextItem => {
+                self.model.relm.stream().emit(AppMsg::NewComponent(json_entity("Text", "dummy entity")));
+                self.timeline.stream().emit(TimelineMsg::QueueDraw);
             },
         }
     }
@@ -428,15 +513,30 @@ impl Widget for App {
                 Rc::new(Box::new(move |robj, scaler, cr| {
                     robj.hscaled(scaler).renderer(&cr, &|p| editor.borrow().components[robj.object.index].peek(p));
                 }))
-            }
+            },
+            {
+                let menu = gtk::Menu::new();
+                let video_item = gtk::MenuItem::new_with_label("動画");
+                let image_item = gtk::MenuItem::new_with_label("画像");
+                let text_item = gtk::MenuItem::new_with_label("テキスト");
+                menu.append(&video_item);
+                menu.append(&image_item);
+                menu.append(&text_item);
+
+                connect!(relm, video_item, connect_activate(_), return (AppMsg::OpenVideoItem, ()));
+                connect!(relm, image_item, connect_activate(_), return (AppMsg::OpenImageItem, ()));
+                connect!(relm, text_item, connect_activate(_), return (AppMsg::OpenTextItem, ()));
+
+                menu
+            },
         ));
 
         {
             use self::TimelineMsg::*;
             connect!(timeline@RulerSeekTime(time), relm, AppMsg::SeekTime(time as u64 * gst::MSECOND));
             connect!(timeline@OnSetComponentAttr(index, name, ref attr), relm, AppMsg::SetComponentAttr(index, name, attr.clone()));
-            connect!(timeline@OnNewComponent(ref value), relm, AppMsg::NewComponent(value.clone()));
-            connect!(timeline@OnSelectComponent(index), relm, AppMsg::SelectComponent(index));
+            connect!(timeline@OnSelectBox(index, ref event), relm, AppMsg::SelectComponent(index, event.clone()));
+            connect!(timeline@OnNewComponent(ref json), relm, AppMsg::NewComponent(json.clone()));
         }
 
         let button = gtk::Button::new();

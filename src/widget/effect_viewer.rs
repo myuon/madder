@@ -7,7 +7,6 @@ extern crate glib;
 extern crate cairo;
 extern crate gstreamer as gst;
 use gtk::prelude::*;
-use gdk::prelude::*;
 
 extern crate relm;
 use relm::*;
@@ -31,10 +30,9 @@ pub struct Model<Renderer: AsRef<BoxObject> + Clone + HasEffect + 'static> {
 }
 
 #[derive(Msg)]
-pub enum EffectMsg<Renderer: AsRef<BoxObject> + 'static> {
+pub enum EffectMsg {
     QueueDraw,
-    Select(Renderer, gdk::EventButton),
-    SelectNoBox(gdk::EventButton),
+    Select(usize, gdk::EventButton),
     OnNewIntermedPoint(usize, f64),
     OnNewEffect(EffectType),
 }
@@ -42,8 +40,7 @@ pub enum EffectMsg<Renderer: AsRef<BoxObject> + 'static> {
 pub struct EffectViewerWidget<Renderer: AsRef<BoxObject> + Clone + HasEffect + 'static> {
     model: Model<Renderer>,
     scrolled: gtk::ScrolledWindow,
-    box_viewer: relm::Component<BoxViewerWidget<Renderer>>,
-    ruler: relm::Component<RulerWidget>,
+    timeline: relm::Component<TimelineWidget<Renderer>>,
     vbox: gtk::Box,
     graph: relm::Component<BezierGraphWidget>,
     combo: gtk::ComboBoxText,
@@ -52,7 +49,7 @@ pub struct EffectViewerWidget<Renderer: AsRef<BoxObject> + Clone + HasEffect + '
 impl<Renderer> Update for EffectViewerWidget<Renderer> where Renderer: AsRef<BoxObject> + Clone + HasEffect + 'static {
     type Model = Model<Renderer>;
     type ModelParam = (Rc<Box<Fn() -> Vec<Renderer>>>, Rc<Box<Fn(&Renderer, f64, &cairo::Context)>>);
-    type Msg = EffectMsg<Renderer>;
+    type Msg = EffectMsg;
 
     fn model(relm: &Relm<Self>, (on_get_object, on_render): Self::ModelParam) -> Model<Renderer> {
         Model {
@@ -73,30 +70,19 @@ impl<Renderer> Update for EffectViewerWidget<Renderer> where Renderer: AsRef<Box
             QueueDraw => {
                 self.graph.widget().queue_draw();
             },
-            Select(renderer, event) => {
+            Select(index, event) => {
+                let renderer = &(self.model.on_get_object)()[index];
                 let (_current, _start, _end, transition) = renderer.as_effect().find_interval(event.get_position().0 / renderer.as_ref().width as f64);
                 self.combo.set_active(Transition::transitions().into_iter().position(|x| x == transition).unwrap() as i32);
 
                 let object = renderer.as_ref();
                 *self.model.tracking_position.borrow_mut() = event.get_position().0;
-                self.box_viewer.widget().queue_draw();
+                self.timeline.widget().queue_draw();
 
                 if event.get_button() == 3 {
                     let ratio = event.get_position().0 / object.size().0 as f64;
                     self.model.relm.stream().emit(EffectMsg::OnNewIntermedPoint(object.index, ratio));
                 }
-            },
-            SelectNoBox(_) => {
-                let menu = gtk::Menu::new();
-
-                for effect in EffectType::types() {
-                    let item = gtk::MenuItem::new_with_label(&format!("エフェクト:{:?}を追加", effect));
-                    menu.append(&item);
-                    connect!(self.model.relm, item, connect_activate(_), return (EffectMsg::OnNewEffect(effect.clone()), ()));
-                }
-
-                menu.popup_easy(0, gtk::get_current_event_time());
-                menu.show_all();
             },
             _ => (),
         }
@@ -120,49 +106,28 @@ impl<Renderer> Widget for EffectViewerWidget<Renderer> where Renderer: AsRef<Box
         label.set_halign(gtk::Align::Start);
         vbox.pack_start(&label, false, false, 5);
 
-        let overlay = gtk::Overlay::new();
-        vbox.pack_start(&overlay, false, false, 0);
-
-        let tracker = gtk::DrawingArea::new();
-        tracker.set_size_request(-1, -1);
-        tracker.connect_realize(move |tracker| {
-            let window = tracker.get_window().unwrap();
-            window.set_pass_through(true);
-        });
-        overlay.add_overlay(&tracker);
-        overlay.set_overlay_pass_through(&tracker, true);
-
-        let tracking_position = model.tracking_position.clone();
-        tracker.connect_draw(move |tracker,cr| {
-            cr.set_source_rgb(200.0, 0.0, 0.0);
-
-            cr.move_to(*tracking_position.borrow(), 0.0);
-            cr.rel_line_to(0.0, tracker.get_allocation().height as f64);
-            cr.stroke();
-
-            Inhibit(false)
-        });
-
-        let vbox_overlay = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        overlay.add(&vbox_overlay);
-
-        let ruler = vbox_overlay.add_widget::<RulerWidget>((
+        let timeline = vbox.add_widget::<TimelineWidget<Renderer>>((
+            -1,
             200,
-            20,
-            Rc::new(gtk::Scale::new_with_range(gtk::Orientation::Horizontal, 1.0, 10.0, 0.1)),
-        ));
-
-        let box_viewer = vbox_overlay.add_widget::<BoxViewerWidget<Renderer>>((
-            200,
-            Rc::new(gtk::Scale::new_with_range(gtk::Orientation::Horizontal, 1.0, 10.0, 0.1)),
+            2000,
             model.on_get_object.clone(),
             model.on_render.clone(),
+            {
+                let menu = gtk::Menu::new();
+
+                for effect in EffectType::types() {
+                    let item = gtk::MenuItem::new_with_label(&format!("エフェクト:{:?}を追加", effect));
+                    menu.append(&item);
+                    connect!(relm, item, connect_activate(_), return (EffectMsg::OnNewEffect(effect.clone()), ()));
+                }
+
+                menu
+            },
         ));
 
         {
-            use self::BoxViewerMsg::*;
-            connect!(box_viewer@OnSelect(ref object, ref event), relm, EffectMsg::Select(object.clone(), event.clone()));
-            connect!(box_viewer@OnSelectNoBox(ref event), relm, EffectMsg::SelectNoBox(event.clone()));
+            use self::TimelineMsg::*;
+            connect!(timeline@OnSelectBox(index, ref event), relm, EffectMsg::Select(index, event.clone()));
         }
 
         let label = gtk::Label::new("▶ Effect");
@@ -181,8 +146,7 @@ impl<Renderer> Widget for EffectViewerWidget<Renderer> where Renderer: AsRef<Box
         EffectViewerWidget {
             model: model,
             vbox: vbox,
-            ruler: ruler,
-            box_viewer: box_viewer,
+            timeline: timeline,
             graph: graph,
             scrolled: scrolled,
             combo: combo,
