@@ -69,6 +69,7 @@ impl<Renderer> Update for EffectViewerWidget<Renderer> where Renderer: AsRef<Box
         match event {
             QueueDraw => {
                 self.graph.widget().queue_draw();
+                self.timeline.stream().emit(TimelineMsg::QueueDraw);
             },
             Select(index, event) => {
                 let renderer = &(self.model.on_get_object)()[index];

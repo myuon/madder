@@ -244,6 +244,7 @@ impl Update for App {
                         }),
                     ), ContentType::Value
                 ).unwrap();
+                self.effect_viewer.stream().emit(EffectMsg::QueueDraw);
             },
             NewProject => {
                 let json = json!({
