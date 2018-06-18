@@ -391,6 +391,7 @@ impl Patch for Editor {
                     &[] => panic!("add"),
                     &["width"] => panic!("update_width"),
                     &["height"] => panic!("update_height"),
+                    &["length"] => self.length = v.as_time().unwrap(),
                     &["components"] => self.add_components(v, content_type),
                     &["components", ref n] => self.add_components_n(IndexRange::from_str(n).unwrap(),v,content_type),
                     &["components", ref n, "effect"] => self.add_components_n_effect(IndexRange::from_str(n).unwrap(), v, content_type),

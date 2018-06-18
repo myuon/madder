@@ -65,6 +65,7 @@ pub enum AppMsg {
     OpenVideoItem,
     OpenImageItem,
     OpenTextItem,
+    ChangeLength,
 }
 
 pub struct App {
@@ -295,11 +296,12 @@ impl Update for App {
                     gtk::DialogFlags::MODAL,
                     gtk::MessageType::Info,
                     gtk::ButtonsType::Ok,
-                    &serde_json::to_string(&json!({
+                    &format!("{:#}", json!({
                         "size": (editor.get_value(Pointer::from_str("/width")),
                                  editor.get_value(Pointer::from_str("/height"))),
+                        "length": (editor.get_value(Pointer::from_str("/length"))),
                         "components": editor.get_value(Pointer::from_str("/components")).as_array().unwrap().len(),
-                    })).unwrap(),
+                    })),
                 );
 
                 dialog.run();
@@ -377,6 +379,35 @@ impl Update for App {
             OpenTextItem => {
                 self.model.relm.stream().emit(AppMsg::NewComponent(json_entity("Text", "dummy entity")));
                 self.timeline.stream().emit(TimelineMsg::QueueDraw);
+            },
+            ChangeLength => {
+                let window = gtk::Window::new(gtk::WindowType::Toplevel);
+                let label = gtk::Label::new("長さ");
+                let entry = gtk::Entry::new();
+                entry.set_text(&self.model.editor.borrow().get_value(Pointer::from_str("/length")).to_string());
+                let go_btn = gtk::Button::new();
+                go_btn.set_label("決定");
+
+                let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+                hbox.add(&label);
+                hbox.add(&entry);
+                hbox.add(&go_btn);
+
+                let editor = self.model.editor.clone();
+                let entry = entry.clone();
+                go_btn.connect_clicked(move |_| {
+                    if let Some(num) = entry.get_text().and_then(|t| t.parse::<serde_json::Number>().ok()) {
+                        editor.borrow_mut().patch_once(Operation::Add(
+                            Pointer::from_str("/length"),
+                            json!(num)
+                        ), ContentType::Value).unwrap();
+                    }
+                });
+
+                window.add(&hbox);
+                window.set_transient_for(&self.window);
+                window.set_position(gtk::WindowPosition::CenterOnParent);
+                window.show_all();
             },
         }
     }
@@ -520,13 +551,16 @@ impl Widget for App {
                 let video_item = gtk::MenuItem::new_with_label("動画");
                 let image_item = gtk::MenuItem::new_with_label("画像");
                 let text_item = gtk::MenuItem::new_with_label("テキスト");
+                let change_length_item = gtk::MenuItem::new_with_label("長さを変更");
                 menu.append(&video_item);
                 menu.append(&image_item);
                 menu.append(&text_item);
+                menu.append(&change_length_item);
 
                 connect!(relm, video_item, connect_activate(_), return (AppMsg::OpenVideoItem, ()));
                 connect!(relm, image_item, connect_activate(_), return (AppMsg::OpenImageItem, ()));
                 connect!(relm, text_item, connect_activate(_), return (AppMsg::OpenTextItem, ()));
+                connect!(relm, change_length_item, connect_activate(_), return (AppMsg::ChangeLength, ()));
 
                 menu
             },
