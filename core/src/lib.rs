@@ -32,6 +32,9 @@ pub use self::component::*;
 pub mod json_patch;
 pub use self::json_patch::*;
 
+pub mod json_api;
+pub use self::json_api::*;
+
 #[derive(Serialize, Deserialize)]
 pub struct Editor {
     pub components: Vec<Component>,
