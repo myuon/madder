@@ -48,6 +48,10 @@ impl<COMPONENT: HaveComponent> Project<COMPONENT> {
         self.layers[layer_index].push(component);
     }
 
+    pub fn get_components_at_layer(&self, layer_index: usize) -> &Vec<COMPONENT> {
+        self.layers[layer_index].list()
+    }
+
     pub fn get_pixbuf(&self, position: gst::ClockTime) -> gdk_pixbuf::Pixbuf {
         let pixbuf = gdk_pixbuf::Pixbuf::new(gdk_pixbuf::Colorspace::Rgb, false, 8, self.size.0, self.size.1);
 
@@ -79,6 +83,12 @@ impl<COMPONENT: HaveComponent> Project<COMPONENT> {
 
         pixbuf
     }
+}
+
+pub trait HaveProject {
+    type COMPONENT : HaveComponent;
+    fn project(&self) -> &Project<Self::COMPONENT>;
+    fn project_mut(&mut self) -> &mut Project<Self::COMPONENT>;
 }
 
 

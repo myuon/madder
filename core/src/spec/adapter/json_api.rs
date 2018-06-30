@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-
 extern crate serde;
 extern crate serde_json;
+
+use std::collections::HashMap;
 
 // Be careful!
 // Deserializer do not sanity check so some object might be parsed incorrectly
@@ -9,27 +9,39 @@ extern crate serde_json;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Document {
     #[serde(flatten)]
-    payload: Payload,
+    pub payload: Payload,
 
     #[serde(default)]
     #[serde(skip_serializing_if = "serde_json::Value::is_null")]
-    meta: serde_json::Value,
+    pub meta: serde_json::Value,
 
     #[serde(default)]
     #[serde(skip_serializing_if = "serde_json::Value::is_null")]
-    jsonapi: serde_json::Value,
+    pub jsonapi: serde_json::Value,
 
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    links: Option<Links>,
+    pub links: Option<Links>,
 
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    included: Vec<Resource>,
+    pub included: Vec<Resource>,
+}
+
+impl Document {
+    pub fn new(payload: Payload) -> Document {
+        Document {
+            payload: payload,
+            meta: Default::default(),
+            jsonapi: Default::default(),
+            links: Default::default(),
+            included: Default::default(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-enum Payload {
+pub enum Payload {
     #[serde(rename = "data")]
     Data(PrimaryData),
 
@@ -39,7 +51,7 @@ enum Payload {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
-enum PrimaryData {
+pub enum PrimaryData {
     Single(Resource),
     Multiple(Vec<Resource>),
 }
@@ -60,23 +72,23 @@ impl Default for PrimaryData {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Resource {
-    id: String,
+pub struct Resource {
+    pub id: String,
 
     #[serde(rename = "type")]
-    type_: String,
+    pub type_: String,
 
     #[serde(default)]
     #[serde(skip_serializing_if = "HashMap::is_empty")]
-    attributes: HashMap<String, serde_json::Value>,
+    pub attributes: HashMap<String, serde_json::Value>,
 
     #[serde(default)]
     #[serde(skip_serializing_if = "HashMap::is_empty")]
-    relationships: HashMap<String, Relationship>,
+    pub relationships: HashMap<String, Relationship>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Relationship {
+pub struct Relationship {
     #[serde(default)]
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     links: HashMap<String, Link>,
@@ -91,13 +103,13 @@ struct Relationship {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Links {
+pub struct Links {
     links: HashMap<String, Link>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
-enum Link {
+pub enum Link {
     URL(String),
 
     Object {
@@ -110,18 +122,6 @@ enum Link {
         meta: serde_json::Value,
     }
 }
-
-macro_rules! hashmap(
-    { $($key:expr => $value:expr),+ } => {
-        {
-            let mut m = ::std::collections::HashMap::new();
-            $(
-                m.insert(($key).to_string(), $value);
-            )+
-                m
-        }
-    };
-);
 
 #[test]
 fn test_minimal_data() {
@@ -374,7 +374,7 @@ fn test_ser() {
                 "body" => json!("The shortest article. Ever."),
                 "created" => json!("2015-05-22T14:56:29.000Z"),
                 "updated" => json!("2015-05-22T14:56:28.000Z")
-            },
+            }.into_iter().map(|(k,v)| (k.to_string(),v)).collect(),
             relationships: hashmap!{
                 "author" => Relationship {
                     data: PrimaryData::Single(
@@ -388,7 +388,7 @@ fn test_ser() {
                     links: Default::default(),
                     meta: Default::default(),
                 }
-            },
+            }.into_iter().map(|(k,v)| (k.to_string(),v)).collect(),
         }
     ]));
 
@@ -441,7 +441,7 @@ fn test_sparse_fieldsets() {
                     "body" => json!("The shortest article. Ever."),
                     "created" => json!("2015-05-22T14:56:29.000Z"),
                     "updated" => json!("2015-05-22T14:56:28.000Z")
-                },
+                }.into_iter().map(|(k,v)| (k.to_string(),v)).collect(),
                 relationships: hashmap!{
                     "author" => Relationship {
                         data: PrimaryData::Single(
@@ -455,7 +455,7 @@ fn test_sparse_fieldsets() {
                         links: Default::default(),
                         meta: Default::default(),
                     }
-                },
+                }.into_iter().map(|(k,v)| (k.to_string(),v)).collect(),
             }
         ])),
         meta: Default::default(),
@@ -469,7 +469,7 @@ fn test_sparse_fieldsets() {
                     "name" => json!("John"),
                     "age" => json!(80),
                     "gender" => json!("male")
-                },
+                }.into_iter().map(|(k,v)| (k.to_string(),v)).collect(),
                 relationships: Default::default(),
             }
         ],
