@@ -1,3 +1,6 @@
+mod effect;
+pub use self::effect::*;
+
 mod component;
 pub use self::component::*;
 

@@ -1,29 +1,44 @@
+extern crate gstreamer as gst;
 use spec::*;
 
-pub trait Project {
-    type COMPONENT : Component;
-    type COMPONENT_REPO : Repository<Self::COMPONENT>;
-
-    fn component_repo(&self) -> &Self::COMPONENT_REPO;
-    fn component_repo_mut(&mut self) -> &mut Self::COMPONENT_REPO;
+pub struct Layer<COMPONENT: HaveComponent> {
+    components: Vec<COMPONENT>,
 }
 
-pub trait HaveProject {
-    type PROJECT : Project;
-
-    fn project(&self) -> &Self::PROJECT;
-    fn project_mut(&mut self) -> &mut Self::PROJECT;
-}
-
-impl<PROJECT: Project> HaveRepository<PROJECT::COMPONENT> for PROJECT {
-    type REPO = PROJECT::COMPONENT_REPO;
-
-    fn repository(&self) -> &Self::REPO {
-        self.component_repo()
+impl<COMPONENT: HaveComponent> Layer<COMPONENT> {
+    pub fn new() -> Layer<COMPONENT> {
+        Layer {
+            components: vec![],
+        }
     }
 
-    fn repository_mut(&mut self) -> &Self::REPO {
-        self.component_repo_mut()
+    pub fn push(&mut self, component: COMPONENT) {
+        self.components.push(component);
     }
 }
+
+pub struct Project<COMPONENT: HaveComponent> {
+    layers: Vec<Layer<COMPONENT>>,
+    size: (i32, i32),
+    length: gst::ClockTime,
+}
+
+impl<COMPONENT: HaveComponent> Project<COMPONENT> {
+    pub fn new(width: i32, height: i32, length: gst::ClockTime) -> Project<COMPONENT> {
+        Project {
+            layers: vec![Layer::new()],
+            size: (width, height),
+            length: length
+        }
+    }
+
+    pub fn insert_layer(&mut self, index: usize) {
+        self.layers.insert(index, Layer::new());
+    }
+
+    pub fn add_component_at(&mut self, layer_index: usize, component: COMPONENT) {
+        self.layers[layer_index].push(component);
+    }
+}
+
 
