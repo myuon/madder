@@ -1,4 +1,8 @@
+extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
+
+use std::cmp;
+use gdk_pixbuf::prelude::*;
 use spec::*;
 
 pub struct Layer<COMPONENT: HaveComponent> {
@@ -14,6 +18,10 @@ impl<COMPONENT: HaveComponent> Layer<COMPONENT> {
 
     pub fn push(&mut self, component: COMPONENT) {
         self.components.push(component);
+    }
+
+    pub fn list(&self) -> &Vec<COMPONENT> {
+        &self.components
     }
 }
 
@@ -38,6 +46,38 @@ impl<COMPONENT: HaveComponent> Project<COMPONENT> {
 
     pub fn add_component_at(&mut self, layer_index: usize, component: COMPONENT) {
         self.layers[layer_index].push(component);
+    }
+
+    pub fn get_pixbuf(&self, position: gst::ClockTime) -> gdk_pixbuf::Pixbuf {
+        let pixbuf = gdk_pixbuf::Pixbuf::new(gdk_pixbuf::Colorspace::Rgb, false, 8, self.size.0, self.size.1);
+
+        for p in unsafe { pixbuf.get_pixels().chunks_mut(3) } {
+            p[0] = 0;
+            p[1] = 0;
+            p[2] = 0;
+        }
+
+        for layer in self.layers.iter().rev() {
+            for component in layer.list().iter().filter(|component| {
+                component.component().start_time <= position &&
+                    position <= component.component().end_time()
+            }) {
+                let dest = component.get_pixbuf(position);
+                let coordinate = (0,0);
+                let scale = (1.0,1.0);
+                let alpha = 255;
+
+                &dest.composite(
+                    &pixbuf, coordinate.0, coordinate.1,
+                    cmp::min(dest.get_width(), self.size.0 - coordinate.0),
+                    cmp::min(dest.get_height(), self.size.1 - coordinate.1),
+                    coordinate.0.into(), coordinate.1.into(),
+                    scale.0, scale.1,
+                    gdk_pixbuf::InterpType::Nearest, alpha);
+            }
+        }
+
+        pixbuf
     }
 }
 

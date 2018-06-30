@@ -1,3 +1,4 @@
+extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 use spec::{Component, HaveComponent};
 
@@ -21,6 +22,10 @@ impl HaveComponent for ComponentExt {
         match self {
             Video(c) => c,
         }
+    }
+
+    fn get_pixbuf(&self, _: gst::ClockTime) -> gdk_pixbuf::Pixbuf {
+        unimplemented!()
     }
 }
 

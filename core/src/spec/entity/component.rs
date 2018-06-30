@@ -1,3 +1,4 @@
+extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 use spec::*;
 
@@ -8,9 +9,9 @@ use spec::*;
 
 #[derive(Clone)]
 pub struct Component {
-    start_time: gst::ClockTime,
-    length: gst::ClockTime,
-    effect: Vec<Effect>,
+    pub start_time: gst::ClockTime,
+    pub length: gst::ClockTime,
+    pub effect: Vec<Effect>,
 }
 
 impl Component {
@@ -22,5 +23,7 @@ impl Component {
 pub trait HaveComponent {
     fn component(&self) -> &Component;
     fn component_mut(&mut self) -> &mut Component;
+
+    fn get_pixbuf(&self, gst::ClockTime) -> gdk_pixbuf::Pixbuf;
 }
 
