@@ -1,0 +1,275 @@
+openapi: "3.0.1"
+
+# TODO: effect point周り
+
+info:
+  title: madder-core API overview
+  version: v2
+
+paths:
+  /size:
+    get:
+      tags:
+        - project
+      summary: Get the current size
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/Width"
+                  - $ref: "#/components/schemas/Height"
+              example:
+                width: 1280
+                height: 720
+  /size/update:
+    post:
+      tags:
+        - project
+      summary: Update the current size
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              anyOf:
+                - $ref: "#/components/schemas/Width"
+                - $ref: "#/components/schemas/Height"
+            example:
+              width: 320
+      responses:
+        '200':
+          description: OK
+  /info:
+    get:
+      tags:
+        - project
+      summary: Get info about the current project
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  length:
+                    type: integer
+                  position:
+                    type: integer
+                  number-of-components:
+                    type: integer
+  /component:
+    get:
+      tags:
+        - component
+      summary: Get all components
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Component"
+  /component/{component_id}:
+    parameters:
+      - $ref: '#/components/parameters/component_id'
+  
+    get:
+      tags:
+        - component
+      summary: Get {component_id}-th component
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Component"
+  /component/{component_id}/effect:
+    parameters:
+      - $ref: '#/components/parameters/component_id'
+
+    get:
+      tags:
+        - component
+      summary: Get all effects contained in {component_id}-th component
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Effect"
+  /component/{component_id}/effect/{effect_id}:
+    parameters:
+      - $ref: '#/components/parameters/component_id'
+      - $ref: '#/components/parameters/effect_id'
+
+    get:
+      tags:
+        - component
+        - effect
+      summary: Get {effect_id}-th effect of {component_id}-th component
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Effect"
+  /effect:
+    get:
+      tags:
+        - effect
+      summary: Get all effects
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Effect"
+  /effect/{effect_id}:
+    parameters:
+      - $ref: '#/components/parameters/effect_id'
+  
+    get:
+      tags:
+        - effect
+      summary: Get {effect_id}-th effect
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Effect"
+  /effect/{effect_id}/value/{time}:
+    parameters:
+      - $ref: '#/components/parameters/effect_id'
+      - name: time
+        in: path
+        required: true
+        schema:
+          type: number
+  
+    get:
+      tags:
+        - effect
+      summary: Get the effect value at given time
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: number
+  /component/create:
+    post:
+      tags:
+        - component
+      summary: Create new component
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Component"
+      responses:
+        '200':
+          description: OK
+
+components:
+  parameters:
+    component_id:
+      name: component_id
+      in: path
+      description: Component ID
+      required: true
+      schema:
+        type: integer
+    effect_id:
+      name: effect_id
+      in: path
+      description: Effect ID
+      required: true
+      schema:
+        type: integer
+
+  schemas:
+    Component:
+      type: object
+      properties:
+        id:
+          type: integer
+        start_time:
+          type: integer
+        length:
+          type: integer
+        effect:
+          type: array
+          items:
+            type: integer
+        attributes:
+          type: object
+          additionalProperties: true
+        component_type:
+          type: string
+
+    Effect:
+      type: object
+      properties:
+        id:
+          type: integer
+        effect_type:
+          type: string
+          enum:
+            - CoordinateX
+            - CoordinateY
+            - Rotate
+            - ScaleX
+            - ScaleY
+            - Alpha
+        transition:
+          type: string
+          enum:
+            - Linear
+            - Ease
+            - EaseIn
+            - EaseOut
+            - EaseInOut
+        start_value:
+          type: number
+        end_value:
+          type: number
+        intermeds:
+          type: array
+          items:
+            type: object
+            properties:
+              transition:
+                type: string
+              position:
+                type: number
+              value:
+                type: number
+    Width:
+      type: object
+      properties:
+        width:
+          type: integer
+
+    Height:
+      type: object
+      properties:
+        height:
+          type: integer
