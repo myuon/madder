@@ -1,5 +1,5 @@
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Effect {
 }
 

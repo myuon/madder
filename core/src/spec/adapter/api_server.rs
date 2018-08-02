@@ -20,7 +20,8 @@ pub struct ApiServer {
 impl ApiServer {
     pub fn new() -> ApiServer {
         let mut router = router::Router::new();
-        router.add("/components", Handler::Get("mapper_get_components"));
+        router.add("/component", Handler::Get("mapper_list_component"));
+        router.add("/component/:component_id", Handler::Get("mapper_get_component"));
 
         ApiServer {
             router: router,
@@ -28,60 +29,45 @@ impl ApiServer {
     }
 }
 
-pub trait HaveApiServer : HaveProject {
+pub trait HaveApiServer : HaveProject + HaveComponentRepository {
     fn server(&self) -> &ApiServer;
     fn server_mut(&mut self) -> &mut ApiServer;
 
-    fn create(&mut self, path: &str, entity: Document) -> Result<(), String> {
+    fn create(&mut self, path: &str, entity: serde_json::Value) -> Result<(), String> {
         use self::Handler::*;
+
+        let mapper = |name, params| {
+            match name {
+                "mapper_create_component" => self.mapper_create_component(params, entity),
+            }
+        };
 
         let matcher = self.server_mut().router.recognize(path)?;
         match matcher.handler {
-//            Create(h) => Ok((h.as_ref())(self, matcher.params, entity)),
+            Create(name) => Ok(mapper(name, matcher.params)),
             _ => unreachable!(),
         }
     }
 
-    fn mapper_get_components(&self, _: router::Params) -> Document {
-        Document {
-            payload: Payload::Data(PrimaryData::Multiple(
-                self.project().get_components_at_layer(0).iter().enumerate().map(|(i,component)| {
-                    Resource {
-                        id: i.to_string(),
-                        type_: "component".to_string(),
-                        attributes: hashmap!{
-                            "start_time".to_string() => json!(SerTime(component.component().start_time)),
-                            "length".to_string() => json!(SerTime(component.component().length)),
-                        },
-                        relationships: Default::default(),
-                    }
-                }).collect()
-            )),
-            meta: serde_json::Value::Null,
-            jsonapi: serde_json::Value::Null,
-            links: None,
-            included: vec![],
-        }
-    }
-
-    fn mapper_get(&self, name: &str, params: router::Params) -> Document {
-        match name {
-            "mapper_get_components" => self.mapper_get_components(params),
-            _ => unreachable!(),
-        }
-    }
-
-    fn get(&self, path: &str) -> Result<Document, String> {
+    fn get(&self, path: &str) -> Result<serde_json::Value, String> {
         use self::Handler::*;
+
+        let mapper = |name, params| {
+            match name {
+                "mapper_list_component" => self.mapper_list_component(params),
+                "mapper_get_component" => self.mapper_get_component(params),
+                _ => unreachable!(),
+            }
+        };
 
         let matcher = self.server().router.recognize(path)?;
         match matcher.handler {
-            Get(name) => Ok(self.mapper_get(name, matcher.params)),
+            Get(name) => Ok(mapper(name, matcher.params)),
             _ => unreachable!(),
         }
     }
 
-    fn update(&mut self, path: &str, entity: Document) -> Result<(), String> {
+    fn update(&mut self, path: &str, entity: serde_json::Value) -> Result<(), String> {
         use self::Handler::*;
 
         let matcher = self.server_mut().router.recognize(path)?;
@@ -99,6 +85,22 @@ pub trait HaveApiServer : HaveProject {
 //            Delete(h) => Ok((h.as_ref())(matcher.params)),
             _ => unreachable!(),
         }
+    }
+
+    fn mapper_list_component(&self, _: router::Params) -> serde_json::Value {
+        json!(self.component_repo().list())
+    }
+
+    fn mapper_create_component(&self, _: router::Params, entity: serde_json::Value) {
+        self.component_repo_mut().create(serde_json::from_value(entity).unwrap());
+    }
+
+    fn mapper_get_component(&self, params: router::Params) -> serde_json::Value {
+        json!(self.component_repo().get(params.find("component_id").and_then(|x| x.parse().ok()).unwrap()).entity)
+    }
+
+    fn mapper_get_component_attribute(&self, params: router::Params) -> serde_json::Value {
+        json!(self.component_repo().get(params.find("component_id").and_then(|x| x.parse().ok()).unwrap()).entity.component().attributes[params.find("key").unwrap()])
     }
 }
 
