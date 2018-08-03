@@ -5,7 +5,7 @@ pub trait HaveRepositoryImpl<Entity> {
     fn elements_mut(&mut self) -> &mut Vec<Entity>;
 }
 
-impl<Entity: Clone, R: HaveRepositoryImpl<Entity>> Repository<Entity> for R {
+impl<Entity: Clone, R: HaveRepositoryImpl<Entity>> Repository<Entity, usize> for R {
     fn create(&mut self, entity: Entity) {
         self.elements_mut().push(entity);
     }
