@@ -14,7 +14,7 @@ Cargo.lock
 **/target/
 /output/
 
+node_modules/
 
-/target/
-**/*.rs.bk
-Cargo.lock
+index.node
+

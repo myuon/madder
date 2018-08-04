@@ -1,0 +1,14 @@
+{
+  "name": "madder-electron",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [],
+  "author": "",
+  "devDependencies": {
+    "electron": "^2.0.6"
+  }
+}
