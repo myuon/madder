@@ -3,6 +3,7 @@ extern crate gstreamer as gst;
 use spec::{Component, HaveComponent};
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(tag = "component_type")]
 pub enum ComponentExt {
     Video(Component),
 }

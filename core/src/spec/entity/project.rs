@@ -1,8 +1,10 @@
 extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
-
+extern crate madder_util as util;
+use util::serde_impl::*;
 use spec::*;
 
+#[derive(Serialize, Deserialize)]
 pub struct Layer {
     components: Vec<String>,
 }
@@ -23,9 +25,14 @@ impl Layer {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Project {
-    layers: Vec<Layer>,
+    pub layers: Vec<Layer>,
+
     pub size: (i32, i32),
+
+    #[serde(serialize_with = "SerTime::serialize_time")]
+    #[serde(deserialize_with = "SerTime::deserialize_time")]
     pub length: gst::ClockTime,
 }
 

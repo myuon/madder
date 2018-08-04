@@ -10,8 +10,8 @@ extern crate uuid;
 pub mod spec;
 pub mod feat;
 
-use spec::*;
-use feat::*;
+pub use spec::*;
+pub use feat::*;
 
 pub struct Madder {
     project: Project,
@@ -68,6 +68,8 @@ impl HaveApiServer for Madder {
 
 impl HavePresenter for Madder {}
 
+impl ProjectLoader for Madder {}
+
 impl Madder {
     pub fn new() -> Madder {
         Madder {
@@ -77,11 +79,5 @@ impl Madder {
             server: ApiServer::new(),
         }
     }
-}
-
-#[test]
-fn test_json_api() {
-    let madder = Madder::new();
-    madder.get("/components").unwrap();
 }
 

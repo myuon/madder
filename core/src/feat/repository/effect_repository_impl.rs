@@ -41,6 +41,12 @@ impl MutRepository<Effect> for EffectRepositoryImpl {
     }
 }
 
+impl RepositoryLoader<Effect> for EffectRepositoryImpl {
+    fn load_table(&mut self, value: Vec<Entity<Effect, String>>) {
+        self.repository.load_table(value)
+    }
+}
+
 impl EffectRepository for EffectRepositoryImpl {
     fn create_intermed(&mut self, effect_id: &str, point: EffectPoint) {
         let effect = self.repository.get_mut(effect_id);

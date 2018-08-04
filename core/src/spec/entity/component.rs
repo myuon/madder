@@ -20,10 +20,12 @@ pub struct Component {
     #[serde(deserialize_with = "SerTime::deserialize_time")]
     pub length: gst::ClockTime,
 
+    #[serde(default = "HashMap::new")]
     pub attributes: HashMap<String, serde_json::Value>,
 
     // key of effects
     // fix type as String might be a bad idea...
+    #[serde(default = "Vec::new")]
     pub effect: Vec<String>,
 }
 

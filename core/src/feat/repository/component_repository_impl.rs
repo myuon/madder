@@ -1,3 +1,4 @@
+extern crate serde_json;
 use spec::*;
 use feat::entity::*;
 use feat::repository::hashmap_impl::*;
@@ -42,6 +43,12 @@ impl Repository<ComponentExt> for ComponentRepositoryImpl {
 impl MutRepository<ComponentExt> for ComponentRepositoryImpl {
     fn get_mut(&mut self, key: &str) -> &mut ComponentExt {
         self.repository.get_mut(key)
+    }
+}
+
+impl RepositoryLoader<ComponentExt> for ComponentRepositoryImpl {
+    fn load_table(&mut self, value: Vec<Entity<ComponentExt, String>>) {
+        self.repository.load_table(value)
     }
 }
 

@@ -6,7 +6,7 @@ extern crate madder_util as util;
 use spec::*;
 use std::collections::HashMap;
 
-#[derive(Hash, PartialEq, Eq)]
+#[derive(Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Method {
     Create,
     Get,
@@ -73,7 +73,7 @@ impl ApiServer {
     }
 }
 
-pub trait HaveApiServer : HaveEffectRepository + HaveComponentRepository {
+pub trait HaveApiServer : HaveProject + HaveEffectRepository + HaveComponentRepository {
     fn server(&self) -> &ApiServer;
     fn server_mut(&mut self) -> &mut ApiServer;
 
@@ -142,7 +142,8 @@ pub trait HaveApiServer : HaveEffectRepository + HaveComponentRepository {
     }
 
     fn mapper_create_component(&mut self, _: router::Params, entity: serde_json::Value) {
-        self.component_repo_mut().create(serde_json::from_value(entity).unwrap());
+        let key = self.component_repo_mut().create(serde_json::from_value(entity).unwrap());
+        self.project_mut().add_component_at(0, key);
     }
 
     fn mapper_get_component(&self, params: router::Params) -> serde_json::Value {

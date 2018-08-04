@@ -1,5 +1,3 @@
-extern crate serde_json;
-
 #[derive(Serialize, Deserialize)]
 pub struct Entity<ENTITY, ID> {
     pub id: ID,
@@ -17,6 +15,9 @@ impl<ENTITY, ID> Entity<ENTITY, ID> {
     }
 }
 
+// Currently, we need to fix ID type as String
+// since Rust does not support type-family or something like that feature
+
 // memcache repository
 pub trait Repository<ENTITY> {
     fn create(&mut self, ENTITY) -> String;
@@ -30,3 +31,9 @@ pub trait Repository<ENTITY> {
 pub trait MutRepository<ENTITY> : Repository<ENTITY> {
     fn get_mut(&mut self, &str) -> &mut ENTITY;
 }
+
+// for deserializer
+pub trait RepositoryLoader<ENTITY> : Repository<ENTITY> {
+    fn load_table(&mut self, Vec<Entity<ENTITY, String>>);
+}
+

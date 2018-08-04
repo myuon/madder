@@ -1,6 +1,7 @@
 extern crate uuid;
 use spec::*;
 use std::collections::HashMap;
+use std::iter::FromIterator;
 use uuid::Uuid;
 
 pub struct RepositoryHashMapImpl<ENTITY> {
@@ -42,6 +43,12 @@ impl<ENTITY> Repository<ENTITY> for RepositoryHashMapImpl<ENTITY> {
 impl<ENTITY> MutRepository<ENTITY> for RepositoryHashMapImpl<ENTITY> {
     fn get_mut(&mut self, index: &str) -> &mut ENTITY {
         self.entities.get_mut(index).unwrap()
+    }
+}
+
+impl<ENTITY> RepositoryLoader<ENTITY> for RepositoryHashMapImpl<ENTITY> {
+    fn load_table(&mut self, value: Vec<Entity<ENTITY, String>>) {
+        self.entities = HashMap::from_iter(value.into_iter().map(|pair| (pair.id, pair.entity)));
     }
 }
 

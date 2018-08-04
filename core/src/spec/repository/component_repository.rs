@@ -3,7 +3,10 @@ use spec::*;
 use serde::ser::Serialize;
 use serde::de::DeserializeOwned;
 
-pub trait ComponentRepository: MutRepository<<Self as ComponentRepository>::COMPONENT> {
+pub trait ComponentRepository
+    : MutRepository<<Self as ComponentRepository>::COMPONENT>
+    + RepositoryLoader<<Self as ComponentRepository>::COMPONENT>
+{
     type COMPONENT : HaveComponent + Serialize + DeserializeOwned;
 }
 
