@@ -1,8 +1,8 @@
 mod entity;
 pub use self::entity::*;
 
-mod repository_vec_impl;
-pub use self::repository_vec_impl::*;
+mod repository;
+pub use self::repository::*;
 
 mod adapter;
 pub use self::adapter::*;

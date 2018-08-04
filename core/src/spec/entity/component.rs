@@ -2,7 +2,6 @@ extern crate serde_json;
 extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 extern crate madder_util as util;
-use spec::*;
 use util::serde_impl::*;
 use std::collections::HashMap;
 
@@ -22,8 +21,10 @@ pub struct Component {
     pub length: gst::ClockTime,
 
     pub attributes: HashMap<String, serde_json::Value>,
-    
-    pub effect: Vec<Effect>,
+
+    // key of effects
+    // fix type as String might be a bad idea...
+    pub effect: Vec<String>,
 }
 
 impl Component {

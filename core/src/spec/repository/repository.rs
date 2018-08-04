@@ -8,17 +8,25 @@ pub struct Entity<ENTITY, ID> {
     pub entity: ENTITY,
 }
 
-pub trait Repository<ENTITY, ID> {
-    fn create(&mut self, ENTITY);
-    fn get(&self, usize) -> Entity<ENTITY, ID>;
-    fn list(&self) -> Vec<Entity<ENTITY, ID>>;
-    fn update(&mut self, ID, ENTITY);
-    fn delete(&mut self, ID);
+impl<ENTITY, ID> Entity<ENTITY, ID> {
+    pub fn new(id: ID, entity: ENTITY) -> Entity<ENTITY, ID> {
+        Entity {
+            id: id,
+            entity: entity,
+        }
+    }
 }
 
-pub trait HaveRepository<ENTITY, ID> {
-    type REPO : Repository<ENTITY, ID>;
+// memcache repository
+pub trait Repository<ENTITY> {
+    fn create(&mut self, ENTITY) -> String;
+    fn get(&self, &str) -> &ENTITY;
+    fn list(&self) -> Vec<Entity<&ENTITY, &str>>;
+    fn update(&mut self, String, ENTITY);
+    fn delete(&mut self, &str);
+}
 
-    fn repository(&self) -> &Self::REPO;
-    fn repository_mut(&mut self) -> &Self::REPO;
+// for internal use
+pub trait MutRepository<ENTITY> : Repository<ENTITY> {
+    fn get_mut(&mut self, &str) -> &mut ENTITY;
 }

@@ -2,7 +2,7 @@ extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 use spec::{Component, HaveComponent};
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum ComponentExt {
     Video(Component),
 }

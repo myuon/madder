@@ -50,7 +50,11 @@ api:
         request:
           type: $model.effect
     
-    /component/{component_id}/effect/{effect_id}:
+    /component/{component_id}/effect/{index}:
+      parameters:
+        key:
+          type: integer
+
       get:
         response:
           type: $model.effect
@@ -59,20 +63,6 @@ api:
         request:
           type: $model.effect
     
-    /component/{component_id}/effect/{effect_id}/intermeds:
-      create:
-        request:
-          type: $model.effect_point
-
-    /component/{component_id}/effect/{effect_id}/value/{time}:
-      parameters:
-        time:
-          type: number
-
-      get:
-        response:
-          type: number
-
     /effect:
       get:
         response:
@@ -83,6 +73,20 @@ api:
       get:
         response:
           type: $model.effect
+
+    /effect/{effect_id}/intermeds:
+      create:
+        request:
+          type: $model.effect_point
+
+    /effect/{effect_id}/value/{time}:
+      parameters:
+        time:
+          type: number
+
+      get:
+        response:
+          type: number
 
     /project:
       get:
