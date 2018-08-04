@@ -14,6 +14,13 @@ pub enum Method {
     Delete,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct Request {
+    method: Method,
+    path: String,
+    entity: serde_json::Value,
+}
+
 pub struct ApiServer {
     router: HashMap<Method, router::Router<&'static str>>,
 }
@@ -76,6 +83,10 @@ impl ApiServer {
 pub trait HaveApiServer : HaveProject + HaveEffectRepository + HaveComponentRepository {
     fn server(&self) -> &ApiServer;
     fn server_mut(&mut self) -> &mut ApiServer;
+
+    fn req(&mut self, req: Request) -> Result<serde_json::Value, String> {
+        self.request(req.method, &req.path, req.entity)
+    }
 
     fn request(&mut self, method: Method, path: &str, entity: serde_json::Value) -> Result<serde_json::Value, String> {
         use self::Method::*;

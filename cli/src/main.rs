@@ -20,13 +20,6 @@ impl App {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct Request {
-    method: Method,
-    path: String,
-    entity: serde_json::Value,
-}
-
 // for yaml
 #[derive(Serialize, Deserialize)]
 pub struct AppYaml {
