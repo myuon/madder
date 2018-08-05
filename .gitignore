@@ -15,6 +15,5 @@ Cargo.lock
 /output/
 
 node_modules/
-
-index.node
+dist/
 
