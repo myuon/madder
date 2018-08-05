@@ -49,8 +49,6 @@ class Communicator {
   }
 }
 
-// state ni are suru
-
 class Timeline extends React.Component<{com: Communicator}, {components: string}> {
   constructor(props: any) {
     super(props);
@@ -86,6 +84,10 @@ class App extends React.Component<{com: Communicator}> {
     super(props);
 
     this.timeline = React.createRef();
+
+    window.onload = (event: Event) => {
+      this.timeline.current.updateComponents();
+    }
   }
 
   handleClick = () => {
