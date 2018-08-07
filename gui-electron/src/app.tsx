@@ -49,11 +49,23 @@ class Communicator {
   }
 }
 
-class Timeline extends React.Component<{com: Communicator}, {components: string}> {
+interface Component {
+  component_type: string,
+  attributes: any[],
+  effect: any[],
+  id: string,
+  length: number,
+  start_time: number,
+}
+
+class Timeline extends React.Component<{com: Communicator, detailed: React.RefObject<ComponentDetail>}, {components: Map<string, Component>, selected: string}> {
   constructor(props: any) {
     super(props);
 
-    this.state = {components: 'init'};
+    this.state = {
+      components: new Map(),
+      selected: null
+    };
   }
 
   updateComponents() {
@@ -62,28 +74,73 @@ class Timeline extends React.Component<{com: Communicator}, {components: string}
       "path": "/component",
       "entity": {}
     }`, hold((res: string) => {
+      const comps: Component[] = JSON.parse(res);
+      let cmap = new Map<string, Component>();
+      comps.forEach((v) => {
+        cmap.set(v.id, v);
+      });
+
       this.setState({
-        components: res
-      })
+        components: cmap
+      });
     }));
   }
 
   render() {
     return (
-      <p>
-        {this.state.components}
-      </p>
-    )
+      <div className="timeline">
+        {Array.from(this.state.components.values()).map((comp, index) => {
+          const style = {
+            position: "absolute",
+            top: index * 20,
+            left: comp.start_time,
+            width: comp.length,
+            display: "block",
+            backgroundColor: this.state.selected == comp.id ? "#fcc" : "#f99",
+          };
+
+          return <div key={comp.id} style={style} onClick={() => {
+            this.setState({selected: comp.id});
+            this.props.detailed.current.setState({ comp: comp });
+          }}>{comp.id.slice(0,5)}</div>;
+        })}
+      </div>
+    );
+  }
+}
+
+class ComponentDetail extends React.Component<{}, {comp: Component}> {
+  constructor(props: any) {
+    super(props);
+
+    this.state = { comp: null };
+  }
+
+  render() {
+    return (
+      (this.state.comp != null) ?
+        <div key={this.state.comp.id}>
+          <p>id: {this.state.comp.id}</p>
+          <p>component_type: {this.state.comp.component_type}</p>
+          <p>start_time: {this.state.comp.start_time}</p>
+          <p>length: {this.state.comp.length}</p>
+          <p>attributes: {this.state.comp.attributes.toString()}</p>
+          <p>effect: {this.state.comp.effect.toString()}</p>
+        </div>
+      : <div></div>
+    );
   }
 }
 
 class App extends React.Component<{com: Communicator}> {
   private timeline: React.RefObject<Timeline>;
+  private component_detail: React.RefObject<ComponentDetail>;
 
   constructor(props: any) {
     super(props);
 
     this.timeline = React.createRef();
+    this.component_detail = React.createRef();
 
     window.onload = (event: Event) => {
       this.timeline.current.updateComponents();
@@ -107,8 +164,9 @@ class App extends React.Component<{com: Communicator}> {
   render() {
     return (
       <div>
-        <Button onClick={this.handleClick}>Create Component</Button>
-        <Timeline com={this.props.com} ref={this.timeline} />
+        <Button variant="contained" color="primary" onClick={this.handleClick}>Create Component</Button>
+        <Timeline com={this.props.com} detailed={this.component_detail} ref={this.timeline} />
+        <ComponentDetail ref={this.component_detail} />
       </div>
     );
   }
