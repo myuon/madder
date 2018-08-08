@@ -1,7 +1,6 @@
 extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
-extern crate madder_util as util;
-use util::serde_impl::*;
+use util::*;
 use spec::*;
 
 #[derive(Serialize, Deserialize)]

@@ -1,8 +1,7 @@
 extern crate serde_json;
 extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
-extern crate madder_util as util;
-use util::serde_impl::*;
+use util::*;
 use std::collections::HashMap;
 
 // Component domain requires the following specifications:

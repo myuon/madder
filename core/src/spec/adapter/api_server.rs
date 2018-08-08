@@ -1,7 +1,6 @@
 extern crate route_recognizer as router;
 extern crate maplit;
 extern crate serde_json;
-extern crate madder_util as util;
 extern crate gstreamer as gst;
 extern crate base64;
 

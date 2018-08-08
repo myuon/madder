@@ -4,9 +4,10 @@ extern crate serde;
 extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 #[macro_use] extern crate maplit;
-extern crate madder_util as util;
 extern crate uuid;
 extern crate base64;
+
+pub mod util;
 
 pub mod spec;
 pub mod feat;
