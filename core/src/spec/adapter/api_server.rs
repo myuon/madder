@@ -158,7 +158,7 @@ pub trait HaveApiServer : HavePresenter {
     }
 
     fn mapper_create_component(&mut self, _: router::Params, entity: serde_json::Value) {
-        let key = self.component_repo_mut().create(serde_json::from_value(entity).unwrap());
+        let key = self.component_repo_mut().create(<Self as HaveComponentRepository>::new_from_json(entity));
         self.project_mut().add_component_at(0, key);
     }
 

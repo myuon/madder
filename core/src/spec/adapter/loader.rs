@@ -32,7 +32,17 @@ pub trait ProjectLoader : HaveProject + HaveComponentRepository + HaveEffectRepo
         }
 
         self.component_repo_mut().load_table(
-            yaml.components.into_iter().map(|v| serde_yaml::from_value(v).unwrap()).collect()
+            yaml.components.into_iter().map(|v| {
+                let entity = serde_yaml::from_value::<Entity<serde_yaml::Value, String>>(v).unwrap();
+                let component = <Self as HaveComponentRepository>::new_from_json(
+                    serde_yaml::from_value(entity.entity).unwrap()
+                );
+
+                Entity {
+                    id: entity.id,
+                    entity: component,
+                }
+            }).collect()
         );
         self.effect_repo_mut().load_table(
             yaml.effects.into_iter().map(|v| serde_yaml::from_value(v).unwrap()).collect()
