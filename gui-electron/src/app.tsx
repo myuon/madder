@@ -132,18 +132,59 @@ class ComponentDetail extends React.Component<{}, {comp: Component}> {
   }
 }
 
+class Screen extends React.Component<{com: Communicator}> {
+  private screen: React.RefObject<HTMLCanvasElement>;
+  private ctx: CanvasRenderingContext2D;
+
+  constructor(props: any) {
+    super(props);
+
+    this.screen = React.createRef();
+  }
+
+  renderScreen() {
+    com.send(`{
+      "method": "Get",
+      "path": "/screen",
+      "entity": 0
+    }`, hold((res: any) => {
+      var imageData = this.ctx.createImageData(200, 200);
+      var pixels = imageData.data;
+    
+      var buffer = new Uint8Array(res);
+      for (var i=0; i < pixels.length; i++) {
+        pixels[i] = buffer[i];
+      }
+      this.ctx.putImageData(imageData, 0, 0);
+    }));
+  }
+
+  componentDidMount() {
+    this.ctx = this.screen.current.getContext('2d');
+  }
+
+  render() {
+    return (
+      <canvas ref={this.screen} width="640" height="480"></canvas>
+    );
+  }
+}
+
 class App extends React.Component<{com: Communicator}> {
   private timeline: React.RefObject<Timeline>;
   private component_detail: React.RefObject<ComponentDetail>;
+  private screen: React.RefObject<Screen>;
 
   constructor(props: any) {
     super(props);
 
     this.timeline = React.createRef();
     this.component_detail = React.createRef();
+    this.screen = React.createRef();
 
     window.onload = (event: Event) => {
       this.timeline.current.updateComponents();
+      this.screen.current.renderScreen();
     }
   }
 
@@ -164,6 +205,7 @@ class App extends React.Component<{com: Communicator}> {
   render() {
     return (
       <div>
+        <Screen com={this.props.com} ref={this.screen} />
         <Button variant="contained" color="primary" onClick={this.handleClick}>Create Component</Button>
         <Timeline com={this.props.com} detailed={this.component_detail} ref={this.timeline} />
         <ComponentDetail ref={this.component_detail} />

@@ -6,6 +6,7 @@ extern crate gstreamer as gst;
 #[macro_use] extern crate maplit;
 extern crate madder_util as util;
 extern crate uuid;
+extern crate base64;
 
 pub mod spec;
 pub mod feat;

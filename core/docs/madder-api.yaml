@@ -90,12 +90,17 @@ api:
 
     /project:
       get:
-        reponse:
+        response:
           type: $model.project
       update:
         request:
           type: object.partial
           object: $model.project
+
+    /screen:
+      get:
+        response:
+          type: base64
 
 model:
   component:

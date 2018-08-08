@@ -2,6 +2,8 @@ extern crate route_recognizer as router;
 extern crate maplit;
 extern crate serde_json;
 extern crate madder_util as util;
+extern crate gstreamer as gst;
+extern crate base64;
 
 use spec::*;
 use std::collections::HashMap;
@@ -17,8 +19,8 @@ pub enum Method {
 #[derive(Serialize, Deserialize)]
 pub struct Request {
     method: Method,
-    path: String,
-    entity: serde_json::Value,
+    pub path: String,
+    pub entity: serde_json::Value,
 }
 
 pub struct ApiServer {
@@ -66,6 +68,9 @@ impl ApiServer {
             "/effect/:effect_id/value/:time" => vec![
                 (Get, "mapper_get_effect_value"),
             ],
+            "/screen/:time" => vec![
+                (Get, "mapper_get_screen"),
+            ],
         };
 
         for (k,v) in mapper {
@@ -80,7 +85,7 @@ impl ApiServer {
     }
 }
 
-pub trait HaveApiServer : HaveProject + HaveEffectRepository + HaveComponentRepository {
+pub trait HaveApiServer : HavePresenter {
     fn server(&self) -> &ApiServer;
     fn server_mut(&mut self) -> &mut ApiServer;
 
@@ -123,6 +128,7 @@ pub trait HaveApiServer : HaveProject + HaveEffectRepository + HaveComponentRepo
             "mapper_get_component_effect" => self.mapper_get_component_effect(matcher.params),
             "mapper_list_effect" => self.mapper_list_effect(matcher.params),
             "mapper_get_effect_value" => self.mapper_get_effect_value(matcher.params),
+            "mapper_get_screen" => self.mapper_get_screen(matcher.params),
             _ => unreachable!(),
         };
 
@@ -216,6 +222,12 @@ pub trait HaveApiServer : HaveProject + HaveEffectRepository + HaveComponentRepo
         let effect_id = params.find("effect_id").unwrap();
         let time = params.find("time").and_then(|x| x.parse().ok()).unwrap();
         json!(self.effect_repo().value(effect_id, time))
+    }
+
+    fn mapper_get_screen(&self, params: router::Params) -> serde_json::Value {
+        let time: u64 = params.find("time").and_then(|x| x.parse().ok()).unwrap();
+        let encoded = base64::encode(&self.get_pixbuf(time * gst::MSECOND).save_to_bufferv("png", &[]).unwrap());
+        json!(format!("data:image/png;base64,{}", encoded))
     }
 }
 
