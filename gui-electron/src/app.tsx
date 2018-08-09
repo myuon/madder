@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import Button from '@material-ui/core/Button';
+import Slider from '@material-ui/lab/Slider';
 import * as electron from 'electron';
 
 interface Discard {
@@ -143,11 +144,11 @@ class Screen extends React.Component<{com: Communicator}> {
     this.screen = React.createRef();
   }
 
-  renderScreen() {
+  renderScreen(value: number) {
     com.send(`{
       "method": "Get",
       "path": "/screen",
-      "entity": 0
+      "entity": ${value}
     }`, hold((res: any) => {
       var imageData = this.ctx.createImageData(200, 200);
       var pixels = imageData.data;
@@ -171,7 +172,7 @@ class Screen extends React.Component<{com: Communicator}> {
   }
 }
 
-class App extends React.Component<{com: Communicator}> {
+class App extends React.Component<{com: Communicator}, {value: number}> {
   private timeline: React.RefObject<Timeline>;
   private component_detail: React.RefObject<ComponentDetail>;
   private screen: React.RefObject<Screen>;
@@ -183,9 +184,13 @@ class App extends React.Component<{com: Communicator}> {
     this.component_detail = React.createRef();
     this.screen = React.createRef();
 
+    this.state = {
+      value: 0,
+    };
+
     window.onload = (event: Event) => {
       this.timeline.current.updateComponents();
-      this.screen.current.renderScreen();
+      this.screen.current.renderScreen(0);
     }
   }
 
@@ -217,11 +222,17 @@ class App extends React.Component<{com: Communicator}> {
     }
   }
 
+  onChange = (event: React.ChangeEvent, value: number) => {
+    this.setState({ value: value });
+    this.screen.current.renderScreen(value);
+  }
+
   render() {
     return (
       <div>
         <Screen com={this.props.com} ref={this.screen} />
         <Button variant="contained" color="primary" onClick={this.handleClick}>Create VideoComponent</Button>
+        <Slider value={this.state.value} min={0} max={10000} step={10} aria-labelledby="label" onChange={this.onChange} />
         <Timeline com={this.props.com} detailed={this.component_detail} ref={this.timeline} />
         <ComponentDetail ref={this.component_detail} />
       </div>
