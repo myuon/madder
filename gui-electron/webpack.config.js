@@ -31,5 +31,7 @@ module.exports = {
     react: "React",
     "react-dom": "ReactDOM",
     "@material-ui": "material-ui"
-  }
+  },
+
+  target: "electron-main"
 };

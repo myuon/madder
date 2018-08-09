@@ -84,3 +84,7 @@ impl Madder {
     }
 }
 
+pub fn init() {
+    gst::init().unwrap();
+}
+

@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import Button from '@material-ui/core/Button';
+import * as electron from 'electron';
 
 interface Discard {
   kind: "discard",
@@ -189,24 +190,38 @@ class App extends React.Component<{com: Communicator}> {
   }
 
   handleClick = () => {
-    com.send(`{
-      "method": "Create",
-      "path": "/component",
-      "entity": {
-        "component_type": "Video",
-        "start_time": 0,
-        "length": 100
-      }
-    }`, discard());
+    const dialog = electron.remote.dialog;
 
-    this.timeline.current.updateComponents();
+    let filenames = dialog.showOpenDialog(null, {
+        properties: ['openFile'],
+        title: 'Select a text file',
+        defaultPath: '.',
+        filters: [
+            {name: 'video file', extensions: ['mp4']}
+        ]
+    });
+
+    if (filenames.length > 0) {
+      com.send(`{
+        "method": "Create",
+        "path": "/component",
+        "entity": {
+          "component_type": "Video",
+          "start_time": 0,
+          "length": 100,
+          "video_path": "${filenames[0]}"
+        }
+      }`, discard());
+  
+      this.timeline.current.updateComponents();
+    }
   }
 
   render() {
     return (
       <div>
         <Screen com={this.props.com} ref={this.screen} />
-        <Button variant="contained" color="primary" onClick={this.handleClick}>Create Component</Button>
+        <Button variant="contained" color="primary" onClick={this.handleClick}>Create VideoComponent</Button>
         <Timeline com={this.props.com} detailed={this.component_detail} ref={this.timeline} />
         <ComponentDetail ref={this.component_detail} />
       </div>

@@ -26,51 +26,25 @@ impl ComponentExt {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct VideoComponent {
+    #[serde(flatten)]
     component: Component,
-    video_url: String,
+
+    video_path: String,
 
     #[serde(skip)]
     #[serde(deserialize_with = "Option::None")]
     video: Option<gst::Element>,
 }
 
-impl HaveComponent for ComponentExt {
-    fn component(&self) -> &Component {
-        use ComponentExt::*;
-
-        match self {
-            Video(c) => &c.component,
-        }
-    }
-
-    fn component_mut(&mut self) -> &mut Component {
-        use ComponentExt::*;
-
-        match self {
-            Video(c) => &mut c.component,
-        }
-    }
-
-    fn get_pixbuf(&self, _: gst::ClockTime) -> gdk_pixbuf::Pixbuf {
-        unimplemented!()
-    }
-}
-
-impl From<serde_json::Value> for ComponentExt {
-    fn from(json: serde_json::Value) -> ComponentExt {
-        ComponentExt::from_json(json).unwrap()
-    }
-}
-
 impl VideoComponent {
-    pub fn new(json: serde_json::Value) -> VideoComponent {
+    fn new(json: serde_json::Value) -> VideoComponent {
         let mut comp: VideoComponent = serde_json::from_value(json).unwrap();
-        comp.video = Some(VideoComponent::create_data(&comp.video_url));
+        comp.load();
         comp
     }
 
-    pub fn load(&mut self) {
-        self.video = Some(VideoComponent::create_data(&self.video_url));
+    fn load(&mut self) {
+        self.video = Some(VideoComponent::create_data(&self.video_path));
     }
 
     fn create_data(uri: &str) -> gst::Element {
@@ -95,6 +69,44 @@ impl VideoComponent {
         pipeline.set_state(gst::State::Paused).into_result().unwrap();
 
         pixbufsink
+    }
+
+    fn get_pixbuf(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
+        let _ = self.video.as_ref().unwrap().seek_simple(gst::SeekFlags::FLUSH, time).ok()?;
+        let p = self.video.as_ref().unwrap().get_property("last-pixbuf").ok()?;
+        p.get::<gdk_pixbuf::Pixbuf>()
+    }
+}
+
+impl HaveComponent for ComponentExt {
+    fn component(&self) -> &Component {
+        use ComponentExt::*;
+
+        match self {
+            Video(c) => &c.component,
+        }
+    }
+
+    fn component_mut(&mut self) -> &mut Component {
+        use ComponentExt::*;
+
+        match self {
+            Video(c) => &mut c.component,
+        }
+    }
+
+    fn get_pixbuf(&self, time: gst::ClockTime) -> gdk_pixbuf::Pixbuf {
+        use ComponentExt::*;
+
+        match self {
+            Video(c) => c.get_pixbuf(time).unwrap(),
+        }
+    }
+}
+
+impl From<serde_json::Value> for ComponentExt {
+    fn from(json: serde_json::Value) -> ComponentExt {
+        ComponentExt::from_json(json).unwrap()
     }
 }
 

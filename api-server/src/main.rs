@@ -19,6 +19,8 @@ fn req(app: Rc<RefCell<Madder>>, msg: ws::Message) -> Result<ws::Message, String
 }
 
 fn main() {
+    madder_core::init();
+
     let app = Madder::new();
     let app_ref = Rc::new(RefCell::new(app));
 
