@@ -186,6 +186,34 @@ class App extends React.Component<{com: Communicator}, {value: number}> {
     }
   }
 
+  createImage = () => {
+    const dialog = electron.remote.dialog;
+
+    let filenames = dialog.showOpenDialog(null, {
+        properties: ['openFile'],
+        title: 'Select a text file',
+        defaultPath: '.',
+        filters: [
+            {name: 'image file', extensions: ['png']}
+        ]
+    });
+
+    if (filenames.length > 0) {
+      com.send(`{
+        "method": "Create",
+        "path": "/component",
+        "entity": {
+          "component_type": "Image",
+          "start_time": 0,
+          "length": 100,
+          "data_path": "${filenames[0]}"
+        }
+      }`, discard());
+  
+      this.timeline.current.updateComponents();
+    }
+  }
+
   handleClick = () => {
     const dialog = electron.remote.dialog;
 
@@ -206,7 +234,7 @@ class App extends React.Component<{com: Communicator}, {value: number}> {
           "component_type": "Video",
           "start_time": 0,
           "length": 100,
-          "video_path": "${filenames[0]}"
+          "data_path": "${filenames[0]}"
         }
       }`, discard());
   
@@ -224,6 +252,7 @@ class App extends React.Component<{com: Communicator}, {value: number}> {
       <div>
         <Screen com={this.props.com} ref={this.screen} />
         <Button variant="contained" color="primary" onClick={this.handleClick}>Create VideoComponent</Button>
+        <Button variant="contained" color="primary" onClick={this.createImage}>Create ImageComponent</Button>
         <Slider value={this.state.value} min={0} max={10000} step={10} aria-labelledby="label" onChange={this.onChange} />
         <Timeline com={this.props.com} detailed={this.component_detail} ref={this.timeline} />
         <ComponentDetail ref={this.component_detail} />

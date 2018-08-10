@@ -1,15 +1,15 @@
 extern crate serde_json;
-extern crate glib;
 extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
-extern crate gstreamer_video as gstv;
-use gstv::prelude::*;
+use std::rc::Rc;
 use spec::{Component, HaveComponent};
+use feat::*;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(tag = "component_type")]
 pub enum ComponentExt {
     Video(VideoComponent),
+    Image(ImageComponent),
 }
 
 impl ComponentExt {
@@ -19,62 +19,9 @@ impl ComponentExt {
         let t = json.as_object()?.get("component_type")?.clone();
         match t.as_str()? {
             "Video" => Some(Video(VideoComponent::new(json))),
+            "Image" => Some(Image(ImageComponent::new(json))),
             _ => unreachable!(),
         }
-    }
-}
-
-#[derive(Clone, Serialize, Deserialize)]
-pub struct VideoComponent {
-    #[serde(flatten)]
-    component: Component,
-
-    video_path: String,
-
-    #[serde(skip)]
-    #[serde(deserialize_with = "Option::None")]
-    video: Option<gst::Element>,
-}
-
-impl VideoComponent {
-    fn new(json: serde_json::Value) -> VideoComponent {
-        let mut comp: VideoComponent = serde_json::from_value(json).unwrap();
-        comp.load();
-        comp
-    }
-
-    fn load(&mut self) {
-        self.video = Some(VideoComponent::create_data(&self.video_path));
-    }
-
-    fn create_data(uri: &str) -> gst::Element {
-        let pipeline = gst::Pipeline::new(None);
-        let src = gst::ElementFactory::make("filesrc", None).unwrap();
-        let decodebin = gst::ElementFactory::make("decodebin", None).unwrap();
-        let queue = gst::ElementFactory::make("queue", None).unwrap();
-        let convert = gst::ElementFactory::make("videoconvert", None).unwrap();
-        let pixbufsink = gst::ElementFactory::make("gdkpixbufsink", None).unwrap();
-
-        src.set_property("location", &glib::Value::from(uri)).unwrap();
-
-        pipeline.add_many(&[&src, &decodebin, &queue, &convert, &pixbufsink]).unwrap();
-        gst::Element::link_many(&[&src, &decodebin]).unwrap();
-        gst::Element::link_many(&[&queue, &convert, &pixbufsink]).unwrap();
-
-        decodebin.connect_pad_added(move |_, src_pad| {
-            let sink_pad = queue.get_static_pad("sink").unwrap();
-            let _ = src_pad.link(&sink_pad);
-        });
-
-        pipeline.set_state(gst::State::Paused).into_result().unwrap();
-
-        pixbufsink
-    }
-
-    fn get_pixbuf(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
-        let _ = self.video.as_ref().unwrap().seek_simple(gst::SeekFlags::FLUSH, time).ok()?;
-        let p = self.video.as_ref().unwrap().get_property("last-pixbuf").ok()?;
-        p.get::<gdk_pixbuf::Pixbuf>()
     }
 }
 
@@ -83,7 +30,8 @@ impl HaveComponent for ComponentExt {
         use ComponentExt::*;
 
         match self {
-            Video(c) => &c.component,
+            Video(c) => c.component(),
+            Image(c) => c.component(),
         }
     }
 
@@ -91,15 +39,17 @@ impl HaveComponent for ComponentExt {
         use ComponentExt::*;
 
         match self {
-            Video(c) => &mut c.component,
+            Video(c) => c.component_mut(),
+            Image(c) => c.component_mut(),
         }
     }
 
-    fn get_pixbuf(&self, time: gst::ClockTime) -> gdk_pixbuf::Pixbuf {
+    fn get_pixbuf(&self, time: gst::ClockTime) -> Rc<gdk_pixbuf::Pixbuf> {
         use ComponentExt::*;
 
         match self {
-            Video(c) => c.get_pixbuf(time).unwrap(),
+            Video(c) => c.get_pixbuf(time),
+            Image(c) => c.get_pixbuf(time),
         }
     }
 }
