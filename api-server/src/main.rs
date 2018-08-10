@@ -11,7 +11,8 @@ fn req(app: Rc<RefCell<Madder>>, msg: ws::Message) -> Result<ws::Message, String
     let req = serde_json::from_str::<Request>(msg_text).map_err(|err| err.to_string())?;
 
     if req.path == "/screen" {
-        Ok(ws::Message::Binary(app.borrow().get_pixbuf(serde_json::from_value::<util::SerTime>(req.entity).unwrap().0).save_to_bufferv("png", &[]).unwrap()))
+        let stream = app.borrow().get_pixbuf(serde_json::from_value::<util::SerTime>(req.entity).unwrap().0).save_to_bufferv("png", &[]).unwrap();
+        Ok(ws::Message::Binary(stream))
     } else {
         let result: serde_json::Value = app.borrow_mut().req(req)?;
         serde_json::to_string(&result).map_err(|err| err.to_string()).map(ws::Message::Text)

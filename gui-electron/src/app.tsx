@@ -136,38 +136,30 @@ class ComponentDetail extends React.Component<{}, {comp: Component}> {
 
 class Screen extends React.Component<{com: Communicator}> {
   private screen: React.RefObject<HTMLCanvasElement>;
-  private ctx: CanvasRenderingContext2D;
+  private src: string;
 
   constructor(props: any) {
     super(props);
 
     this.screen = React.createRef();
+    this.src = "";
   }
 
   renderScreen(value: number) {
     com.send(`{
       "method": "Get",
-      "path": "/screen",
+      "path": "/screen/${value}",
       "entity": ${value}
     }`, hold((res: any) => {
-      var imageData = this.ctx.createImageData(200, 200);
-      var pixels = imageData.data;
-    
-      var buffer = new Uint8Array(res);
-      for (var i=0; i < pixels.length; i++) {
-        pixels[i] = buffer[i];
-      }
-      this.ctx.putImageData(imageData, 0, 0);
+      this.src = JSON.parse(res);
     }));
-  }
-
-  componentDidMount() {
-    this.ctx = this.screen.current.getContext('2d');
   }
 
   render() {
     return (
-      <canvas ref={this.screen} width="640" height="480"></canvas>
+      <div>
+        <img src={this.src} />
+      </div>
     );
   }
 }
