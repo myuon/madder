@@ -152,13 +152,20 @@ class Screen extends React.Component<{com: Communicator}> {
       "entity": ${value}
     }`, hold((res: any) => {
       this.src = JSON.parse(res);
+
+      const context = this.screen.current.getContext('2d');
+      const image = new Image();
+      image.onload = () => {
+        context.drawImage(image, 0, 0, 640, 480);
+      };
+      image.src = JSON.parse(res);
     }));
   }
 
   render() {
     return (
       <div>
-        <img src={this.src} />
+        <canvas ref={this.screen} width="640px" height="480px"></canvas>
       </div>
     );
   }
@@ -253,7 +260,7 @@ class App extends React.Component<{com: Communicator}, {value: number}> {
         <Screen com={this.props.com} ref={this.screen} />
         <Button variant="contained" color="primary" onClick={this.handleClick}>Create VideoComponent</Button>
         <Button variant="contained" color="primary" onClick={this.createImage}>Create ImageComponent</Button>
-        <Slider value={this.state.value} min={0} max={10000} step={10} aria-labelledby="label" onChange={this.onChange} />
+        <Slider value={this.state.value} min={0} max={1000} step={10} aria-labelledby="label" onChange={this.onChange} />
         <Timeline com={this.props.com} detailed={this.component_detail} ref={this.timeline} />
         <ComponentDetail ref={this.component_detail} />
       </div>
