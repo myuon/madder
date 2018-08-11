@@ -1,22 +1,17 @@
 import * as React from 'react';
 import withStyles, { WithStyles, StyleRulesCallback } from '@material-ui/core/styles/withStyles';
-import TextField from '@material-ui/core/TextField/index';
-import { Component } from '../types';
+import TextField from '@material-ui/core/TextField';
+import { Component } from '../lib';
 
 const styles: StyleRulesCallback<"root"> = theme => ({
   root: {
     display: 'flex',
     flexWrap: 'wrap',
+    margin: '10px',
   },
-  margin: {
-    margin: theme.spacing.unit,
-  },
-  textField: {
-    flexBasis: 200,
-  }
 });
 
-class ComponentDetail extends React.Component<WithStyles<'root'>, {comp: Component}> {
+export class ComponentDetail extends React.Component<{}, {comp: Component}> {
   constructor(props: any) {
     super(props);
 
