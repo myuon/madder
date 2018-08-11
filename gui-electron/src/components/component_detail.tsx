@@ -1,9 +1,9 @@
 import * as React from 'react';
-import { withStyles, StyleRulesCallback, Theme } from '@material-ui/core/styles/index';
+import withStyles, { WithStyles, StyleRulesCallback } from '@material-ui/core/styles/withStyles';
 import TextField from '@material-ui/core/TextField/index';
 import { Component } from '../types';
 
-const styles: StyleRulesCallback<"root"> = (theme: Theme) => ({
+const styles: StyleRulesCallback<"root"> = theme => ({
   root: {
     display: 'flex',
     flexWrap: 'wrap',
@@ -16,7 +16,7 @@ const styles: StyleRulesCallback<"root"> = (theme: Theme) => ({
   }
 });
 
-export class ComponentDetail extends React.Component<{classes: React.ReactPropTypes}, {comp: Component}> {
+class ComponentDetail extends React.Component<WithStyles<'root'>, {comp: Component}> {
   constructor(props: any) {
     super(props);
 
@@ -56,4 +56,4 @@ export class ComponentDetail extends React.Component<{classes: React.ReactPropTy
   }
 }
 
-export const DecoratedComponentDetail: React.ComponentType<ComponentDetail> = withStyles(styles)(ComponentDetail);
+export default withStyles(styles)(ComponentDetail);

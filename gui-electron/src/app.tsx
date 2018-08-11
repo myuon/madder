@@ -4,7 +4,7 @@ import Button from '@material-ui/core/Button/index';
 import Slider from '@material-ui/lab/Slider/index';
 import * as electron from 'electron';
 import { Component } from './types';
-import { ComponentDetail, DecoratedComponentDetail } from './components/component_detail';
+import ComponentDetail from './components/component_detail';
 
 interface Discard {
   kind: "discard",
