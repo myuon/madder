@@ -1,8 +1,10 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import Button from '@material-ui/core/Button';
-import Slider from '@material-ui/lab/Slider';
+import Button from '@material-ui/core/Button/index';
+import Slider from '@material-ui/lab/Slider/index';
 import * as electron from 'electron';
+import { Component } from './types';
+import { ComponentDetail, DecoratedComponentDetail } from './components/component_detail';
 
 interface Discard {
   kind: "discard",
@@ -49,15 +51,6 @@ class Communicator {
     this.wsc.send(request);
     this.receiverQueue.push(receiver);
   }
-}
-
-interface Component {
-  component_type: string,
-  attributes: any[],
-  effect: any[],
-  id: string,
-  length: number,
-  start_time: number,
 }
 
 class Timeline extends React.Component<{com: Communicator, detailed: React.RefObject<ComponentDetail>}, {components: Map<string, Component>, selected: string}> {
@@ -107,29 +100,6 @@ class Timeline extends React.Component<{com: Communicator, detailed: React.RefOb
           }}>{comp.id.slice(0,5)}</div>;
         })}
       </div>
-    );
-  }
-}
-
-class ComponentDetail extends React.Component<{}, {comp: Component}> {
-  constructor(props: any) {
-    super(props);
-
-    this.state = { comp: null };
-  }
-
-  render() {
-    return (
-      (this.state.comp != null) ?
-        <div key={this.state.comp.id}>
-          <p>id: {this.state.comp.id}</p>
-          <p>component_type: {this.state.comp.component_type}</p>
-          <p>start_time: {this.state.comp.start_time}</p>
-          <p>length: {this.state.comp.length}</p>
-          <p>attributes: {this.state.comp.attributes.toString()}</p>
-          <p>effect: {this.state.comp.effect.toString()}</p>
-        </div>
-      : <div></div>
     );
   }
 }
