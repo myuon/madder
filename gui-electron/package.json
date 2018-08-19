@@ -13,13 +13,15 @@
   },
   "homepage": "./",
   "scripts": {
-    "start": "react-scripts start",
+    "start": "BROWSER=none PORT=3001 react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject",
-    "electron": "electron src/electron.js"
+    "electron": "electron electron.js",
+    "dev": "concurrently 'npm:start' 'npm:electron'"
   },
   "devDependencies": {
+    "concurrently": "^3.6.1",
     "electron": "^2.0.7"
   }
 }
