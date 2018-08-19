@@ -1,5 +1,5 @@
-const unreachable = () => {
-	throw new Error('unreachable!');
+const unreachable = (info) => {
+	throw new Error('unreachable!: ' + info);
 };
 
 export const cast_as = (value, type) => {
@@ -19,6 +19,17 @@ export class Component {
 		this.attributes = attributes;
 		this.effect = effect;
 	}
+
+	static fromObject(value) {
+		return new Component(
+			value.id,
+			value.component_type,
+			value.start_time,
+			value.length,
+			value.attributes,
+			value.effect
+		);
+	}
 }
 
 export class Reciever {
@@ -33,6 +44,30 @@ export class Reciever {
 
 	static recieve = (callback) => {
 		return new Reciever('recieve', callback);
+	};
+}
+
+export class Request {
+	constructor(method, path, entity) {
+		this.method = method;
+		this.path = path;
+		this.entity = entity;
+	}
+
+	static Get = (path) => {
+		return new Request('Get', path, {});
+	};
+
+	static Create = (path, entity) => {
+		return new Request('Create', path, entity);
+	};
+
+	static Update = (path, entity) => {
+		return new Request('Update', path, entity);
+	};
+
+	static Delete = (path, entity) => {
+		return new Request('Delete', path, entity);
 	};
 }
 
@@ -53,15 +88,16 @@ export class Communicator {
 			} else if (r.kind === 'recieve') {
 				r.callback(event.data);
 			} else {
-				unreachable();
+				unreachable(r);
 			}
 		};
 	}
 
-	send(request, _reciever) {
+	send(_request, _reciever) {
+		const request = cast_as(_request, Request);
 		const reciever = cast_as(_reciever, Reciever);
 
-		this.wsc.send(request);
+		this.wsc.send(JSON.stringify(request));
 		this.recieverQueue.push(reciever);
 	}
 }

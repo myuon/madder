@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { cast_as, Component, Reciever } from '../lib';
+import { cast_as, Component, Reciever, Request } from '../lib';
 
 export default class Timeline extends React.Component {
 	constructor(props) {
@@ -12,16 +12,12 @@ export default class Timeline extends React.Component {
 	}
 
 	updateComponents() {
-		this.props.comm.send(`{
-			"method": "Get",
-			"path": "/component",
-			"entity": {}
-		}`, Reciever.recieve((response) => {
+		this.props.comm.send(Request.Get('/component'), Reciever.recieve((response) => {
 			const comps = JSON.parse(response);
 
 			let cmap = new Map();
 			comps.forEach((_comp) => {
-				let comp = cast_as(_comp, Component);
+				let comp = cast_as(Component.fromObject(_comp), Component);
 				cmap.set(comp.id, comp);
 			});
 
@@ -32,11 +28,17 @@ export default class Timeline extends React.Component {
 	}
 
 	render() {
+		const style = {
+	  	position: 'relative',
+	  	height: '10rem',
+	  	overflowY: 'scroll'
+	  };
+
     return (
-      <div className="timeline">
+      <div className="timeline" style={style}>
         {Array.from(this.state.components.values()).map((comp, index) => {
-          const style: CSSProperties = {
-            position: "absolute",
+          const style = {
+            position: 'absolute',
             top: index * 20,
             left: comp.start_time,
             width: comp.length,
@@ -46,7 +48,7 @@ export default class Timeline extends React.Component {
 
           return <div key={comp.id} style={style} onClick={() => {
             this.setState({selected: comp.id});
-            this.props.detailed.current.setState({ comp: comp });
+            this.props.detailed.current.setState({component: comp});
           }}>{comp.id.slice(0,5)}</div>;
         })}
       </div>

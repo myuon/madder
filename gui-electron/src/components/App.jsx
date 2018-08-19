@@ -1,6 +1,5 @@
 import './App.css';
-//import * as electron from 'electron';
-import { Reciever } from '../lib.js';
+import { Reciever, Request } from '../lib.js';
 import React, { Component } from 'react';
 import Button from '@material-ui/core/Button';
 import Slider from '@material-ui/lab/Slider';
@@ -15,7 +14,7 @@ class App extends Component {
     super(props);
 
     this.timeline = React.createRef();
-    this.component_detail = React.createRef();
+    this.componentDetail = React.createRef();
     this.screen = React.createRef();
 
     this.state = {
@@ -41,16 +40,15 @@ class App extends Component {
     });
 
     if (filenames.length > 0) {
-      this.props.comm.send(`{
-        'method': 'Create',
-        'path': '/component',
-        'entity': {
-          'component_type': 'Video',
-          'start_time': 0,
-          'length': 100,
-          'data_path': ${filenames[0]}
+      this.props.comm.send(Request.Create(
+        '/component',
+        {
+          component_type: 'Video',
+          start_time: 0,
+          length: 100,
+          data_path: filenames[0]
         }
-      }`, Reciever.discard());
+      ), Reciever.discard());
     }
   };
 
@@ -67,16 +65,15 @@ class App extends Component {
     });
 
     if (filenames.length > 0) {
-      this.props.comm.send(`{
-        'method': 'Create',
-        'path': '/component',
-        'entity': {
-          'component_type': 'Image',
-          'start_time': 0,
-          'length': 200,
-          'data_path': ${filenames[0]}
+      this.props.comm.send(Request.Create(
+        '/component',
+        {
+          component_type: 'Image',
+          start_time: 0,
+          length: 200,
+          data_path: filenames[0]
         }
-      }`, Reciever.discard());
+      ), Reciever.discard());
     }
   };
 
@@ -92,8 +89,8 @@ class App extends Component {
         <Button variant="contained" color="primary" onClick={this.createVideoComponent}>Create VideoComponent</Button>
         <Button variant="contained" color="primary" onClick={this.createImageComponent}>Create ImageComponent</Button>
         <Slider min={0} max={1000} value={this.state.value} step={10} aria-labelledby="label" onChange={this.updatePosition} />
-        <Timeline comm={this.props.comm} detailed={this.component_detail} ref={this.timeline} />
-        <ComponentDetail ref={this.component_detail} />
+        <Timeline comm={this.props.comm} detailed={this.componentDetail} ref={this.timeline} />
+        <ComponentDetail comm={this.props.comm} ref={this.componentDetail} />
       </div>
     );
   }

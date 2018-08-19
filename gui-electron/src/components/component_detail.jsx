@@ -1,16 +1,8 @@
-import React, { Component } from 'react';
-import withStyles from '@material-ui/core/styles/withStyles';
+import * as React from 'react';
+import { Request, Reciever } from '../lib';
 import TextField from '@material-ui/core/TextField';
 
-const styles = theme => ({
-  root: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    margin: '10px',
-  },
-});
-
-class ComponentDetail extends Component {
+export default class ComponentDetail extends React.Component {
 	constructor(props) {
 		super(props);
 
@@ -19,37 +11,57 @@ class ComponentDetail extends Component {
 		};
 	}
 
+	onChangeAttribute(key, event) {
+		if (key === "start_time") {
+			let comp = this.state.component;
+			comp.start_time = event.target.value;
+
+			this.setState({
+				component: comp
+			});
+
+			this.props.comm.send(Request.Update(
+				`/component/${comp.id}/attribute/${key}`,
+				event.target.value
+			), Reciever.discard());
+		}
+	}
+
 	render() {
 		return (
 			(this.state.component != null)
 				? <div key={this.state.component.id}>
-	          <p>id: {this.state.component.id}</p>
-	          <p>component_type: {this.state.component.component_type}</p>
-	          <p>start_time: {this.state.component.start_time}</p>
-	          <p>length: {this.state.component.length}</p>
-	          <p>attributes: {this.state.component.attributes.toString()}</p>
-	          <p>effect: {this.state.component.effect.toString()}</p>
-
 	          <TextField
 	            label="id"
-	            value={this.state.component.id}>
+	            value={this.state.component.id}
+	            disabled>
 	          </TextField>
 	          <TextField
 	            label="component_type"
-	            value={this.state.component.component_type}>
+	            value={this.state.component.component_type}
+	            disabled>
 	          </TextField>
 	          <TextField
 	            label="start_time"
-	            value={this.state.component.start_time}>
+	            value={this.state.component.start_time}
+	            onChange={(value) => this.onChangeAttribute("start_time", value)}>
 	          </TextField>
 	          <TextField
 	            label="length"
 	            value={this.state.component.length}>
+	          </TextField>
+	          <TextField
+	            label="attributes"
+	            value={JSON.stringify(this.state.component.attributes)}
+	            disabled>
+	          </TextField>
+	          <TextField
+	            label="effect"
+	            value={JSON.stringify(this.state.component.effect)}
+	            disabled>
 	          </TextField>
 	        </div>
 	      : <div></div>
 		);
 	}
 }
-
-export default withStyles(styles)(ComponentDetail);
