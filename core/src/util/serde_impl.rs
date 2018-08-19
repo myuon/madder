@@ -48,7 +48,7 @@ impl Serialize for SerTime {
 
 impl<'de> Deserialize<'de> for SerTime {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<SerTime, D::Error> {
-        Deserialize::deserialize(deserializer).map(|v| SerTime(gst::ClockTime::from_mseconds(v)))
+        Deserialize::deserialize(deserializer).map(|v: f64| SerTime(gst::ClockTime::from_mseconds(v as u64)))
     }
 }
 
@@ -61,4 +61,18 @@ impl SerTime {
         Deserialize::deserialize(deserializer).map(|t: SerTime| t.0)
     }
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct SerIntPair(f32,f32);
+
+impl SerIntPair {
+    pub fn serialize_pair<S: Serializer>(pair: &(i32,i32), serializer: S) -> Result<S::Ok, S::Error> {
+        SerIntPair(pair.0 as f32, pair.1 as f32).serialize(serializer)
+    }
+
+    pub fn deserialize_pair<'de, D: Deserializer<'de>>(deserializer: D) -> Result<(i32,i32), D::Error> {
+        Deserialize::deserialize(deserializer).map(|p: SerIntPair| (p.0 as i32, p.1 as i32))
+    }
+}
+
 

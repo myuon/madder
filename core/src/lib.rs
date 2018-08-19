@@ -36,6 +36,7 @@ impl HaveEffectRepository for Madder {
 }
 
 impl HaveComponentRepository for Madder {
+    type COMPONENT = ComponentExt;
     type ComponentRepository = ComponentRepositoryImpl;
 
     fn component_repo(&self) -> &Self::ComponentRepository {

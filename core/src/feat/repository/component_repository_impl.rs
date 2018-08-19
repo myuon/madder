@@ -52,7 +52,3 @@ impl RepositoryLoader<ComponentExt> for ComponentRepositoryImpl {
     }
 }
 
-impl ComponentRepository for ComponentRepositoryImpl {
-    type COMPONENT = ComponentExt;
-}
-

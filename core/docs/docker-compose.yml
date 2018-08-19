@@ -1,0 +1,11 @@
+version: '2'
+
+services:
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./madder-api.yaml:/data/madder-api.yaml
+    environment:
+      SWAGGER_JSON: /data/madder-api.yaml

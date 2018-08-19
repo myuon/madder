@@ -1,165 +1,332 @@
-title: madder-api
-meta:
-  version: 1.0
+swagger: "2.0"
 
-method:
-  - get
-  - create
-  - update
-  - delete
+info:
+  description: "madder core api"
+  version: "1.0.0"
+  title: "Madder Core API"
 
-api:
-  parameters:
-    component_id:
-      type: integer
-    effect_id:
-      type: integer
+tags:
+  - name: "component"
+  - name: "effect"
+  - name: "project"
 
-  paths:
-    /component:
-      get:
-        response:
-          type: array
-          array:
-            type: $model.component
-      create:
-        request:
-          type: $model.component
-
-    /component/{component_id}:
-      get:
-        response:
-          type: $model.component
-
-    /component/{component_id}/attribute/{key}:
+paths:
+  /component:
+    get:
+      tags:
+      - component
+      responses:
+        200:
+          description: OK
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/Component"
+    post:
+      tags:
+      - component
+      description: Create components
       parameters:
-        key:
+        - name: body
+          in: body
+          description: Component to be added
+          required: true
+          schema:
+            $ref: "#/definitions/Component"
+      responses:
+        200:
+          description: OK
+  
+  /component/{component_id}:
+    parameters:
+      - name: component_id
+        in: path
+        description: ID of component
+        required: true
+        type: integer
+
+    get:
+      tags:
+      - component
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: "#/definitions/Component"
+    delete:
+      tags:
+      - component
+      description: Delete the specified component
+      responses:
+        200:
+          description: OK
+
+  /component/{component_id}/attribute/{key}:
+    parameters:
+      - name: component_id
+        in: path
+        description: ID of component
+        required: true
+        type: integer
+      - name: key
+        in: path
+        description: name of attribute
+        required: true
+        type: string
+    
+    get:
+      tags:
+      - component
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/AnyValue'
+    put:
+      tags:
+      - component
+      parameters:
+        - name: body
+          in: body
+          description: Value related to the key given in the path
+          required: true
+          schema:
+            $ref: "#/definitions/Component"
+      responses:
+        200:
+          description: OK
+  
+  /component/{component_id}/effect:
+    parameters:
+      - name: component_id
+        in: path
+        description: ID of component
+        required: true
+        type: integer
+
+    get:
+      tags:
+      - effect
+      responses:
+        200:
+          description: OK
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/Effect"
+    post:
+      tags:
+      - effect
+      responses:
+        200:
+          description: OK
+
+  /component/{component_id}/effect/{index}:
+    parameters:
+      - name: component_id
+        in: path
+        description: ID of component
+        required: true
+        type: integer
+      - name: index
+        in: path
+        description: index of effects
+        required: true
+        type: integer
+    
+    get:
+      tags:
+      - effect
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: "#/definitions/Effect"
+    post:
+      tags:
+      - effect
+      parameters:
+      - name: body
+        in: body
+        description: New effect to be created
+        required: true
+        schema:
+          $ref: "#/definitions/Effect"
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: "#/definitions/Effect"
+
+  /effect:
+    get:
+      tags:
+      - effect
+      responses:
+        200:
+          description: OK
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/Effect"
+
+  /effect/{effect_id}:
+    parameters:
+      - name: effect_id
+        in: path
+        description: ID of effect
+        required: true
+        type: integer
+    
+    get:
+      tags:
+      - effect
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: "#/definitions/Effect"
+
+  /effect/{effect_id}/intermeds:
+    parameters:
+      - name: effect_id
+        in: path
+        description: ID of effect
+        required: true
+        type: integer
+
+    post:
+      tags:
+      - effect
+      parameters:
+      - name: body
+        in: body
+        description: EffectPoint to be created
+        required: true
+        schema:
+          $ref: "#/definitions/EffectPoint"
+      responses:
+        200:
+          description: OK
+
+  /effect/{effect_id}/value/{time}:
+    parameters:
+      - name: effect_id
+        in: path
+        description: ID of effect
+        required: true
+        type: integer
+      - name: time
+        in: path
+        description: specified time, in [0,1]
+        required: true
+        type: number
+        
+    get:
+      tags:
+      - effect
+      responses:
+        200:
+          description: value at the specified time
+          schema:
+            type: number
+
+  /project/yaml:
+    get:
+      tags:
+      - project
+      responses:
+        200:
+          description: OK
+          schema:
+            type: string
+    put:
+      tags:
+      - project
+      parameters:
+      - name: body
+        in: body
+        description: yaml
+        required: true
+        schema:
           type: string
-      
-      update:
-        request:
-          type: any
+      responses:
+        200:
+          description: OK
 
-    /component/{component_id}/effect:
-      get:
-        response:
-          type: array
-          array:
-            type: $model.effect
-      create:
-        request:
-          type: $model.effect
-    
-    /component/{component_id}/effect/{index}:
-      parameters:
-        key:
-          type: integer
+  /screen/{time}:
+    parameters:
+      - name: time
+        in: path
+        description: position of screen
+        required: true
+        type: number
+  
+    get:
+      tags:
+      - project
+      responses:
+        200:
+          description: OK
+          schema:
+            type: string
 
-      get:
-        response:
-          type: $model.effect
-      create:
-        summary: Create and insert new effect at {effect_id}-th position
-        request:
-          type: $model.effect
-    
-    /effect:
-      get:
-        response:
-          type: array
-          array: $model.effect
-
-    /effect/{effect_id}:
-      get:
-        response:
-          type: $model.effect
-
-    /effect/{effect_id}/intermeds:
-      create:
-        request:
-          type: $model.effect_point
-
-    /effect/{effect_id}/value/{time}:
-      parameters:
-        time:
-          type: number
-
-      get:
-        response:
-          type: number
-
-    /project:
-      get:
-        response:
-          type: $model.project
-      update:
-        request:
-          type: object.partial
-          object: $model.project
-
-    /screen:
-      get:
-        response:
-          type: base64
-
-model:
-  component:
+definitions:
+  Component:
     type: object
-    object:
+    properties:
       component_type:
         type: string
       start_time:
         type: integer
       length:
         type: integer
-      layer_index:
-        type: integer
       attributes:
         type: object
       effect:
         type: array
-        array: integer
+        items:
+          type: integer
 
-  effect:
+  Effect:
     type: object
-    object:
+    properties:
       effect_type:
         type: string
       transition:
-        type: $model.transition
+        enum:
+          - Linear
+          - Ease
+          - EaseIn
+          - EaseOut
+          - EaseInOut
       start_value:
         type: number
       end_value:
         type: number
       intervals:
         type: array
-        array: $model.effect_point
-
-  transition:
-    type: enum
-    enum:
-      - Linear
-      - Ease
-      - EaseIn
-      - EaseOut
-      - EaseInOut
-
-  effect_point:
+        items:
+          $ref: "#/definitions/EffectPoint"
+  
+  EffectPoint:
     type: object
-    object:
+    properties:
       transition:
-        type: $model.transition
+        type: string
       position:
         type: number
       value:
         type: number
 
-  project:
+  Project:
     type: object
-    object:
+    properties:
       width:
         type: integer
       height:
         type: integer
       length:
         type: integer
+
+  AnyValue: {}

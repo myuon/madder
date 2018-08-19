@@ -3,7 +3,7 @@ extern crate gstreamer as gst;
 use util::*;
 use spec::*;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Layer {
     components: Vec<String>,
 }
@@ -24,10 +24,12 @@ impl Layer {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Project {
     pub layers: Vec<Layer>,
 
+    #[serde(serialize_with = "SerIntPair::serialize_pair")]
+    #[serde(deserialize_with = "SerIntPair::deserialize_pair")]
     pub size: (i32, i32),
 
     #[serde(serialize_with = "SerTime::serialize_time")]

@@ -12,7 +12,15 @@ pub struct ProjectYaml {
     effects: Vec<serde_yaml::Value>,
 }
 
-pub trait ProjectLoader : HaveProject + HaveComponentRepository + HaveEffectRepository {
+pub trait ProjectLoader : HaveProject + HaveEffectRepository + HaveComponentRepository {
+    fn to_yaml_string(&self) -> Result<String, serde_yaml::Error> {
+        serde_yaml::to_string(&self.to_yaml()?)
+    }
+
+    fn from_yaml_string(&mut self, value: &str) -> Result<(), serde_yaml::Error> {
+        self.from_yaml(serde_yaml::from_str(value)?)
+    }
+
     fn to_yaml(&self) -> Result<serde_yaml::Value, serde_yaml::Error> {
         serde_yaml::to_value(ProjectYaml {
             project: serde_yaml::to_value(self.project())?,
@@ -27,7 +35,7 @@ pub trait ProjectLoader : HaveProject + HaveComponentRepository + HaveEffectRepo
         {
             let project = serde_yaml::from_value::<Project>(yaml.project)?;
             self.project_mut().layers = project.layers;
-            self.project_mut().size = project.size;
+            self.project_mut().size = project.size as (i32,i32);
             self.project_mut().length = project.length;
         }
 
