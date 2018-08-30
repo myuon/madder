@@ -33,6 +33,16 @@ impl Component {
     pub fn end_time(&self) -> gst::ClockTime {
         self.start_time + self.length
     }
+
+    pub fn partial_update(&mut self, value: &serde_json::Map<String, serde_json::Value>) {
+        for (k,v) in value {
+            match k.as_str() {
+                "start_time" => self.start_time = serde_json::from_value::<SerTime>(v.clone()).unwrap().0,
+                "length" => self.length = serde_json::from_value::<SerTime>(v.clone()).unwrap().0,
+                _ => unreachable!(),
+            }
+        }
+    }
 }
 
 pub trait HaveComponent {

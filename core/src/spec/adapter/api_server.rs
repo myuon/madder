@@ -46,6 +46,7 @@ impl ApiServer {
             "/component/:component_id" => vec![
                 (Get, "mapper_get_component"),
                 (Delete, "mapper_delete_component"),
+                (Update, "mapper_update_component"),
             ],
             "/component/:component_id/attribute/:key" => vec![
                 (Get, "mapper_get_component_attribute"),
@@ -148,6 +149,7 @@ pub trait HaveApiServer : HavePresenter + ProjectLoader {
         let r = self.server().router[&Method::Update].clone();
         let matcher = r.recognize(path)?;
         let result = match *matcher.handler {
+            "mapper_update_component" => self.mapper_update_component(matcher.params, entity),
             "mapper_update_component_attribute" => self.mapper_update_component_attribute(matcher.params, entity),
             "mapper_update_project_yaml" => self.mapper_update_project_yaml(matcher.params, entity),
             _ => unreachable!("{}", path),
@@ -248,6 +250,12 @@ pub trait HaveApiServer : HavePresenter + ProjectLoader {
     fn mapper_delete_component(&mut self, params: router::Params) {
         let component_id = params.find("component_id").unwrap();
         self.component_repo_mut().delete(component_id);
+    }
+
+    fn mapper_update_component(&mut self, params: router::Params, entity: serde_json::Value) {
+        let component_id = params.find("component_id").unwrap();
+        let component = self.component_repo_mut().get_mut(component_id);
+        component.component_mut().partial_update(entity.as_object().unwrap());
     }
 
     fn mapper_update_component_attribute(&mut self, params: router::Params, entity: serde_json::Value) {

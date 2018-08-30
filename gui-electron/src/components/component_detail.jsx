@@ -14,15 +14,16 @@ export default class ComponentDetail extends React.Component {
 	onChangeAttribute(key, event) {
 		if (key === "start_time") {
 			let comp = this.state.component;
-			comp.start_time = event.target.value;
+			let start_time = parseInt(event.target.value, 10);
+			comp.start_time = start_time;
 
 			this.setState({
 				component: comp
 			});
 
 			this.props.comm.send(Request.Update(
-				`/component/${comp.id}/attribute/${key}`,
-				event.target.value
+				`/component/${comp.id}`,
+				{ "start_time": start_time }
 			), Reciever.discard());
 		}
 	}

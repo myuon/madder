@@ -38,6 +38,14 @@ impl SerRGBA {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
+pub enum Number {
+    I64(i64),
+    U64(u64),
+    F64(f64),
+}
+
 pub struct SerTime(pub gst::ClockTime);
 
 impl Serialize for SerTime {
