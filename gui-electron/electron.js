@@ -59,7 +59,7 @@ const templateMenu = [{
         if (paths != null && paths.length > 0) {
           const path = paths[0];
           fs.readFile(path, 'utf8', (err, data) => {
-            mainWindow.webContents.send('load-project-yaml', data);
+            mainWindow.webContents.send('open-yaml', data); 
           });
         }
       });
@@ -70,9 +70,10 @@ const templateMenu = [{
       dialog.showSaveDialog(mainWindow, {
         'title': 'save yaml file'
       }, (path) => {
+        console.log(path);
         if (path != null) {
-          mainWindow.webContents.send('request-project-yaml', null);
-          ipcMain.on('response-project-yaml', (event, arg) => {
+          mainWindow.webContents.send('request-save-yaml', '');
+          ipcMain.on('response-save-yaml', (event, arg) => {
             fs.writeFile(path, JSON.parse(arg));
           });
         }

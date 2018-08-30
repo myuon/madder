@@ -16,4 +16,4 @@ Cargo.lock
 
 node_modules/
 dist/
-
+gui-electron/data/
