@@ -61,6 +61,21 @@ paths:
         200:
           description: OK
 
+    patch:
+      tags:
+      - component
+      description: Update (partial) elements of component
+      parameters:
+        - name: body
+          in: body
+          description: Value of component
+          required: true
+          schema:
+            $ref: '#/definitions/Component'
+      responses:
+        200:
+          description: OK
+
   /component/{component_id}/attribute/{key}:
     parameters:
       - name: component_id
@@ -231,6 +246,24 @@ paths:
           schema:
             type: number
 
+  /project:
+    get:
+      tags:
+      - project
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/Project'
+    patch:
+      tags:
+      - project
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/Project'
+
   /project/yaml:
     get:
       tags:
@@ -330,3 +363,4 @@ definitions:
         type: integer
 
   AnyValue: {}
+
