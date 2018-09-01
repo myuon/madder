@@ -24,7 +24,9 @@ export default class ComponentDetail extends React.Component {
 			this.props.comm.send(Request.Update(
 				`/component/${comp.id}`,
 				{ "start_time": start_time }
-			), Reciever.discard());
+			), Reciever.recieve((data) => {
+				this.props.timeline.current.updateComponents();
+			}));
 		}
 	}
 

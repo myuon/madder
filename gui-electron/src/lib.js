@@ -75,9 +75,11 @@ export class Communicator {
 	constructor() {
 		this.wsc = new WebSocket('ws://localhost:3000');
 		this.recieverQueue = [];
+		this.opened = false;
 
 		this.wsc.onopen = () => {
 			console.log('connected!');
+			this.opened = true;
 		};
 
 		this.wsc.onmessage = (event) => {
@@ -97,7 +99,9 @@ export class Communicator {
 		const request = cast_as(_request, Request);
 		const reciever = cast_as(_reciever, Reciever);
 
-		this.wsc.send(JSON.stringify(request));
-		this.recieverQueue.push(reciever);
+		if (this.opened) {
+			this.wsc.send(JSON.stringify(request));
+			this.recieverQueue.push(reciever);
+		}
 	}
 }

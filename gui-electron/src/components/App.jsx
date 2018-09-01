@@ -7,7 +7,7 @@ import Screen from './screen';
 import Timeline from './timeline';
 import ComponentDetail from './component_detail';
 
-const remote = window.require('electron').remote;
+const remote = window.require ? window.require('electron').remote : null;
 
 class App extends Component {
   constructor(props) {
@@ -90,7 +90,7 @@ class App extends Component {
         <Button variant="contained" color="primary" onClick={this.createImageComponent}>Create ImageComponent</Button>
         <Slider min={0} max={1000} value={this.state.value} step={10} aria-labelledby="label" onChange={this.updatePosition} />
         <Timeline comm={this.props.comm} detailed={this.componentDetail} ref={this.timeline} />
-        <ComponentDetail comm={this.props.comm} ref={this.componentDetail} />
+        <ComponentDetail comm={this.props.comm} ref={this.componentDetail} timeline={this.timeline} />
       </div>
     );
   }
