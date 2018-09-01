@@ -27,6 +27,21 @@ export default class ComponentDetail extends React.Component {
 			), Reciever.recieve((data) => {
 				this.props.timeline.current.updateComponents();
 			}));
+		} else if (key === "length") {
+			let comp = this.state.component;
+			let length = parseInt(event.target.value, 10);
+			comp.length = length;
+
+			this.setState({
+				component: comp
+			});
+
+			this.props.comm.send(Request.Update(
+				`/component/${comp.id}`,
+				{ "length": length }
+			), Reciever.recieve((data) => {
+				this.props.timeline.current.updateComponents();
+			}));
 		}
 	}
 
@@ -51,7 +66,8 @@ export default class ComponentDetail extends React.Component {
 	          </TextField>
 	          <TextField
 	            label="length"
-	            value={this.state.component.length}>
+	            value={this.state.component.length}
+	            onChange={(value) => this.onChangeAttribute("length", value)}>
 	          </TextField>
 	          <TextField
 	            label="attributes"
