@@ -1,5 +1,5 @@
-const unreachable = (info) => {
-	throw new Error('unreachable!: ' + info);
+const unreachable = info => {
+	throw new Error("unreachable!: " + info);
 };
 
 export const cast_as = (value, type) => {
@@ -8,7 +8,7 @@ export const cast_as = (value, type) => {
 	} else {
 		throw new Error(`TypeError: ${value} does not have type ${type}`);
 	}
-}
+};
 
 export class Component {
 	constructor(id, component_type, start_time, length, attributes, effect) {
@@ -39,11 +39,11 @@ export class Reciever {
 	}
 
 	static discard = () => {
-		return new Reciever('discard');
+		return new Reciever("discard");
 	};
 
-	static recieve = (callback) => {
-		return new Reciever('recieve', callback);
+	static recieve = callback => {
+		return new Reciever("recieve", callback);
 	};
 }
 
@@ -54,40 +54,40 @@ export class Request {
 		this.entity = entity;
 	}
 
-	static Get = (path) => {
-		return new Request('Get', path, {});
+	static Get = path => {
+		return new Request("Get", path, {});
 	};
 
 	static Create = (path, entity) => {
-		return new Request('Create', path, entity);
+		return new Request("Create", path, entity);
 	};
 
 	static Update = (path, entity) => {
-		return new Request('Update', path, entity);
+		return new Request("Update", path, entity);
 	};
 
 	static Delete = (path, entity) => {
-		return new Request('Delete', path, entity);
+		return new Request("Delete", path, entity);
 	};
 }
 
 export class Communicator {
 	constructor() {
-		this.wsc = new WebSocket('ws://localhost:3000');
+		this.wsc = new WebSocket("ws://localhost:3000");
 		this.recieverQueue = [];
 		this.opened = false;
 
 		this.wsc.onopen = () => {
-			console.log('connected!');
+			console.log("connected!");
 			this.opened = true;
 		};
 
-		this.wsc.onmessage = (event) => {
+		this.wsc.onmessage = event => {
 			const r = this.recieverQueue.shift();
 
-			if (r.kind === 'discard') {
+			if (r.kind === "discard") {
 				return;
-			} else if (r.kind === 'recieve') {
+			} else if (r.kind === "recieve") {
 				r.callback(event.data);
 			} else {
 				unreachable(r);
