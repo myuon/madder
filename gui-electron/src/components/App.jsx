@@ -1,6 +1,6 @@
 import './App.css';
-import { Reciever, Request } from '../lib.js';
-import React, { Component } from 'react';
+import { Component, Reciever, Request, cast_as } from '../lib.js';
+import React from 'react';
 import Button from '@material-ui/core/Button';
 import Slider from '@material-ui/lab/Slider';
 import Screen from './screen';
@@ -9,22 +9,46 @@ import ComponentDetail from './component_detail';
 
 const remote = window.require ? window.require('electron').remote : null;
 
-class App extends Component {
+// App will manage component-related state
+// and share the state to all other children components
+class App extends React.Component {
   constructor(props) {
     super(props);
+
+    this.state = {
+      value: 0,
+      components: new Map(),
+      selected: null,
+    };
 
     this.timeline = React.createRef();
     this.componentDetail = React.createRef();
     this.screen = React.createRef();
 
-    this.state = {
-      value: 0,
-    };
-
     window.onload = (event) => {
-      this.timeline.current.updateComponents();
+      // After fetching components from server,
+      // Components which contains components information need to be updated
+      this.updateComponents();
+
+      this.timeline.current.forceUpdate();
       this.screen.current.renderScreen(0);
     };
+  }
+
+  updateComponents() {
+    this.props.comm.send(Request.Get('/component'), Reciever.recieve((response) => {
+      const comps = JSON.parse(response);
+
+      let cmap = new Map();
+      comps.forEach((_comp) => {
+        let comp = cast_as(Component.fromObject(_comp), Component);
+        cmap.set(comp.id, comp);
+      });
+
+      this.setState({
+        components: cmap
+      });
+    }));
   }
 
   createVideoComponent = () => {
@@ -89,7 +113,7 @@ class App extends Component {
         <Button variant="contained" color="primary" onClick={this.createVideoComponent}>Create VideoComponent</Button>
         <Button variant="contained" color="primary" onClick={this.createImageComponent}>Create ImageComponent</Button>
         <Slider min={0} max={1000} value={this.state.value} step={10} aria-labelledby="label" onChange={this.updatePosition} />
-        <Timeline comm={this.props.comm} detailed={this.componentDetail} ref={this.timeline} />
+        <Timeline ref={this.timeline} fetchComponents={() => this.state.components} fetchSelected={() => this.state.selected} onSelectComponent={(id) => this.setState({ selected: id })} />
         <ComponentDetail comm={this.props.comm} ref={this.componentDetail} timeline={this.timeline} />
       </div>
     );
