@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { cast_as, Component, Reciever, Request } from '../lib';
 
 export default class Timeline extends React.Component {
 	render() {

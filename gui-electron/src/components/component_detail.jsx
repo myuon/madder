@@ -3,80 +3,40 @@ import { Request, Reciever } from '../lib';
 import TextField from '@material-ui/core/TextField';
 
 export default class ComponentDetail extends React.Component {
-	constructor(props) {
-		super(props);
-
-		this.state = {
-			component: null
-		};
-	}
-
-	onChangeAttribute(key, event) {
-		if (key === "start_time") {
-			let comp = this.state.component;
-			let start_time = parseInt(event.target.value, 10);
-			comp.start_time = start_time;
-
-			this.setState({
-				component: comp
-			});
-
-			this.props.comm.send(Request.Update(
-				`/component/${comp.id}`,
-				{ "start_time": start_time }
-			), Reciever.recieve((data) => {
-				this.props.timeline.current.updateComponents();
-			}));
-		} else if (key === "length") {
-			let comp = this.state.component;
-			let length = parseInt(event.target.value, 10);
-			comp.length = length;
-
-			this.setState({
-				component: comp
-			});
-
-			this.props.comm.send(Request.Update(
-				`/component/${comp.id}`,
-				{ "length": length }
-			), Reciever.recieve((data) => {
-				this.props.timeline.current.updateComponents();
-			}));
-		}
-	}
-
 	render() {
+		const component = this.props.fetchSelectedComponent();
+
 		return (
-			(this.state.component != null)
-				? <div key={this.state.component.id}>
+			(component != null)
+				? <div key={component.id}>
 	          <TextField
 	            label="id"
-	            value={this.state.component.id}
+	            value={component.id}
 	            disabled>
 	          </TextField>
 	          <TextField
 	            label="component_type"
-	            value={this.state.component.component_type}
+	            value={component.component_type}
 	            disabled>
 	          </TextField>
 	          <TextField
 	            label="start_time"
-	            value={this.state.component.start_time}
-	            onChange={(value) => this.onChangeAttribute("start_time", value)}>
+	            value={component.start_time}
+	            onChange={(event) => this.props.updateCurrentComponentAttribute("start_time", event.target.value)}>
 	          </TextField>
 	          <TextField
 	            label="length"
-	            value={this.state.component.length}
-	            onChange={(value) => this.onChangeAttribute("length", value)}>
+	            value={component.length}
+	            onChange={(event) => this.props.updateCurrentComponentAttribute("length", event.target.value)}>
 	          </TextField>
 	          <TextField
 	            label="attributes"
-	            value={JSON.stringify(this.state.component.attributes)}
+	            value={JSON.stringify(component.attributes)}
 	            disabled>
 	          </TextField>
 	          <TextField
 	            label="effect"
-	            value={JSON.stringify(this.state.component.effect)}
+	            value={JSON.stringify(component.effect)}
 	            disabled>
 	          </TextField>
 	        </div>

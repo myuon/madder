@@ -17,7 +17,7 @@ if (window.require != null) {
 			'/project/yaml',
 			arg
 		), Reciever.recieve((data) => {
-			app.updateComponent();
+			app.forceUpdate();
 		}));
 	})
 

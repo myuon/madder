@@ -29,8 +29,6 @@ class App extends React.Component {
       // After fetching components from server,
       // Components which contains components information need to be updated
       this.updateComponents();
-
-      this.timeline.current.forceUpdate();
       this.screen.current.renderScreen(0);
     };
   }
@@ -49,6 +47,15 @@ class App extends React.Component {
         components: cmap
       });
     }));
+  }
+
+  // When updating the component state,
+  // some React.Components need to be rerendered
+  shouldComponentUpdate() {
+    this.timeline.current.forceUpdate();
+    this.componentDetail.current.forceUpdate();
+
+    return true;
   }
 
   createVideoComponent = () => {
@@ -106,6 +113,42 @@ class App extends React.Component {
     this.screen.current.renderScreen(value);
   };
 
+  updateCurrentComponentAttribute = (key, value) => {
+    let components = this.state.components;
+    let current = this.state.components.get(this.state.selected);
+    if (key === 'start_time') {
+      let start_time = parseInt(value, 10);
+      current.start_time = start_time;
+
+      components.set(current.id, current);
+      this.setState({
+        components: components
+      });
+
+      // Error handling...
+      this.props.comm.send(Request.Update(
+        `/component/${current.id}`,
+        { "start_time": start_time }
+      ), Reciever.discard());
+    } else if (key === 'length') {
+      let length = parseInt(value, 10);
+      current.length = length;
+
+      components.set(current.id, current);
+      this.setState({
+        components: components
+      });
+
+      // Error handling...
+      this.props.comm.send(Request.Update(
+        `/component/${current.id}`,
+        { "length": length }
+      ), Reciever.discard());
+    } else {
+      throw new Error(`Invalid key: ${key}`);
+    }
+  }
+
   render() {
     return (
       <div className="App">
@@ -114,7 +157,7 @@ class App extends React.Component {
         <Button variant="contained" color="primary" onClick={this.createImageComponent}>Create ImageComponent</Button>
         <Slider min={0} max={1000} value={this.state.value} step={10} aria-labelledby="label" onChange={this.updatePosition} />
         <Timeline ref={this.timeline} fetchComponents={() => this.state.components} fetchSelected={() => this.state.selected} onSelectComponent={(id) => this.setState({ selected: id })} />
-        <ComponentDetail comm={this.props.comm} ref={this.componentDetail} timeline={this.timeline} />
+        <ComponentDetail ref={this.componentDetail} fetchSelectedComponent={() => this.state.components.get(this.state.selected)} updateCurrentComponentAttribute={this.updateCurrentComponentAttribute} />
       </div>
     );
   }
