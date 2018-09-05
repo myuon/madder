@@ -1,5 +1,4 @@
 import * as React from "react";
-import { Request, Reciever } from "../lib";
 import TextField from "@material-ui/core/TextField";
 
 export default class ComponentDetail extends React.Component {

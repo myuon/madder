@@ -6,6 +6,7 @@ import Slider from "@material-ui/lab/Slider";
 import Screen from "./screen";
 import Timeline from "./timeline";
 import ComponentDetail from "./component_detail";
+import Ruler from "./ruler";
 
 const remote = window.require ? window.require("electron").remote : null;
 
@@ -110,6 +111,7 @@ class App extends React.Component {
   updatePosition = (event, value) => {
     this.setState({ value: value });
     this.screen.current.renderScreen(value);
+    console.log("position: ", value);
   };
 
   updateCurrentComponentAttribute = (key, value) => {
@@ -166,7 +168,9 @@ class App extends React.Component {
         >
           Create ImageComponent
         </Button>
+        <Ruler />
         <Slider
+          ref={this.slider}
           min={0}
           max={1000}
           value={this.state.value}
