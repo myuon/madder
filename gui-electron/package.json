@@ -2,9 +2,18 @@
   "name": "gui-electron",
   "version": "0.1.0",
   "private": true,
-  "homepage": "./",
   "main": "electron.js",
-  "dependencies": {},
+  "dependencies": {
+    "@material-ui/core": "^3.0.2",
+    "@material-ui/icons": "^3.0.1",
+    "@material-ui/lab": "^3.0.0-alpha.14",
+    "electron": "^2.0.8",
+    "electron-reload": "^1.2.5",
+    "react": "^16.4.2",
+    "react-dom": "^16.4.2",
+    "react-mui-speeddial": "0.0.6",
+    "react-scripts": "^1.1.4"
+  },
   "scripts": {
     "start": "BROWSER=none PORT=3001 react-scripts start",
     "build": "react-scripts build",
@@ -14,15 +23,7 @@
     "dev": "concurrently 'npm:start' 'npm:electron'"
   },
   "devDependencies": {
-    "@material-ui/core": "^1.5.0",
-    "@material-ui/icons": "^2.0.2",
-    "@material-ui/lab": "^1.0.0-alpha.10",
     "concurrently": "^3.6.1",
-    "electron": "^2.0.8",
-    "electron-reload": "^1.2.5",
-    "react": "^16.4.2",
-    "react-dom": "^16.4.2",
-    "react-scripts": "1.1.4",
     "react-test-renderer": "^16.4.2"
   }
 }
