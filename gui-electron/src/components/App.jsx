@@ -78,52 +78,6 @@ class App extends React.Component {
     );
   };
 
-  createVideoComponent = () => {
-    const dialog = remote.dialog;
-
-    let filenames = dialog.showOpenDialog(null, {
-      properties: ["openFile"],
-      title: "Select a video file",
-      defaultPath: ".",
-      filters: [{ name: "video file", extensions: ["mp4"] }]
-    });
-
-    if (filenames.length > 0) {
-      this.props.comm.send(
-        Request.Create("/component", {
-          component_type: "Video",
-          start_time: 0,
-          length: 100,
-          data_path: filenames[0]
-        }),
-        Reciever.discard()
-      );
-    }
-  };
-
-  createImageComponent = () => {
-    const dialog = remote.dialog;
-
-    let filenames = dialog.showOpenDialog(null, {
-      properties: ["openFile"],
-      title: "Select an image file",
-      defaultPath: ".",
-      filters: [{ name: "image file", extensions: ["png"] }]
-    });
-
-    if (filenames.length > 0) {
-      this.props.comm.send(
-        Request.Create("/component", {
-          component_type: "Image",
-          start_time: 0,
-          length: 200,
-          data_path: filenames[0]
-        }),
-        Reciever.discard()
-      );
-    }
-  };
-
   updatePosition = (event, value) => {
     this.setState({ value: value });
     this.screen.current.renderScreen(value);
@@ -170,20 +124,6 @@ class App extends React.Component {
     return (
       <div className="App">
         <Screen comm={this.props.comm} ref={this.screen} />
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={this.createVideoComponent}
-        >
-          Create VideoComponent
-        </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={this.createImageComponent}
-        >
-          Create ImageComponent
-        </Button>
         <Ruler />
         <Slider
           ref={this.slider}
