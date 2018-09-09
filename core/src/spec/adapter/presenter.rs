@@ -27,18 +27,19 @@ pub trait HavePresenter : HaveProject + HaveComponentRepository + HaveEffectRepo
                 component.component().start_time <= position &&
                     position <= component.component().end_time()
             }) {
-                let dest = component.get_pixbuf(position);
-                let coordinate = (0,0);
-                let scale = (1.0,1.0);
-                let alpha = 255;
+                if let Some(dest) = component.get_pixbuf(position) {
+                    let coordinate = (0,0);
+                    let scale = (1.0,1.0);
+                    let alpha = 255;
 
-                &dest.as_ref().composite(
-                    &pixbuf, coordinate.0, coordinate.1,
-                    cmp::min(dest.get_width(), self.project().size.0 - coordinate.0),
-                    cmp::min(dest.get_height(), self.project().size.1 - coordinate.1),
-                    coordinate.0.into(), coordinate.1.into(),
-                    scale.0, scale.1,
-                    gdk_pixbuf::InterpType::Nearest, alpha);
+                    &dest.as_ref().composite(
+                        &pixbuf, coordinate.0, coordinate.1,
+                        cmp::min(dest.get_width(), self.project().size.0 - coordinate.0),
+                        cmp::min(dest.get_height(), self.project().size.1 - coordinate.1),
+                        coordinate.0.into(), coordinate.1.into(),
+                        scale.0, scale.1,
+                        gdk_pixbuf::InterpType::Nearest, alpha);
+                }
             }
         }
 

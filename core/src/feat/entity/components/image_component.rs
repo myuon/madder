@@ -42,8 +42,8 @@ impl HaveComponent for ImageComponent {
         &mut self.component
     }
 
-    fn get_pixbuf(&self, _: gst::ClockTime) -> Rc<gdk_pixbuf::Pixbuf> {
-        self.data.as_ref().unwrap().clone()
+    fn get_pixbuf(&self, _: gst::ClockTime) -> Option<Rc<gdk_pixbuf::Pixbuf>> {
+        Some(self.data.as_ref().unwrap().clone())
     }
 }
 

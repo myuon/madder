@@ -49,5 +49,11 @@ pub trait HaveComponent {
     fn component(&self) -> &Component;
     fn component_mut(&mut self) -> &mut Component;
 
-    fn get_pixbuf(&self, gst::ClockTime) -> Rc<gdk_pixbuf::Pixbuf>;
+    fn get_pixbuf(&self, gst::ClockTime) -> Option<Rc<gdk_pixbuf::Pixbuf>> {
+        None
+    }
+
+    fn get_audio_pipeline(&self) -> Option<Rc<gst::Pipeline>> {
+        None
+    }
 }

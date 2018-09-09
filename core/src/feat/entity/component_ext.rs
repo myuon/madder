@@ -10,6 +10,7 @@ use feat::*;
 pub enum ComponentExt {
     Video(VideoComponent),
     Image(ImageComponent),
+    Sound(SoundComponent),
 }
 
 impl ComponentExt {
@@ -20,6 +21,7 @@ impl ComponentExt {
         match t.as_str()? {
             "Video" => Some(Video(VideoComponent::new(json))),
             "Image" => Some(Image(ImageComponent::new(json))),
+            "Sound" => Some(Sound(SoundComponent::new(json))),
             _ => unreachable!(),
         }
     }
@@ -32,6 +34,7 @@ impl HaveComponent for ComponentExt {
         match self {
             Video(c) => c.component(),
             Image(c) => c.component(),
+            Sound(c) => c.component(),
         }
     }
 
@@ -41,15 +44,27 @@ impl HaveComponent for ComponentExt {
         match self {
             Video(c) => c.component_mut(),
             Image(c) => c.component_mut(),
+            Sound(c) => c.component_mut(),
         }
     }
 
-    fn get_pixbuf(&self, time: gst::ClockTime) -> Rc<gdk_pixbuf::Pixbuf> {
+    fn get_pixbuf(&self, time: gst::ClockTime) -> Option<Rc<gdk_pixbuf::Pixbuf>> {
         use ComponentExt::*;
 
         match self {
             Video(c) => c.get_pixbuf(time),
             Image(c) => c.get_pixbuf(time),
+            Sound(c) => c.get_pixbuf(time),
+        }
+    }
+
+    fn get_audio_pipeline(&self) -> Option<Rc<gst::Pipeline>> {
+        use ComponentExt::*;
+
+        match self {
+            Video(c) => c.get_audio_pipeline(),
+            Image(c) => c.get_audio_pipeline(),
+            Sound(c) => c.get_audio_pipeline(),
         }
     }
 }

@@ -69,8 +69,8 @@ impl HaveComponent for VideoComponent {
         &mut self.component
     }
 
-    fn get_pixbuf(&self, time: gst::ClockTime) -> Rc<gdk_pixbuf::Pixbuf> {
-        Rc::new(self.peek_pixbuf(time).unwrap())
+    fn get_pixbuf(&self, time: gst::ClockTime) -> Option<Rc<gdk_pixbuf::Pixbuf>> {
+        Some(Rc::new(self.peek_pixbuf(time).unwrap()))
     }
 }
 
