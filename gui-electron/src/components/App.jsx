@@ -7,6 +7,8 @@ import Screen from "./screen";
 import Timeline from "./timeline";
 import ComponentDetail from "./component_detail";
 import Ruler from "./ruler";
+import AddIcon from "@material-ui/icons/Add";
+import NewComponent from "./new_component";
 
 const remote = window.require ? window.require("electron").remote : null;
 
@@ -19,7 +21,8 @@ class App extends React.Component {
     this.state = {
       value: 0,
       components: new Map(),
-      selected: null
+      selected: null,
+      open: false
     };
 
     this.timeline = React.createRef();
@@ -61,6 +64,13 @@ class App extends React.Component {
 
     return true;
   }
+
+  createNewComponent = (component, callback) => {
+    this.props.comm.send(
+      Request.Create("/component", component),
+      callback != null ? Reciever.recieve(callback) : Reciever.discard()
+    );
+  };
 
   createVideoComponent = () => {
     const dialog = remote.dialog;
@@ -190,6 +200,20 @@ class App extends React.Component {
             this.state.components.get(this.state.selected)
           }
           updateCurrentComponentAttribute={this.updateCurrentComponentAttribute}
+        />
+        <Button
+          variant="contained"
+          color="primary"
+          aria-label="Delete"
+          onClick={() => this.setState({ open: true })}
+        >
+          <AddIcon />
+          New Component
+        </Button>
+        <NewComponent
+          open={this.state.open}
+          onClose={() => this.setState({ open: false })}
+          onSubmit={this.createNewComponent}
         />
       </div>
     );
