@@ -32,18 +32,18 @@ export class Component {
 	}
 }
 
-export class Reciever {
+export class Receiver {
 	constructor(kind, callback = null) {
 		this.kind = kind;
 		this.callback = callback;
 	}
 
 	static discard = () => {
-		return new Reciever("discard");
+		return new Receiver("discard");
 	};
 
-	static recieve = callback => {
-		return new Reciever("recieve", callback);
+	static receive = callback => {
+		return new Receiver("receive", callback);
 	};
 }
 
@@ -74,7 +74,7 @@ export class Request {
 export class Communicator {
 	constructor() {
 		this.wsc = new WebSocket("ws://localhost:3000");
-		this.recieverQueue = [];
+		this.receiverQueue = [];
 		this.opened = false;
 
 		this.wsc.onopen = () => {
@@ -83,11 +83,11 @@ export class Communicator {
 		};
 
 		this.wsc.onmessage = event => {
-			const r = this.recieverQueue.shift();
+			const r = this.receiverQueue.shift();
 
 			if (r.kind === "discard") {
 				return;
-			} else if (r.kind === "recieve") {
+			} else if (r.kind === "receive") {
 				r.callback(event.data);
 			} else {
 				unreachable(r);
@@ -95,13 +95,13 @@ export class Communicator {
 		};
 	}
 
-	send(_request, _reciever) {
+	send(_request, _receiver) {
 		const request = cast_as(_request, Request);
-		const reciever = cast_as(_reciever, Reciever);
+		const receiver = cast_as(_receiver, Receiver);
 
 		if (this.opened) {
 			this.wsc.send(JSON.stringify(request));
-			this.recieverQueue.push(reciever);
+			this.receiverQueue.push(receiver);
 		}
 	}
 }

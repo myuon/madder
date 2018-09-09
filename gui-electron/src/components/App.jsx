@@ -1,5 +1,5 @@
 import "./App.css";
-import { Component, Reciever, Request, cast_as } from "../lib.js";
+import { Component, Receiver, Request, cast_as } from "../lib.js";
 import React from "react";
 import Button from "@material-ui/core/Button";
 import Slider from "@material-ui/lab/Slider";
@@ -40,7 +40,7 @@ class App extends React.Component {
   updateComponents() {
     this.props.comm.send(
       Request.Get("/component"),
-      Reciever.recieve(response => {
+      Receiver.receive(response => {
         const comps = JSON.parse(response);
 
         let cmap = new Map();
@@ -68,7 +68,7 @@ class App extends React.Component {
   createNewComponent = (component, callback) => {
     this.props.comm.send(
       Request.Create("/component", component),
-      Reciever.recieve(data => {
+      Receiver.receive(data => {
         this.updateComponents();
 
         if (callback != null) {
@@ -99,7 +99,7 @@ class App extends React.Component {
       // Error handling...
       this.props.comm.send(
         Request.Update(`/component/${current.id}`, { start_time: start_time }),
-        Reciever.discard()
+        Receiver.discard()
       );
     } else if (key === "length") {
       let length = parseInt(value, 10);
@@ -113,7 +113,7 @@ class App extends React.Component {
       // Error handling...
       this.props.comm.send(
         Request.Update(`/component/${current.id}`, { length: length }),
-        Reciever.discard()
+        Receiver.discard()
       );
     } else {
       throw new Error(`Invalid key: ${key}`);

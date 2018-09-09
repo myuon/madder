@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Reciever, Request } from "../lib";
+import { Receiver, Request } from "../lib";
 
 export default class Screen extends Component {
 	constructor(props) {
@@ -12,7 +12,7 @@ export default class Screen extends Component {
 	renderScreen(value: number) {
 		this.props.comm.send(
 			Request.Get(`/screen/${value}`),
-			Reciever.recieve(response => {
+			Receiver.receive(response => {
 				this.src = JSON.parse(response);
 
 				const context = this.screen.current.getContext("2d");
