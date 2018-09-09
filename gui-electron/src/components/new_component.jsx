@@ -85,6 +85,7 @@ class NewComponent extends React.Component {
 							>
 								<MenuItem value={"Video"}>Video</MenuItem>
 								<MenuItem value={"Image"}>Image</MenuItem>
+								<MenuItem value={"Sound"}>Sound</MenuItem>
 							</Select>
 						</FormControl>
 
