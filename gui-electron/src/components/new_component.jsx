@@ -126,6 +126,7 @@ class NewComponent extends React.Component {
 							onClick={() => {
 								this.props.onSubmit(this.state);
 								this.initialize();
+								this.props.onClose();
 							}}
 						>
 							Submit

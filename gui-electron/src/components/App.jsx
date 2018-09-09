@@ -68,7 +68,13 @@ class App extends React.Component {
   createNewComponent = (component, callback) => {
     this.props.comm.send(
       Request.Create("/component", component),
-      callback != null ? Reciever.recieve(callback) : Reciever.discard()
+      Reciever.recieve(data => {
+        this.updateComponents();
+
+        if (callback != null) {
+          callback(data);
+        }
+      })
     );
   };
 
