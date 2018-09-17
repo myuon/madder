@@ -1,5 +1,5 @@
 <template>
-  <div id="app">
+  <div ref="app" id="app">
     <screen :fetchScreen="fetchScreen" :position="position"></screen>
     <vs-slider @change="changePosition" v-model="position" max=1000 />
     <timeline ref="timeline" :components="components" :selected="selected" v-on:select="selectById"></timeline>
@@ -14,6 +14,7 @@
   import AddComponent from '@/components/AddComponent';
   import ComponentDetail from '@/components/ComponentDetail';
   import { Communicator, Request, Receiver, cast_as, Component } from '@/lib';
+  import { ipcRenderer } from 'electron'
 
   export default {
     name: 'gui-madder',
@@ -89,10 +90,30 @@
 
         // This is not enough to trigger update for timeline, but why?
         this.$set(this.components, this.selected, Object.assign({ [key]: value }, this.selectedComponent));
-        
+
         this.$refs.timeline.$forceUpdate();
         this.$refs.componentDetail.$forceUpdate();
       },
+    },
+    mounted () {
+      // file read/write
+      ipcRenderer.on("open-yaml", (event, arg) => {
+        this.comm.send(
+          Request.Update("/project/yaml", arg),
+          Receiver.receive(data => {
+            this.updateComponents();
+          })
+        );
+      });
+
+      ipcRenderer.on("request-save-yaml", (event, arg) => {
+        this.comm.send(
+          Request.Get("/project/yaml"),
+          Receiver.receive(data => {
+            ipcRenderer.send("response-save-yaml", data);
+          })
+        );
+      });
     },
   }
 </script>

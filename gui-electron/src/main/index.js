@@ -1,4 +1,5 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, Menu, dialog, ipcMain } from 'electron'
+import fs from 'fs'
 
 /**
  * Set `__static` path to static files in production
@@ -43,6 +44,98 @@ app.on('activate', () => {
     createWindow()
   }
 })
+
+
+const templateMenu = [
+  {
+    label: "File",
+    submenu: [
+      {
+        label: "Open",
+        click(item, focusedWindow) {
+          dialog.showOpenDialog(
+            mainWindow,
+            {
+              title: "open yaml file"
+            },
+            paths => {
+              if (paths != null && paths.length > 0) {
+                const path = paths[0];
+                fs.readFile(path, "utf8", (err, data) => {
+                  mainWindow.webContents.send("open-yaml", data);
+                });
+              }
+            }
+          );
+        }
+      },
+      {
+        label: "Save",
+        click(item, focusedWindow) {
+          dialog.showSaveDialog(
+            mainWindow,
+            {
+              title: "save yaml file"
+            },
+            path => {
+              console.log(path);
+              if (path != null) {
+                mainWindow.webContents.send("request-save-yaml", "");
+                ipcMain.on("response-save-yaml", (event, arg) => {
+                  fs.writeFile(path, JSON.parse(arg));
+                });
+              }
+            }
+          );
+        }
+      }
+    ]
+  },
+  {
+    label: "Edit",
+    submenu: [
+      {
+        role: "undo"
+      },
+      {
+        role: "redo"
+      }
+    ]
+  },
+  {
+    label: "View",
+    submenu: [
+      {
+        label: "Reload",
+        accelerator: "CmdOrCtrl+R",
+        click(item, focusedWindow) {
+          if (focusedWindow) focusedWindow.reload();
+        }
+      },
+      {
+        type: "separator"
+      },
+      {
+        role: "resetzoom"
+      },
+      {
+        role: "zoomin"
+      },
+      {
+        role: "zoomout"
+      },
+      {
+        type: "separator"
+      },
+      {
+        role: "togglefullscreen"
+      }
+    ]
+  }
+];
+
+const menu = Menu.buildFromTemplate(templateMenu);
+Menu.setApplicationMenu(menu);
 
 /**
  * Auto Updater
