@@ -25,7 +25,10 @@
           left: `${component.start_time}px`,
           width: `${component.length}px`,
           display: 'block',
-          backgroundColor: component.id === this.selected ? '#fcc' : '#f99',
+          backgroundColor:
+            component.component_type === 'Sound'
+              ? component.id === this.selected ? '#ccf' : '#99f'
+              : component.id === this.selected ? '#fcc' : '#f99',
           padding: '5px',
         };
       },
