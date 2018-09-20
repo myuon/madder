@@ -114,6 +114,19 @@
           })
         );
       });
+
+      ipcRenderer.on("request-write-avi-file", (event, arg) => {
+        this.comm.send(
+          Request.Create("/write", {
+            uri: arg,
+            frames: 100,
+            delta: 5
+          }),
+          Receiver.receiveUntil(data => {
+            console.log(data);
+          }, data => data === "")
+        );
+      });
     },
   }
 </script>

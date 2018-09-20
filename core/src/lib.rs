@@ -21,6 +21,7 @@ pub struct Madder {
     component_repo: ComponentRepositoryImpl,
     effect_repo: EffectRepositoryImpl,
     server: ApiServer,
+    renderer: Option<AviRenderer>,
 }
 
 impl HaveEffectRepository for Madder {
@@ -74,6 +75,20 @@ impl HavePresenter for Madder {}
 
 impl ProjectLoader for Madder {}
 
+impl HaveAviRenderer for Madder {
+    fn renderer(&self) -> &AviRenderer {
+        self.renderer.as_ref().unwrap()
+    }
+
+    fn renderer_mut(&mut self) -> &mut AviRenderer {
+        self.renderer.as_mut().unwrap()
+    }
+
+    fn render_init(&mut self, uri: &str, frames: i32, delta: u64) {
+        self.renderer = Some(self.render_new(uri, frames, delta));
+    }
+}
+
 impl Madder {
     pub fn new() -> Madder {
         Madder {
@@ -81,6 +96,7 @@ impl Madder {
             component_repo: ComponentRepositoryImpl::new(),
             effect_repo: EffectRepositoryImpl::new(),
             server: ApiServer::new(),
+            renderer: None,
         }
     }
 }

@@ -33,9 +33,10 @@ export class Component {
 }
 
 export class Receiver {
-	constructor(kind, callback = null) {
+	constructor(kind, callback, isFinished) {
 		this.kind = kind;
 		this.callback = callback;
+		this.isFinished = isFinished;
 	}
 
 	static discard = () => {
@@ -44,6 +45,10 @@ export class Receiver {
 
 	static receive = callback => {
 		return new Receiver("receive", callback);
+	};
+
+	static receiveUntil = (callback, isFinished) => {
+		return new Receiver("receiveUntil", callback, isFinished);
 	};
 }
 
@@ -93,6 +98,12 @@ export class Communicator {
 				return;
 			} else if (r.kind === "receive") {
 				r.callback(event.data);
+			} else if (r.kind === "receiveUntil") {
+				r.callback(event.data);
+
+				if (!r.isFinished(event.data)) {
+					this.receiverQueue.push(r);
+				}
 			} else {
 				unreachable(r);
 			}

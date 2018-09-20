@@ -78,12 +78,28 @@ const templateMenu = [
               title: "save yaml file"
             },
             path => {
-              console.log(path);
               if (path != null) {
                 mainWindow.webContents.send("request-save-yaml", "");
                 ipcMain.on("response-save-yaml", (event, arg) => {
                   fs.writeFile(path, JSON.parse(arg));
                 });
+              }
+            }
+          );
+        }
+      },
+      {
+        label: "Write",
+        click(item, focusedWindow) {
+          dialog.showSaveDialog(
+            mainWindow,
+            {
+              title: "write avi file"
+            },
+            paths => {
+              if (paths != null && paths.length > 0) {
+                const path = paths[0];
+                mainWindow.webContents.send("request-write-avi-file", path);
               }
             }
           );

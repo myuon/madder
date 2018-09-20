@@ -7,3 +7,6 @@ pub use self::presenter::*;
 mod loader;
 pub use self::loader::*;
 
+mod avi_renderer;
+pub use self::avi_renderer::*;
+
