@@ -96,9 +96,9 @@ const templateMenu = [
             {
               title: "write avi file"
             },
-            paths => {
-              if (paths != null && paths.length > 0) {
-                const path = paths[0];
+            path => {
+              if (path != null) {
+                console.log(path);
                 mainWindow.webContents.send("request-write-avi-file", path);
               }
             }

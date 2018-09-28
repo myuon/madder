@@ -22,7 +22,6 @@ fn req(app: Rc<RefCell<Madder>>, msg: ws::Message, socket: &ws::Sender) -> Resul
         let stream = app.borrow().get_pixbuf(serde_json::from_value::<util::SerTime>(req.entity).unwrap().0).save_to_bufferv("png", &[]).unwrap();
         Ok(ws::Message::Binary(stream))
     } else if req.path == "/write" {
-        println!("write");
         // I know this is a bad way to block main thread, but ...
         let write_entity = serde_json::from_value::<WriteEntity>(req.entity).unwrap();
         app.borrow_mut().render_init(&write_entity.uri, write_entity.frames, write_entity.delta);

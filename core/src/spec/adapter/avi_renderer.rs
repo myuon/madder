@@ -21,23 +21,19 @@ pub struct AviRenderer {
 impl AviRenderer {
     pub fn new(uri: &str, width: i32, height: i32, frames: i32, delta: u64) -> AviRenderer {
         let pipeline = gst::Pipeline::new(None);
+        let appsrc = gst::ElementFactory::make("appsrc", None).unwrap();
         let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
         let avimux = gst::ElementFactory::make("avimux", None).unwrap();
-        let appsrc = gst::ElementFactory::make("appsrc", None).unwrap();
-        appsrc.set_property("emit-signals", &glib::Value::from(&true)).unwrap();
-
         let sink = gst::ElementFactory::make("filesink", None).unwrap();
-        sink.set_property("location", &glib::Value::from(uri)).unwrap();
+        sink.set_property("location", &uri).unwrap();
 
         pipeline.add_many(&[&appsrc, &videoconvert, &avimux, &sink]).unwrap();
         gst::Element::link_many(&[&appsrc, &videoconvert, &avimux, &sink]).unwrap();
 
-        let appsrc = appsrc.clone().dynamic_cast::<gsta::AppSrc>().unwrap();
-        let info = gstv::VideoInfo::new(gstv::VideoFormat::Rgb, width as u32, height as u32).fps(gst::Fraction::new(20,1)).build().unwrap();
+        let appsrc = appsrc.dynamic_cast::<gsta::AppSrc>().unwrap();
+        let info = gstv::VideoInfo::new(gstv::VideoFormat::Bgrx, width as u32, height as u32).fps(gst::Fraction::new(20,1)).build().unwrap();
         appsrc.set_caps(&info.to_caps().unwrap());
         appsrc.set_property_format(gst::Format::Time);
-        appsrc.set_max_bytes(1);
-        appsrc.set_property_block(true);
 
         let bus = pipeline.get_bus().unwrap();
 
@@ -45,6 +41,7 @@ impl AviRenderer {
             let pipeline = pipeline.clone();
             bus.add_watch(move |_,msg| {
                 use gst::MessageView;
+                println!("{:?}", msg);
 
                 match msg.view() {
                     MessageView::Eos(..) => {
