@@ -31,7 +31,7 @@ impl AviRenderer {
         gst::Element::link_many(&[&appsrc, &videoconvert, &avimux, &sink]).unwrap();
 
         let appsrc = appsrc.dynamic_cast::<gsta::AppSrc>().unwrap();
-        let info = gstv::VideoInfo::new(gstv::VideoFormat::Bgrx, width as u32, height as u32).fps(gst::Fraction::new(20,1)).build().unwrap();
+        let info = gstv::VideoInfo::new(gstv::VideoFormat::Rgb, width as u32, height as u32).fps(gst::Fraction::new(20,1)).build().unwrap();
         appsrc.set_caps(&info.to_caps().unwrap());
         appsrc.set_property_format(gst::Format::Time);
 
