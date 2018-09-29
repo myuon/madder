@@ -7,6 +7,7 @@ extern crate glib;
 extern crate gdk_pixbuf;
 extern crate cairo;
 
+use std::rc::Rc;
 use spec::*;
 
 #[derive(Clone)]
@@ -19,15 +20,22 @@ pub struct AviRenderer {
 }
 
 impl AviRenderer {
-    pub fn new(uri: &str, width: i32, height: i32, frames: i32, delta: u64) -> AviRenderer {
+    pub fn new(uri: &str, audio_pipelines: Vec<Rc<gst::Pipeline>>, width: i32, height: i32, frames: i32, delta: u64) -> AviRenderer {
         let pipeline = gst::Pipeline::new(None);
         let appsrc = gst::ElementFactory::make("appsrc", None).unwrap();
         let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
+
+        let audiotestsrc = gst::ElementFactory::make("audiotestsrc", None).unwrap();
+        let audiomix = gst::ElementFactory::make("audiomixer", None).unwrap();
+        let audioconvert = gst::ElementFactory::make("audioconvert", None).unwrap();
+        let audiorate = gst::ElementFactory::make("audiorate", None).unwrap();
+
         let avimux = gst::ElementFactory::make("avimux", None).unwrap();
         let sink = gst::ElementFactory::make("filesink", None).unwrap();
         sink.set_property("location", &uri).unwrap();
 
-        pipeline.add_many(&[&appsrc, &videoconvert, &avimux, &sink]).unwrap();
+        pipeline.add_many(&[&appsrc, &videoconvert, &audiotestsrc, &audiomix, &avimux, &audioconvert, &audiorate, &sink]).unwrap();
+        gst::Element::link_many(&[&audiotestsrc, &audiomix, &audioconvert, &audiorate, &avimux]).unwrap();
         gst::Element::link_many(&[&appsrc, &videoconvert, &avimux, &sink]).unwrap();
 
         let appsrc = appsrc.dynamic_cast::<gsta::AppSrc>().unwrap();
@@ -103,7 +111,8 @@ pub trait HaveAviRenderer : HavePresenter {
 
     fn render_new(&mut self, uri: &str, frames: i32, delta: u64) -> AviRenderer {
         let size = self.project().size;
-        AviRenderer::new(uri, size.0, size.1, frames, delta)
+        let audio_pipelines = self.get_audio_pipelines();
+        AviRenderer::new(uri, audio_pipelines, size.0, size.1, frames, delta)
     }
 
     fn render_init(&mut self, uri: &str, frames: i32, delta: u64);

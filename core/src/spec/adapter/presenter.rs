@@ -2,6 +2,7 @@ extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 use gdk_pixbuf::prelude::*;
 use std::cmp;
+use std::rc::Rc;
 use spec::*;
 
 pub trait HavePresenter : HaveProject + HaveComponentRepository + HaveEffectRepository {
@@ -44,6 +45,12 @@ pub trait HavePresenter : HaveProject + HaveComponentRepository + HaveEffectRepo
         }
 
         pixbuf
+    }
+
+    fn get_audio_pipelines(&self) -> Vec<Rc<gst::Pipeline>> {
+        self.component_repo().list().iter().flat_map(|item| {
+            item.entity.get_audio_pipeline()
+        }).collect()
     }
 }
 
