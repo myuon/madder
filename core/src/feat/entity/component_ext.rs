@@ -58,13 +58,13 @@ impl HaveComponent for ComponentExt {
         }
     }
 
-    fn get_audio_pipeline(&self) -> Option<Rc<gst::Pipeline>> {
+    fn get_audio_elements(&self) -> Vec<gst::Element> {
         use ComponentExt::*;
 
         match self {
-            Video(c) => c.get_audio_pipeline(),
-            Image(c) => c.get_audio_pipeline(),
-            Sound(c) => c.get_audio_pipeline(),
+            Video(c) => c.get_audio_elements(),
+            Image(c) => c.get_audio_elements(),
+            Sound(c) => c.get_audio_elements(),
         }
     }
 }

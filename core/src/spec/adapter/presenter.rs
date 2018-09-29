@@ -47,9 +47,13 @@ pub trait HavePresenter : HaveProject + HaveComponentRepository + HaveEffectRepo
         pixbuf
     }
 
-    fn get_audio_pipelines(&self) -> Vec<Rc<gst::Pipeline>> {
+    fn get_audio_streams(&self) -> Vec<(gst::ClockTime, Vec<gst::Element>)> {
         self.component_repo().list().iter().flat_map(|item| {
-            item.entity.get_audio_pipeline()
+            if item.entity.get_audio_elements().len() == 0 {
+                None
+            } else {
+                Some((item.entity.component().start_time, item.entity.get_audio_elements()))
+            }
         }).collect()
     }
 }

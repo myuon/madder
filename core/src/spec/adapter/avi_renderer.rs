@@ -7,7 +7,6 @@ extern crate glib;
 extern crate gdk_pixbuf;
 extern crate cairo;
 
-use std::rc::Rc;
 use spec::*;
 
 #[derive(Clone)]
@@ -21,23 +20,26 @@ pub struct AviRenderer {
 
 impl AviRenderer {
     pub fn new(uri: &str, audio_streams: Vec<(gst::ClockTime, Vec<gst::Element>)>, width: i32, height: i32, frames: i32, delta: u64) -> AviRenderer {
-        let audiotestsrc = gst::ElementFactory::make("audiotestsrc", None).unwrap();
-        let audiomix = gst::ElementFactory::make("audiomixer", None).unwrap();
-        let audioconvert = gst::ElementFactory::make("audioconvert", None).unwrap();
-        let audiorate = gst::ElementFactory::make("audiorate", None).unwrap();
-
         let pipeline = gst::Pipeline::new(None);
         let appsrc = gst::ElementFactory::make("appsrc", None).unwrap();
         let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
+
+        let audiomix = gst::ElementFactory::make("audiomixer", None).unwrap();
 
         let avimux = gst::ElementFactory::make("avimux", None).unwrap();
         let h264enc = gst::ElementFactory::make("x264enc", None).unwrap();
         let sink = gst::ElementFactory::make("filesink", None).unwrap();
         sink.set_property("location", &uri).unwrap();
 
-        pipeline.add_many(&[&appsrc, &videoconvert, &audiotestsrc, &audiomix, &avimux, &audioconvert, &audiorate, &h264enc, &sink]).unwrap();
-        gst::Element::link_many(&[&audiotestsrc, &audiomix, &audioconvert, &audiorate, &avimux]).unwrap();
+        pipeline.add_many(&[&appsrc, &videoconvert, &avimux, &audiomix, &h264enc, &sink]).unwrap();
+//        pipeline.add_many(audio_streams.iter().flat_map(|(_,v)| v).collect::<Vec<_>>().as_slice()).unwrap();
+
         gst::Element::link_many(&[&appsrc, &videoconvert, &h264enc, &avimux, &sink]).unwrap();
+
+//        gst::Element::link_many(&[&audiomix, &avimux]).unwrap();
+//        for (_, elems) in audio_streams {
+//            gst::Element::link_many(&[elems.last().unwrap(), &audiomix]).unwrap();
+//        }
 
         let appsrc = appsrc.dynamic_cast::<gsta::AppSrc>().unwrap();
         let info = gstv::VideoInfo::new(gstv::VideoFormat::Rgb, width as u32, height as u32).fps(gst::Fraction::new(20,1)).build().unwrap();

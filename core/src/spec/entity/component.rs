@@ -53,7 +53,7 @@ pub trait HaveComponent {
         None
     }
 
-    fn get_audio_pipeline(&self) -> Option<Rc<gst::Pipeline>> {
-        None
+    fn get_audio_elements(&self) -> Vec<gst::Element> {
+        vec![]
     }
 }
