@@ -2,7 +2,6 @@ extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 use gdk_pixbuf::prelude::*;
 use std::cmp;
-use std::rc::Rc;
 use spec::*;
 
 pub trait HavePresenter : HaveProject + HaveComponentRepository + HaveEffectRepository {
@@ -28,7 +27,7 @@ pub trait HavePresenter : HaveProject + HaveComponentRepository + HaveEffectRepo
                 component.component().start_time <= position &&
                     position <= component.component().end_time()
             }) {
-                if let Some(dest) = component.get_pixbuf(position) {
+                if let Some(dest) = component.get_pixbuf(position - component.component().start_time) {
                     let coordinate = (0,0);
                     let scale = (1.0,1.0);
                     let alpha = 255;

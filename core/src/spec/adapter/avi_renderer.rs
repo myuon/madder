@@ -19,22 +19,22 @@ pub struct AviRenderer {
 }
 
 impl AviRenderer {
-    pub fn new(uri: &str, audio_streams: Vec<(gst::ClockTime, Vec<gst::Element>)>, width: i32, height: i32, frames: i32, delta: u64) -> AviRenderer {
+    pub fn new(uri: &str, audio_streams: Vec<(gst::ClockTime, Vec<gst::Element>)>, width: i32, height: i32, frames: i32, fps: i32) -> AviRenderer {
         let pipeline = gst::Pipeline::new(None);
         let appsrc = gst::ElementFactory::make("appsrc", None).unwrap();
         let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
 
-        let audiomix = gst::ElementFactory::make("audiomixer", None).unwrap();
+//        let audiomix = gst::ElementFactory::make("audiomixer", None).unwrap();
 
         let avimux = gst::ElementFactory::make("avimux", None).unwrap();
         let h264enc = gst::ElementFactory::make("x264enc", None).unwrap();
         let sink = gst::ElementFactory::make("filesink", None).unwrap();
         sink.set_property("location", &uri).unwrap();
 
-        pipeline.add_many(&[&appsrc, &videoconvert, &avimux, &audiomix, &h264enc, &sink]).unwrap();
+        pipeline.add_many(&[&appsrc, &videoconvert, &avimux, &sink]).unwrap();
 //        pipeline.add_many(audio_streams.iter().flat_map(|(_,v)| v).collect::<Vec<_>>().as_slice()).unwrap();
 
-        gst::Element::link_many(&[&appsrc, &videoconvert, &h264enc, &avimux, &sink]).unwrap();
+        gst::Element::link_many(&[&appsrc, &videoconvert, &avimux, &sink]).unwrap();
 
 //        gst::Element::link_many(&[&audiomix, &avimux]).unwrap();
 //        for (_, elems) in audio_streams {
@@ -42,7 +42,7 @@ impl AviRenderer {
 //        }
 
         let appsrc = appsrc.dynamic_cast::<gsta::AppSrc>().unwrap();
-        let info = gstv::VideoInfo::new(gstv::VideoFormat::Rgb, width as u32, height as u32).fps(gst::Fraction::new(20,1)).build().unwrap();
+        let info = gstv::VideoInfo::new(gstv::VideoFormat::Rgb, width as u32, height as u32).fps(gst::Fraction::new(fps,1)).build().unwrap();
         appsrc.set_caps(&info.to_caps().unwrap());
         appsrc.set_property_format(gst::Format::Time);
 
@@ -80,7 +80,7 @@ impl AviRenderer {
             size: (width,height),
             current: 0,
             frames: frames,
-            delta: delta,
+            delta: (1000 / fps) as u64,
         }
     }
 
@@ -112,12 +112,12 @@ pub trait HaveAviRenderer : HavePresenter {
     fn renderer(&self) -> &AviRenderer;
     fn renderer_mut(&mut self) -> &mut AviRenderer;
 
-    fn render_new(&mut self, uri: &str, frames: i32, delta: u64) -> AviRenderer {
+    fn render_new(&mut self, uri: &str, frames: i32, fps: i32) -> AviRenderer {
         let size = self.project().size;
-        AviRenderer::new(uri, self.get_audio_streams(), size.0, size.1, frames, delta)
+        AviRenderer::new(uri, self.get_audio_streams(), size.0, size.1, frames, fps)
     }
 
-    fn render_init(&mut self, uri: &str, frames: i32, delta: u64);
+    fn render_init(&mut self, uri: &str, frames: i32, fps: i32);
 
     fn render_next(&mut self) -> (bool, f64) {
         let pixbuf = self.get_pixbuf(self.renderer().current as u64 * self.renderer().delta * gst::MSECOND);

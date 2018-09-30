@@ -84,8 +84,8 @@ impl HaveAviRenderer for Madder {
         self.renderer.as_mut().unwrap()
     }
 
-    fn render_init(&mut self, uri: &str, frames: i32, delta: u64) {
-        self.renderer = Some(self.render_new(uri, frames, delta));
+    fn render_init(&mut self, uri: &str, frames: i32, fps: i32) {
+        self.renderer = Some(self.render_new(uri, frames, fps));
     }
 }
 

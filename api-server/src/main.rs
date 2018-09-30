@@ -11,7 +11,7 @@ use std::cell::RefCell;
 struct WriteEntity {
     uri: String,
     frames: i32,
-    delta: u64,
+    fps: i32,
 }
 
 fn req(app: Rc<RefCell<Madder>>, msg: ws::Message, socket: &ws::Sender) -> Result<ws::Message, String> {
@@ -24,7 +24,7 @@ fn req(app: Rc<RefCell<Madder>>, msg: ws::Message, socket: &ws::Sender) -> Resul
     } else if req.path == "/write" {
         // I know this is a bad way to block main thread, but ...
         let write_entity = serde_json::from_value::<WriteEntity>(req.entity).unwrap();
-        app.borrow_mut().render_init(&write_entity.uri, write_entity.frames, write_entity.delta);
+        app.borrow_mut().render_init(&write_entity.uri, write_entity.frames, write_entity.fps);
 
         loop {
             let (cont, frac) = app.borrow_mut().render_next();

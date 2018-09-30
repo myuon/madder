@@ -120,7 +120,7 @@
           Request.Create("/write", {
             uri: arg,
             frames: 100,
-            delta: 5
+            fps: 10,
           }),
           Receiver.receiveUntil(data => {
             console.log(data);
