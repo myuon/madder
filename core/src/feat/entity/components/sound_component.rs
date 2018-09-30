@@ -29,28 +29,19 @@ impl SoundComponent {
     }
 
     fn create_data(uri: &str) -> Vec<gst::Element> {
-        // let pipeline = gst::Pipeline::new(None);
         let src = gst::ElementFactory::make("filesrc", None).unwrap();
-        let decodebin = gst::ElementFactory::make("decodebin", None).unwrap();
-        let convert = gst::ElementFactory::make("audioconvert", None).unwrap();
-
         src.set_property("location", &glib::Value::from(uri)).unwrap();
+        let wavparse = gst::ElementFactory::make("wavparse", None).unwrap();
+        let alawenc = gst::ElementFactory::make("alawenc", None).unwrap();
+        let queue = gst::ElementFactory::make("queue", None).unwrap();
 
-        // pipeline.add_many(&[&src, &decodebin, &convert, &audiosink]).unwrap();
-        gst::Element::link_many(&[&src, &decodebin]).unwrap();
-
-        let convert_ = convert.clone();
-        decodebin.connect_pad_added(move |_, src_pad| {
-            let sink_pad = convert_.get_static_pad("sink").unwrap();
-            let _ = src_pad.link(&sink_pad);
-        });
-
-        // pipeline.set_state(gst::State::Paused).into_result().unwrap();
+        gst::Element::link_many(&[&src, &wavparse, &alawenc, &queue]).unwrap();
 
         vec![
             src,
-            decodebin,
-            convert,
+            wavparse,
+            alawenc,
+            queue,
         ]
     }
 }
