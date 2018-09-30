@@ -7,7 +7,7 @@ extern crate base64;
 use spec::*;
 use std::collections::HashMap;
 
-#[derive(Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Method {
     Create,
     Get,
@@ -22,6 +22,7 @@ pub struct Request {
     pub entity: serde_json::Value,
 }
 
+#[derive(Clone)]
 pub struct ApiServer {
     router: HashMap<Method, router::Router<&'static str>>,
 }

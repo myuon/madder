@@ -16,6 +16,7 @@ pub mod feat;
 pub use spec::*;
 pub use feat::*;
 
+#[derive(Clone)]
 pub struct Madder {
     project: Project,
     component_repo: ComponentRepositoryImpl,
@@ -23,6 +24,8 @@ pub struct Madder {
     server: ApiServer,
     renderer: Option<AviRenderer>,
 }
+
+unsafe impl Send for Madder {}
 
 impl HaveEffectRepository for Madder {
     type EffectRepository = EffectRepositoryImpl;
@@ -82,10 +85,6 @@ impl HaveAviRenderer for Madder {
 
     fn renderer_mut(&mut self) -> &mut AviRenderer {
         self.renderer.as_mut().unwrap()
-    }
-
-    fn render_init(&mut self, uri: &str, frames: i32, fps: i32) {
-        self.renderer = Some(self.render_new(uri, frames, fps));
     }
 }
 

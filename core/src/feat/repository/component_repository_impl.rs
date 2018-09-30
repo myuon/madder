@@ -3,6 +3,7 @@ use spec::*;
 use feat::entity::*;
 use feat::repository::hashmap_impl::*;
 
+#[derive(Clone)]
 pub struct ComponentRepositoryImpl {
     repository: RepositoryHashMapImpl<ComponentExt>,
 }

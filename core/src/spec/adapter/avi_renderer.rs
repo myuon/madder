@@ -11,6 +11,7 @@ use spec::*;
 
 #[derive(Clone)]
 pub struct AviRenderer {
+    pipeline: gst::Pipeline,
     appsrc: gsta::AppSrc,
     size: (i32, i32),
     pub current: i32,
@@ -19,7 +20,7 @@ pub struct AviRenderer {
 }
 
 impl AviRenderer {
-    pub fn new(uri: &str, audio_streams: Vec<(gst::ClockTime, Vec<gst::Element>)>, width: i32, height: i32, frames: i32, fps: i32) -> AviRenderer {
+    pub fn new(self_: impl HaveAviRenderer, uri: &str, audio_streams: Vec<(gst::ClockTime, Vec<gst::Element>)>, width: i32, height: i32, frames: i32, fps: i32) {
         let pipeline = gst::Pipeline::new(None);
         let appsrc = gst::ElementFactory::make("appsrc", None).unwrap();
         let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
@@ -43,41 +44,55 @@ impl AviRenderer {
         appsrc.set_caps(&info.to_caps().unwrap());
         appsrc.set_property_format(gst::Format::Time);
 
-        let bus = pipeline.get_bus().unwrap();
-
-        {
-            let pipeline = pipeline.clone();
-            bus.add_watch(move |_,msg| {
-                use gst::MessageView;
-                println!("{:?}", msg);
-
-                match msg.view() {
-                    MessageView::Eos(..) => {
-                        pipeline.set_state(gst::State::Null).into_result().unwrap();
-                        glib::Continue(false)
-                    },
-                    MessageView::Error(err) => {
-                        println!(
-                            "Error from {:?}: {:?}",
-                            err.get_error(),
-                            err.get_debug(),
-                        );
-                        pipeline.set_state(gst::State::Null).into_result().unwrap();
-                        glib::Continue(false)
+        let mut current = 0;
+        let delta = (1000 / fps) as u64;
+        appsrc.set_callbacks(
+            gsta::AppSrcCallbacks::new()
+                .need_data(move |appsrc,_| {
+                    if current > frames {
+                        let _ = appsrc.end_of_stream();
+                        return;
                     }
-                    _ => glib::Continue(true),
-                }
-            });
-        }
+
+                    let pixbuf = self_.get_pixbuf(current as u64 * delta * gst::MSECOND);
+                    let mut buffer = gst::Buffer::with_size((width*height*3) as usize).unwrap();
+                    {
+                        let buffer = buffer.get_mut().unwrap();
+                        buffer.set_pts(current as u64 * delta * gst::MSECOND);
+
+                        let mut data = buffer.map_writable().unwrap();
+                        let mut data = data.as_mut_slice();
+                        let pixels = unsafe { pixbuf.get_pixels() };
+
+                        use std::io::Write;
+                        data.write_all(pixels).unwrap();
+                    }
+                    appsrc.push_buffer(buffer).into_result().unwrap();
+                    current += 1;
+                })
+                .build(),
+        );
 
         pipeline.set_state(gst::State::Playing).into_result().unwrap();
 
-        AviRenderer {
-            appsrc: appsrc,
-            size: (width,height),
-            current: 0,
-            frames: frames,
-            delta: (1000 / fps) as u64,
+        let bus = pipeline.get_bus().unwrap();
+        while let Some(msg) = bus.timed_pop(gst::CLOCK_TIME_NONE) {
+            use gst::MessageView;
+            println!("{:?}", msg);
+
+            match msg.view() {
+                MessageView::Eos(..) => break,
+                MessageView::Error(err) => {
+                    println!(
+                        "Error from {:?}: {:?}",
+                        err.get_error(),
+                        err.get_debug(),
+                    );
+                    pipeline.set_state(gst::State::Null).into_result().unwrap();
+                    break;
+                }
+                _ => (),
+            }
         }
     }
 
@@ -105,25 +120,13 @@ impl AviRenderer {
     }
 }
 
-pub trait HaveAviRenderer : HavePresenter {
+pub trait HaveAviRenderer : HavePresenter + Clone + Send + 'static {
     fn renderer(&self) -> &AviRenderer;
     fn renderer_mut(&mut self) -> &mut AviRenderer;
 
-    fn render_new(&mut self, uri: &str, frames: i32, fps: i32) -> AviRenderer {
+    fn start_render(&mut self, uri: &str, frames: i32, fps: i32) {
         let size = self.project().size;
-        AviRenderer::new(uri, self.get_audio_streams(), size.0, size.1, frames, fps)
-    }
-
-    fn render_init(&mut self, uri: &str, frames: i32, fps: i32);
-
-    fn render_next(&mut self) -> (bool, f64) {
-        let pixbuf = self.get_pixbuf(self.renderer().current as u64 * self.renderer().delta * gst::MSECOND);
-        if self.renderer_mut().render_step(&pixbuf) {
-            (true, self.renderer().current as f64 / self.renderer().frames as f64)
-        } else {
-            self.renderer().render_finish();
-            (false, 1.0)
-        }
+        AviRenderer::new(self.clone(), uri, self.get_audio_streams(), size.0, size.1, frames, fps)
     }
 }
 

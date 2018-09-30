@@ -1,6 +1,7 @@
 use spec::*;
 use feat::repository::hashmap_impl::*;
 
+#[derive(Clone)]
 pub struct EffectRepositoryImpl {
     repository: RepositoryHashMapImpl<Effect>,
 }

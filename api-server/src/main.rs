@@ -24,16 +24,7 @@ fn req(app: Rc<RefCell<Madder>>, msg: ws::Message, socket: &ws::Sender) -> Resul
     } else if req.path == "/write" {
         // I know this is a bad way to block main thread, but ...
         let write_entity = serde_json::from_value::<WriteEntity>(req.entity).unwrap();
-        app.borrow_mut().render_init(&write_entity.uri, write_entity.frames, write_entity.fps);
-
-        loop {
-            let (cont, frac) = app.borrow_mut().render_next();
-            socket.send(ws::Message::Text(format!("{}", frac))).unwrap();
-
-            if cont == false {
-                break;
-            }
-        }
+        app.borrow_mut().start_render(&write_entity.uri, write_entity.frames, write_entity.fps);
 
         Ok(ws::Message::Text("".to_string()))
     } else {

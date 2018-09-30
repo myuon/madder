@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::iter::FromIterator;
 use uuid::Uuid;
 
+#[derive(Clone)]
 pub struct RepositoryHashMapImpl<ENTITY> {
     entities: HashMap<String, ENTITY>,
 }
