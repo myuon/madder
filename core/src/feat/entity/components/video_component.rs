@@ -33,18 +33,17 @@ impl VideoComponent {
         let pipeline = gst::Pipeline::new(None);
         let src = gst::ElementFactory::make("filesrc", None).unwrap();
         let decodebin = gst::ElementFactory::make("decodebin", None).unwrap();
-        let queue = gst::ElementFactory::make("queue", None).unwrap();
         let convert = gst::ElementFactory::make("videoconvert", None).unwrap();
         let pixbufsink = gst::ElementFactory::make("gdkpixbufsink", None).unwrap();
-
         src.set_property("location", &glib::Value::from(uri)).unwrap();
+        pixbufsink.set_property("post-messages", &glib::Value::from(&false)).unwrap();
 
-        pipeline.add_many(&[&src, &decodebin, &queue, &convert, &pixbufsink]).unwrap();
+        pipeline.add_many(&[&src, &decodebin, &convert, &pixbufsink]).unwrap();
         gst::Element::link_many(&[&src, &decodebin]).unwrap();
-        gst::Element::link_many(&[&queue, &convert, &pixbufsink]).unwrap();
+        gst::Element::link_many(&[&convert, &pixbufsink]).unwrap();
 
         decodebin.connect_pad_added(move |_, src_pad| {
-            let sink_pad = queue.get_static_pad("sink").unwrap();
+            let sink_pad = convert.get_static_pad("sink").unwrap();
             let _ = src_pad.link(&sink_pad);
         });
 

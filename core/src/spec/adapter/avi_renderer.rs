@@ -34,10 +34,12 @@ impl AviRenderer {
         pipeline.add_many(&[&appsrc, &videoconvert, &queue, &x264enc, &avimux, &sink]).unwrap();
         gst::Element::link_many(&[&appsrc, &videoconvert, &x264enc, &queue, &avimux, &sink]).unwrap();
 
+        /*
         for (_, elems) in audio_streams {
             pipeline.add_many(elems.iter().collect::<Vec<_>>().as_slice()).unwrap();
             gst::Element::link_many(&[elems.last().unwrap(), &avimux]).unwrap();
         }
+        */
 
         let appsrc = appsrc.dynamic_cast::<gsta::AppSrc>().unwrap();
         let info = gstv::VideoInfo::new(gstv::VideoFormat::Rgb, width as u32, height as u32).fps(gst::Fraction::new(fps,1)).build().unwrap();
