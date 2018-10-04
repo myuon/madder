@@ -64,18 +64,9 @@ impl VideoComponent {
         // TODO: fix the dirty hack
         thread::sleep(time::Duration::from_secs(1));
 
-        let pad = convert.get_static_pad("sink").unwrap();
-        let video_info: gstv::VideoInfo = gstv::VideoInfo::from_caps(pad.get_current_caps().unwrap().as_ref()).unwrap();
-
         let appsink = sink.dynamic_cast::<gsta::AppSink>().unwrap();
-        appsink.set_caps(&gst::Caps::new_simple(
-            "video/x-raw",
-            &[
-                ("format", &gstv::VideoFormat::Rgb),
-                ("width", &video_info.width()),
-                ("height", &video_info.height()),
-            ],
-        ));
+        let pad = convert.get_static_pad("sink").unwrap();
+        appsink.set_caps(&pad.get_current_caps().unwrap());
 
         (pipeline, appsink)
     }
@@ -91,8 +82,7 @@ impl VideoComponent {
         let buffer = sample.get_buffer()?;
         let map = buffer.map_readable()?;
 
-        // real video size is 1280x720
-        // but the data in appsink says 1280x1080 ... what's going on?
+        println!("{:?} {:?}", video_info.width(), video_info.height());
         let pixbuf = gdk_pixbuf::Pixbuf::new_from_vec(
             map.to_vec(),
             gdk_pixbuf::Colorspace::Rgb,
