@@ -7,6 +7,7 @@ extern crate gstreamer_video as gstv;
 #[macro_use] extern crate maplit;
 extern crate uuid;
 extern crate base64;
+extern crate glib;
 
 pub mod util;
 
