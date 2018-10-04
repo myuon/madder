@@ -19,10 +19,6 @@ pub struct VideoComponent {
     #[serde(skip)]
     #[serde(deserialize_with = "Option::None")]
     pipeline: Option<gst::Pipeline>,
-
-    #[serde(skip)]
-    #[serde(deserialize_with = "Option::None")]
-    data: Option<gsta::AppSink>,
 }
 
 impl VideoComponent {
@@ -33,17 +29,15 @@ impl VideoComponent {
     }
 
     fn load(&mut self) {
-        let (pipeline, sink) = VideoComponent::create_data(&self.data_path);
-        self.pipeline = Some(pipeline);
-        self.data = Some(sink);
+        self.pipeline = Some(VideoComponent::create_data(&self.data_path));
     }
 
-    fn create_data(uri: &str) -> (gst::Pipeline, gsta::AppSink) {
+    fn create_data(uri: &str) -> gst::Pipeline {
         let pipeline = gst::Pipeline::new(None);
         let src = gst::ElementFactory::make("filesrc", None).unwrap();
         let decodebin = gst::ElementFactory::make("decodebin", None).unwrap();
         let convert = gst::ElementFactory::make("videoconvert", Some("convert")).unwrap();
-        let sink = gst::ElementFactory::make("appsink", None).unwrap();
+        let sink = gst::ElementFactory::make("appsink", Some("appsink")).unwrap();
         src.set_property("location", &glib::Value::from(uri)).unwrap();
         sink.set_property("emit-signals", &glib::Value::from(&true)).unwrap();
 
@@ -68,17 +62,17 @@ impl VideoComponent {
         let pad = convert.get_static_pad("sink").unwrap();
         appsink.set_caps(&pad.get_current_caps().unwrap());
 
-        (pipeline, appsink)
+        pipeline
     }
 
     fn peek_pixbuf(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
         self.pipeline.as_ref()?.seek_simple(gst::SeekFlags::FLUSH, time).unwrap();
 
-        let convert = self.pipeline.as_ref()?.get_by_name("convert")?;
+        let convert = self.pipeline.as_ref()?.get_by_name("appsink")?;
         let pad = convert.get_static_pad("sink")?;
         let video_info: gstv::VideoInfo = gstv::VideoInfo::from_caps(pad.get_current_caps()?.as_ref())?;
 
-        let sample = self.data.as_ref()?.pull_preroll()?;
+        let sample = self.pipeline.as_ref()?.get_by_name("appsink")?.dynamic_cast::<gsta::AppSink>().ok()?.pull_preroll()?;
         let buffer = sample.get_buffer()?;
         let map = buffer.map_readable()?;
 
