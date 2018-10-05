@@ -1,6 +1,6 @@
 <template>
   <div>
-    <canvas ref="screen" width="640px" height="480px" />
+    <canvas ref="screen" width="1280px" height="720px" />
   </div>
 </template>
 
@@ -18,7 +18,7 @@
           const context = this.$refs.screen.getContext('2d');
           const image = new Image();
           image.onload = () => {
-            context.drawImage(image, 0, 0, 640, 480);
+            context.drawImage(image, 0, 0, 1280, 720);
           };
           image.src = src;
         });
