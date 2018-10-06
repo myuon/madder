@@ -24,15 +24,14 @@ impl AviRenderer {
         let pipeline = gst::Pipeline::new(None);
         let appsrc = gst::ElementFactory::make("appsrc", None).unwrap();
         let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
-        let x264enc = gst::ElementFactory::make("x264enc", None).unwrap();
         let queue = gst::ElementFactory::make("queue", None).unwrap();
 
         let avimux = gst::ElementFactory::make("avimux", None).unwrap();
         let sink = gst::ElementFactory::make("filesink", None).unwrap();
         sink.set_property("location", &uri).unwrap();
 
-        pipeline.add_many(&[&appsrc, &videoconvert, &queue, &x264enc, &avimux, &sink]).unwrap();
-        gst::Element::link_many(&[&appsrc, &videoconvert, &x264enc, &queue, &avimux, &sink]).unwrap();
+        pipeline.add_many(&[&appsrc, &videoconvert, &queue, &avimux, &sink]).unwrap();
+        gst::Element::link_many(&[&appsrc, &videoconvert, &queue, &avimux, &sink]).unwrap();
 
         /*
         for (_, elems) in audio_streams {
@@ -90,12 +89,13 @@ impl AviRenderer {
                         err.get_error(),
                         err.get_debug(),
                     );
-                    pipeline.set_state(gst::State::Null).into_result().unwrap();
                     break;
                 }
                 _ => (),
             }
         }
+
+        pipeline.set_state(gst::State::Null).into_result().unwrap();
     }
 
     pub fn render_step(&mut self, pixbuf: &gdk_pixbuf::Pixbuf) -> bool {
