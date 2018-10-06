@@ -32,15 +32,13 @@ impl SoundComponent {
         let src = gst::ElementFactory::make("filesrc", None).unwrap();
         src.set_property("location", &glib::Value::from(uri)).unwrap();
         let wavparse = gst::ElementFactory::make("wavparse", None).unwrap();
-        let alawenc = gst::ElementFactory::make("alawenc", None).unwrap();
+        let convert = gst::ElementFactory::make("audioconvert", None).unwrap();
         let queue = gst::ElementFactory::make("queue", None).unwrap();
-
-        gst::Element::link_many(&[&src, &wavparse, &alawenc, &queue]).unwrap();
 
         vec![
             src,
             wavparse,
-            alawenc,
+            convert,
             queue,
         ]
     }
