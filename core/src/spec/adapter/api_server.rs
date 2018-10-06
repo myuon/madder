@@ -6,6 +6,7 @@ extern crate base64;
 
 use spec::*;
 use std::collections::HashMap;
+use std::num::{ParseIntError, ParseFloatError};
 
 #[derive(Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Method {
@@ -25,6 +26,26 @@ pub struct Request {
 #[derive(Clone)]
 pub struct ApiServer {
     router: HashMap<Method, router::Router<&'static str>>,
+}
+
+pub struct ParamHolder(router::Params);
+
+impl ParamHolder {
+    fn find(&self, param: &str) -> Result<&str, String> {
+        self.0.find(param).ok_or(format!("No such parameter: {}", param))
+    }
+
+    fn find_as_usize(&self, param: &str) -> Result<usize, String> {
+        self.find(param)?.parse().map_err(|x: ParseIntError| x.to_string())
+    }
+
+    fn find_as_u64(&self, param: &str) -> Result<u64, String> {
+        self.find(param)?.parse().map_err(|x: ParseIntError| x.to_string())
+    }
+
+    fn find_as_f32(&self, param: &str) -> Result<f32, String> {
+        self.find(param)?.parse().map_err(|x: ParseFloatError| x.to_string())
+    }
 }
 
 impl ApiServer {
@@ -116,158 +137,167 @@ pub trait HaveApiServer : HavePresenter + ProjectLoader {
     fn create(&mut self, path: &str, entity: serde_json::Value) -> Result<(), String> {
         let r = self.server().router[&Method::Create].clone();
         let matcher = r.recognize(path)?;
-        let result = match *matcher.handler {
-            "mapper_create_component" => self.mapper_create_component(matcher.params, entity),
-            "mapper_create_component_effect" => self.mapper_create_component_effect(matcher.params, entity),
-            "mapper_insert_component_effect" => self.mapper_insert_component_effect(matcher.params, entity),
-            "mapper_create_effet_intermed" => self.mapper_create_effect_intermed(matcher.params, entity),
+        match *matcher.handler {
+            "mapper_create_component" => self.mapper_create_component(ParamHolder(matcher.params), entity),
+            "mapper_create_component_effect" => self.mapper_create_component_effect(ParamHolder(matcher.params), entity),
+            "mapper_insert_component_effect" => self.mapper_insert_component_effect(ParamHolder(matcher.params), entity),
+            "mapper_create_effet_intermed" => self.mapper_create_effect_intermed(ParamHolder(matcher.params), entity),
             _ => unreachable!("{}", path),
-        };
-
-        Ok(result)
+        }
     }
 
     fn get(&self, path: &str) -> Result<serde_json::Value, String> {
         let matcher = self.server().router[&Method::Get].recognize(path)?;
-        let result = match *matcher.handler {
-            "mapper_list_component" => self.mapper_list_component(matcher.params),
-            "mapper_get_component" => self.mapper_get_component(matcher.params),
-            "mapper_get_component_attribute" => self.mapper_get_component_attribute(matcher.params),
-            "mapper_list_component_effect" => self.mapper_list_component_effect(matcher.params),
-            "mapper_get_component_effect" => self.mapper_get_component_effect(matcher.params),
-            "mapper_list_effect" => self.mapper_list_effect(matcher.params),
-            "mapper_get_effect" => self.mapper_get_effect(matcher.params),
-            "mapper_get_effect_value" => self.mapper_get_effect_value(matcher.params),
-            "mapper_get_project_yaml" => self.mapper_get_project_yaml(matcher.params),
-            "mapper_get_screen" => self.mapper_get_screen(matcher.params),
+        match *matcher.handler {
+            "mapper_list_component" => self.mapper_list_component(ParamHolder(matcher.params)),
+            "mapper_get_component" => self.mapper_get_component(ParamHolder(matcher.params)),
+            "mapper_get_component_attribute" => self.mapper_get_component_attribute(ParamHolder(matcher.params)),
+            "mapper_list_component_effect" => self.mapper_list_component_effect(ParamHolder(matcher.params)),
+            "mapper_get_component_effect" => self.mapper_get_component_effect(ParamHolder(matcher.params)),
+            "mapper_list_effect" => self.mapper_list_effect(ParamHolder(matcher.params)),
+            "mapper_get_effect" => self.mapper_get_effect(ParamHolder(matcher.params)),
+            "mapper_get_effect_value" => self.mapper_get_effect_value(ParamHolder(matcher.params)),
+            "mapper_get_project_yaml" => self.mapper_get_project_yaml(ParamHolder(matcher.params)),
+            "mapper_get_screen" => self.mapper_get_screen(ParamHolder(matcher.params)),
             _ => unreachable!("{}", path),
-        };
-
-        Ok(result)
+        }
     }
 
     fn update(&mut self, path: &str, entity: serde_json::Value) -> Result<(), String> {
         let r = self.server().router[&Method::Update].clone();
         let matcher = r.recognize(path)?;
-        let result = match *matcher.handler {
-            "mapper_update_component" => self.mapper_update_component(matcher.params, entity),
-            "mapper_update_component_attribute" => self.mapper_update_component_attribute(matcher.params, entity),
-            "mapper_update_project_yaml" => self.mapper_update_project_yaml(matcher.params, entity),
+        match *matcher.handler {
+            "mapper_update_component" => self.mapper_update_component(ParamHolder(matcher.params), entity),
+            "mapper_update_component_attribute" => self.mapper_update_component_attribute(ParamHolder(matcher.params), entity),
+            "mapper_update_project_yaml" => self.mapper_update_project_yaml(ParamHolder(matcher.params), entity),
             _ => unreachable!("{}", path),
-        };
-
-        Ok(result)
+        }
     }
 
     fn delete(&mut self, path: &str) -> Result<(), String> {
         let r = self.server().router[&Method::Delete].clone();
         let matcher = r.recognize(path)?;
-        let _result = match *matcher.handler {
-            "mapper_delete_component" => self.mapper_delete_component(matcher.params),
+        match *matcher.handler {
+            "mapper_delete_component" => self.mapper_delete_component(ParamHolder(matcher.params)),
             _ => unreachable!("{}", path),
-        };
+        }
+    }
+
+    fn mapper_list_component(&self, _: ParamHolder) -> Result<serde_json::Value, String> {
+        Ok(json!(self.component_repo().list()))
+    }
+
+    fn mapper_list_component_effect(&self, params: ParamHolder) -> Result<serde_json::Value, String> {
+        let component_id = params.find("component_id")?;
+        let result = json!(self.component_repo().get(component_id).component().effect.iter().map(|effect_id| {
+            self.effect_repo().get(effect_id)
+        }).collect::<Vec<&Effect>>());
+        Ok(result)
+    }
+
+    fn mapper_list_effect(&self, _: ParamHolder) -> Result<serde_json::Value, String> {
+        Ok(json!(self.effect_repo().list()))
+    }
+
+    fn mapper_get_component(&self, params: ParamHolder) -> Result<serde_json::Value, String> {
+        let component_id = params.find("component_id")?;
+        Ok(json!(self.component_repo().get(component_id)))
+    }
+
+    fn mapper_get_component_attribute(&self, params: ParamHolder) -> Result<serde_json::Value, String> {
+        let component_id = params.find("component_id")?;
+        Ok(json!(self.component_repo().get(component_id).component().attributes[params.find("key")?]))
+    }
+
+    fn mapper_get_component_effect(&self, params: ParamHolder) -> Result<serde_json::Value, String> {
+        let component_id = params.find("component_id")?;
+        let index: usize = params.find_as_usize("index")?;
+        let effect_id = &self.component_repo().get(component_id).component().effect[index];
+        Ok(json!(self.effect_repo().get(effect_id)))
+    }
+
+    fn mapper_get_effect(&self, params: ParamHolder) -> Result<serde_json::Value, String> {
+        let effect_id = params.find("effect_id")?;
+        Ok(json!(self.effect_repo().get(effect_id)))
+    }
+
+    fn mapper_get_effect_value(&self, params: ParamHolder) -> Result<serde_json::Value, String> {
+        let effect_id = params.find("effect_id")?;
+        let time = params.find_as_f32("time")?;
+        Ok(json!(self.effect_repo().value(effect_id, time)))
+    }
+
+    fn mapper_get_screen(&self, params: ParamHolder) -> Result<serde_json::Value, String> {
+       let time: u64 = params.find_as_u64("time")?;
+        let encoded = base64::encode(&self.get_pixbuf(time * gst::MSECOND).save_to_bufferv("png", &[]).unwrap());
+        Ok(json!(format!("data:image/png;base64,{}", encoded)))
+    }
+
+    fn mapper_get_project_yaml(&self, _: ParamHolder) -> Result<serde_json::Value, String> {
+        Ok(json!(self.to_yaml_string().map_err(|t| t.to_string())?))
+    }
+
+    fn mapper_create_component(&mut self, _: ParamHolder, entity: serde_json::Value) -> Result<(), String> {
+        let key = self.component_repo_mut().create(<Self as HaveComponentRepository>::new_from_json(entity));
+        self.project_mut().add_component_at(0, key);
 
         Ok(())
     }
 
-    fn mapper_list_component(&self, _: router::Params) -> serde_json::Value {
-        json!(self.component_repo().list())
-    }
-
-    fn mapper_list_component_effect(&self, params: router::Params) -> serde_json::Value {
-        let component_id = params.find("component_id").unwrap();
-        json!(self.component_repo().get(component_id).component().effect.iter().map(|effect_id| {
-            self.effect_repo().get(effect_id)
-        }).collect::<Vec<&Effect>>())
-    }
-
-    fn mapper_list_effect(&self, _: router::Params) -> serde_json::Value {
-        json!(self.effect_repo().list())
-    }
-
-    fn mapper_get_component(&self, params: router::Params) -> serde_json::Value {
-        let component_id = params.find("component_id").unwrap();
-        json!(self.component_repo().get(component_id))
-    }
-
-    fn mapper_get_component_attribute(&self, params: router::Params) -> serde_json::Value {
-        let component_id = params.find("component_id").unwrap();
-        json!(self.component_repo().get(component_id).component().attributes[params.find("key").unwrap()])
-    }
-
-    fn mapper_get_component_effect(&self, params: router::Params) -> serde_json::Value {
-        let component_id = params.find("component_id").unwrap();
-        let index: usize = params.find("index").and_then(|x| x.parse().ok()).unwrap();
-        let effect_id = &self.component_repo().get(component_id).component().effect[index];
-        json!(self.effect_repo().get(effect_id))
-    }
-
-    fn mapper_get_effect(&self, params: router::Params) -> serde_json::Value {
-        let effect_id = params.find("effect_id").unwrap();
-        json!(self.effect_repo().get(effect_id))
-    }
-
-    fn mapper_get_effect_value(&self, params: router::Params) -> serde_json::Value {
-        let effect_id = params.find("effect_id").unwrap();
-        let time = params.find("time").and_then(|x| x.parse().ok()).unwrap();
-        json!(self.effect_repo().value(effect_id, time))
-    }
-
-    fn mapper_get_screen(&self, params: router::Params) -> serde_json::Value {
-        let time: u64 = params.find("time").and_then(|x| x.parse().ok()).unwrap();
-        let encoded = base64::encode(&self.get_pixbuf(time * gst::MSECOND).save_to_bufferv("png", &[]).unwrap());
-        json!(format!("data:image/png;base64,{}", encoded))
-    }
-
-    fn mapper_get_project_yaml(&self, _: router::Params) -> serde_json::Value {
-        json!(self.to_yaml_string().unwrap())
-    }
-
-    fn mapper_create_component(&mut self, _: router::Params, entity: serde_json::Value) {
-        let key = self.component_repo_mut().create(<Self as HaveComponentRepository>::new_from_json(entity));
-        self.project_mut().add_component_at(0, key);
-    }
-
-    fn mapper_create_component_effect(&mut self, params: router::Params, entity: serde_json::Value) {
-        let component_id = params.find("component_id").unwrap();
-        let effect_id = self.effect_repo_mut().create(serde_json::from_value(entity).unwrap()).to_string();
+    fn mapper_create_component_effect(&mut self, params: ParamHolder, entity: serde_json::Value) -> Result<(), String> {
+        let component_id = params.find("component_id")?;
+        let effect_id = self.effect_repo_mut().create(serde_json::from_value(entity).map_err(|t| t.to_string())?).to_string();
         let component = self.component_repo_mut().get_mut(component_id);
         component.component_mut().effect.push(effect_id);
+
+        Ok(())
     }
 
-    fn mapper_create_effect_intermed(&mut self, params: router::Params, entity: serde_json::Value) {
+    fn mapper_create_effect_intermed(&mut self, params: ParamHolder, entity: serde_json::Value) -> Result<(), String> {
         let effect_id = params.find("effect_id").unwrap();
         self.effect_repo_mut().create_intermed(effect_id, serde_json::from_value(entity).unwrap());
+
+        Ok(())
     }
 
-    fn mapper_insert_component_effect(&mut self, params: router::Params, entity: serde_json::Value) {
-        let component_id = params.find("component_id").unwrap();
-        let index: usize = params.find("index").and_then(|x| x.parse().ok()).unwrap();
-        let effect_id = self.effect_repo_mut().create(serde_json::from_value(entity).unwrap()).to_string();
+    fn mapper_insert_component_effect(&mut self, params: ParamHolder, entity: serde_json::Value) -> Result<(), String> {
+        let component_id = params.find("component_id")?;
+        let index = params.find_as_usize("index")?;
+        let effect_id = self.effect_repo_mut().create(serde_json::from_value(entity).map_err(|t| t.to_string())?).to_string();
         let component = self.component_repo_mut().get_mut(component_id);
         component.component_mut().effect.insert(index, effect_id);
+
+        Ok(())
     }
 
-    fn mapper_delete_component(&mut self, params: router::Params) {
+    fn mapper_delete_component(&mut self, params: ParamHolder) -> Result<(), String> {
         let component_id = params.find("component_id").unwrap();
         self.component_repo_mut().delete(component_id);
+
+        Ok(())
     }
 
-    fn mapper_update_component(&mut self, params: router::Params, entity: serde_json::Value) {
-        let component_id = params.find("component_id").unwrap();
+    fn mapper_update_component(&mut self, params: ParamHolder, entity: serde_json::Value) -> Result<(), String> {
+        let component_id = params.find("component_id")?;
         let component = self.component_repo_mut().get_mut(component_id);
         component.component_mut().partial_update(entity.as_object().unwrap());
+
+        Ok(())
     }
 
-    fn mapper_update_component_attribute(&mut self, params: router::Params, entity: serde_json::Value) {
-        let component_id = params.find("component_id").unwrap();
-        let key = params.find("key").unwrap();
+    fn mapper_update_component_attribute(&mut self, params: ParamHolder, entity: serde_json::Value) -> Result<(), String> {
+        let component_id = params.find("component_id")?;
+        let key = params.find("key")?;
         let component = self.component_repo_mut().get_mut(component_id);
         component.component_mut().attributes.insert(key.to_string(), entity);
+
+        Ok(())
     }
 
-    fn mapper_update_project_yaml(&mut self, _: router::Params, entity: serde_json::Value) {
+    fn mapper_update_project_yaml(&mut self, _: ParamHolder, entity: serde_json::Value) -> Result<(), String> {
         self.from_yaml_string(entity.as_str().unwrap()).unwrap();
+
+        Ok(())
     }
 }
 
