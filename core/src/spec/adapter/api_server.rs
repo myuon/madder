@@ -228,7 +228,7 @@ pub trait HaveApiServer : HavePresenter + ProjectLoader {
     }
 
     fn mapper_get_screen(&self, params: ParamHolder) -> Result<serde_json::Value, String> {
-       let time: u64 = params.find_as_u64("time")?;
+        let time: u64 = params.find_as_u64("time")?;
         let encoded = base64::encode(&self.get_pixbuf(time * gst::MSECOND).save_to_bufferv("png", &[]).unwrap());
         Ok(json!(format!("data:image/png;base64,{}", encoded)))
     }

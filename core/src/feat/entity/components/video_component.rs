@@ -61,12 +61,13 @@ impl VideoComponent {
         pipeline
     }
 
-    fn peek_pixbuf(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
-        self.pipeline.as_ref()?.seek_simple(gst::SeekFlags::FLUSH, time).unwrap();
+    fn peek_pixbuf(&self, time: gst::ClockTime) -> Result<gdk_pixbuf::Pixbuf, String> {
+        let pipeline = self.pipeline.as_ref().unwrap();
+        pipeline.seek_simple(gst::SeekFlags::FLUSH, time).map_err(|t| t.to_string())?;
 
-        let appsink = self.pipeline.as_ref()?.get_by_name("appsink")?;
-        let pixbuf = appsink.get_property("last-pixbuf").unwrap();
-        pixbuf.get()
+        let appsink = pipeline.get_by_name("appsink").unwrap();
+        let pixbuf = appsink.get_property("last-pixbuf").map_err(|t| t.to_string())?;
+        pixbuf.get().ok_or("failed to fetch last-pixbuf".to_string())
     }
 }
 
