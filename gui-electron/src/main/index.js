@@ -91,6 +91,9 @@ const templateMenu = [
       {
         label: "Write",
         click(item, focusedWindow) {
+          mainWindow.webContents.send("request-write-avi-file");
+
+          /*
           dialog.showSaveDialog(
             mainWindow,
             {
@@ -99,10 +102,10 @@ const templateMenu = [
             path => {
               if (path != null) {
                 console.log(path);
-                mainWindow.webContents.send("request-write-avi-file", path);
               }
             }
           );
+          */
         }
       }
     ]

@@ -10,7 +10,7 @@ use std::cell::RefCell;
 #[derive(Deserialize)]
 struct WriteEntity {
     uri: String,
-    frames: i32,
+    length: i32,
     fps: i32,
 }
 
@@ -24,7 +24,7 @@ fn req(app: Rc<RefCell<Madder>>, msg: ws::Message, socket: &ws::Sender) -> Resul
     } else if req.path == "/write" {
         // I know this is a bad way to block main thread, but ...
         let write_entity = serde_json::from_value::<WriteEntity>(req.entity).unwrap();
-        app.borrow_mut().start_render(&write_entity.uri, write_entity.frames, write_entity.fps);
+        app.borrow_mut().start_render(&write_entity.uri, write_entity.length * write_entity.fps, write_entity.fps);
 
         Ok(ws::Message::Text("".to_string()))
     } else {

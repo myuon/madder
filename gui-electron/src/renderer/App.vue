@@ -5,6 +5,7 @@
     <timeline ref="timeline" :components="components" :selected="selected" v-on:select="selectById"></timeline>
     <add-component v-on:submit-new-component="createNewComponent"></add-component>
     <component-detail ref="componentDetail" :component="selectedComponent" v-on:change-attr="changeAttrOnSelected"></component-detail>
+    <write-options ref="writeOptions" v-on:submit-start-render="startRender"></write-options>
   </div>
 </template>
 
@@ -13,6 +14,7 @@
   import Timeline from '@/components/Timeline';
   import AddComponent from '@/components/AddComponent';
   import ComponentDetail from '@/components/ComponentDetail';
+  import WriteOptions from '@/components/WriteOptions';
   import { Communicator, Request, Receiver, cast_as, Component } from '@/lib';
   import { ipcRenderer } from 'electron'
 
@@ -22,7 +24,8 @@
       Screen,
       Timeline,
       AddComponent,
-      ComponentDetail
+      ComponentDetail,
+      WriteOptions,
     },
     data () {
       return {
@@ -76,7 +79,7 @@
       },
       fetchScreen (position, callback) {
         this.comm.send(
-          Request.Get(`/screen/${position}`),
+          Request.Get(`/screen/${position * 100}`),
           Receiver.receive(callback),
         );
       },
@@ -93,6 +96,14 @@
 
         this.$refs.timeline.$forceUpdate();
         this.$refs.componentDetail.$forceUpdate();
+      },
+      startRender (config) {
+        this.comm.send(
+          Request.Create("/write", config),
+          Receiver.receiveUntil(data => {
+            console.log(`rendering finished! ${data}`);
+          }, data => data === "")
+        );
       },
     },
     mounted () {
@@ -116,16 +127,7 @@
       });
 
       ipcRenderer.on("request-write-avi-file", (event, arg) => {
-        this.comm.send(
-          Request.Create("/write", {
-            uri: arg,
-            frames: 100,
-            fps: 10,
-          }),
-          Receiver.receiveUntil(data => {
-            console.log(data);
-          }, data => data === "")
-        );
+        this.$refs.writeOptions.active();
       });
     },
   }
