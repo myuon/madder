@@ -80,7 +80,6 @@ impl AviRenderer {
         let bus = pipeline.get_bus().unwrap();
         while let Some(msg) = bus.timed_pop(gst::CLOCK_TIME_NONE) {
             use gst::MessageView;
-            println!("{:?}", msg);
 
             match msg.view() {
                 MessageView::Eos(..) => break,
