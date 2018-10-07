@@ -10,7 +10,7 @@ use std::collections::HashMap;
 // - play video and/or sound
 // - has effects
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Component {
     #[serde(serialize_with = "SerTime::serialize_time")]
     #[serde(deserialize_with = "SerTime::deserialize_time")]

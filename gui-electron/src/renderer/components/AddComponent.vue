@@ -33,7 +33,7 @@
     data () {
       return {
         popupActive: false,
-        component: new Component(-1, 'Video', 0, 100, {}, []),
+        component: new Component(-1, 'Video', 0, 1000, {}, []),
         entity: "",
         component_type_options: [
           { text: '動画', value: 'Video' },

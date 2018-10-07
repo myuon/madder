@@ -1,11 +1,12 @@
 <template>
   <div ref="app" id="app">
-    <screen :fetchScreen="fetchScreen" :position="position"></screen>
-    <vs-slider @change="changePosition" v-model="position" max=1000 />
-    <timeline ref="timeline" :components="components" :selected="selected" v-on:select="selectById"></timeline>
-    <add-component v-on:submit-new-component="createNewComponent"></add-component>
-    <component-detail ref="componentDetail" :component="selectedComponent" v-on:change-attr="changeAttrOnSelected"></component-detail>
-    <write-options ref="writeOptions" v-on:submit-start-render="startRender"></write-options>
+    <screen :fetchScreen="fetchScreen" :position="position" />
+    <vs-slider @change="changePosition" v-model.number="position" type="number" :min=0 :max=100 />
+    {{ this.position }} sec
+    <timeline ref="timeline" :components="components" :selected="selected" v-on:select="selectById" />
+    <add-component v-on:submit-new-component="createNewComponent" />
+    <component-detail ref="componentDetail" :component="selectedComponent" v-on:change-attr="changeAttrOnSelected" />
+    <write-options ref="writeOptions" v-on:submit-start-render="startRender" />
   </div>
 </template>
 
@@ -79,7 +80,7 @@
       },
       fetchScreen (position, callback) {
         this.comm.send(
-          Request.Get(`/screen/${position * 100}`),
+          Request.Get(`/screen/${position * 1000}`),
           Receiver.receive(callback),
         );
       },

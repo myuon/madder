@@ -22,8 +22,8 @@
         return {
           position: 'absolute',
           top: `${index * 30}px`,
-          left: `${component.start_time}px`,
-          width: `${component.length}px`,
+          left: `${component.start_time / 100}px`,
+          width: `${component.length / 100}px`,
           display: 'block',
           backgroundColor:
             component.component_type === 'Sound'
