@@ -2,7 +2,6 @@ extern crate serde_json;
 extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
 use util::*;
-use std::rc::Rc;
 use std::collections::HashMap;
 
 // Component domain requires the following specifications:
@@ -49,7 +48,7 @@ pub trait HaveComponent {
     fn component(&self) -> &Component;
     fn component_mut(&mut self) -> &mut Component;
 
-    fn get_pixbuf(&self, gst::ClockTime) -> Option<Rc<gdk_pixbuf::Pixbuf>> {
+    fn get_pixbuf(&self, gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
         None
     }
 

@@ -1,7 +1,6 @@
 extern crate serde_json;
 extern crate gdk_pixbuf;
 extern crate gstreamer as gst;
-use std::rc::Rc;
 use spec::{Component, HaveComponent};
 use feat::*;
 
@@ -48,7 +47,7 @@ impl HaveComponent for ComponentExt {
         }
     }
 
-    fn get_pixbuf(&self, time: gst::ClockTime) -> Option<Rc<gdk_pixbuf::Pixbuf>> {
+    fn get_pixbuf(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
         use ComponentExt::*;
 
         match self {

@@ -4,7 +4,6 @@ extern crate gstreamer_video as gstv;
 extern crate gdk_pixbuf;
 extern crate glib;
 extern crate serde_json;
-use std::rc::Rc;
 use std::{thread, time};
 use gst::prelude::*;
 use spec::*;
@@ -80,8 +79,8 @@ impl HaveComponent for VideoComponent {
         &mut self.component
     }
 
-    fn get_pixbuf(&self, time: gst::ClockTime) -> Option<Rc<gdk_pixbuf::Pixbuf>> {
-        Some(Rc::new(self.peek_pixbuf(time).unwrap()))
+    fn get_pixbuf(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
+        self.peek_pixbuf(time).ok()
     }
 }
 

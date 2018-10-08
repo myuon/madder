@@ -1,9 +1,7 @@
 extern crate gstreamer as gst;
 extern crate gdk_pixbuf;
 extern crate serde_json;
-
 use spec::*;
-use std::rc::Rc;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ImageComponent {
@@ -14,7 +12,7 @@ pub struct ImageComponent {
 
     #[serde(skip)]
     #[serde(deserialize_with = "Option::None")]
-    data: Option<Rc<gdk_pixbuf::Pixbuf>>,
+    data: Option<gdk_pixbuf::Pixbuf>,
 }
 
 impl ImageComponent {
@@ -29,7 +27,7 @@ impl ImageComponent {
     }
 
     fn load(&mut self) {
-        self.data = Some(Rc::new(ImageComponent::create_data(&self.data_path)));
+        self.data = Some(ImageComponent::create_data(&self.data_path));
     }
 }
 
@@ -42,8 +40,8 @@ impl HaveComponent for ImageComponent {
         &mut self.component
     }
 
-    fn get_pixbuf(&self, _: gst::ClockTime) -> Option<Rc<gdk_pixbuf::Pixbuf>> {
-        Some(self.data.as_ref().unwrap().clone())
+    fn get_pixbuf(&self, _: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
+        self.data.clone()
     }
 }
 

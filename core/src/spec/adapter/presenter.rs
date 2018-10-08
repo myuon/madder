@@ -32,7 +32,7 @@ pub trait HavePresenter : HaveProject + HaveComponentRepository + HaveEffectRepo
                     let scale = (1.0,1.0);
                     let alpha = 255;
 
-                    &dest.as_ref().composite(
+                    &dest.composite(
                         &pixbuf, coordinate.0, coordinate.1,
                         cmp::min(dest.get_width(), self.project().size.0 - coordinate.0),
                         cmp::min(dest.get_height(), self.project().size.1 - coordinate.1),
