@@ -77,31 +77,38 @@ export class Request {
 }
 
 export class Communicator {
-	constructor(callback) {
+	constructor(onload, onerror) {
 		this.wsc = new WebSocket("ws://localhost:3000");
 		this.receiverQueue = [];
 		this.opened = false;
+		this.continued = false;
 
 		this.wsc.onopen = () => {
 			console.log("connected!");
 			this.opened = true;
 
-			if (callback != null) {
-				callback();
+			if (onload != null) {
+				onload();
 			}
 		};
 
 		this.wsc.onmessage = event => {
 			const r = this.receiverQueue.shift();
 
+			const response = JSON.parse(event.data);
+			if (response.status != 200) {
+				onerror(response.body);
+				return;
+			}
+
 			if (r.kind === "discard") {
 				return;
 			} else if (r.kind === "receive") {
-				r.callback(event.data);
+				r.callback(response.body);
 			} else if (r.kind === "receiveUntil") {
-				r.callback(event.data);
+				r.callback(response.body);
 
-				if (!r.isFinished(event.data)) {
+				if (!r.isFinished(data)) {
 					this.receiverQueue.push(r);
 				}
 			} else {

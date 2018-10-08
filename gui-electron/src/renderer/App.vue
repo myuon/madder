@@ -17,7 +17,7 @@
   import ComponentDetail from '@/components/ComponentDetail';
   import WriteOptions from '@/components/WriteOptions';
   import { Communicator, Request, Receiver, cast_as, Component } from '@/lib';
-  import { ipcRenderer } from 'electron'
+  import { ipcRenderer } from 'electron';
 
   export default {
     name: 'gui-madder',
@@ -32,6 +32,10 @@
       return {
         comm: new Communicator(() => {
           this.updateComponents();
+        }, (err) => {
+          console.log("=== Error ===");
+          console.log(err);
+          console.table(err);
         }),
         components: new Map(),
         selected: null,
