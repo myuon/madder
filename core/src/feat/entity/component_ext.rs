@@ -10,6 +10,7 @@ pub enum ComponentExt {
     Video(VideoComponent),
     Image(ImageComponent),
     Sound(SoundComponent),
+    Text(TextComponent),
 }
 
 impl ComponentExt {
@@ -21,6 +22,7 @@ impl ComponentExt {
             "Video" => Some(Video(VideoComponent::new(json))),
             "Image" => Some(Image(ImageComponent::new(json))),
             "Sound" => Some(Sound(SoundComponent::new(json))),
+            "Text" => Some(Text(TextComponent::new(json))),
             _ => unreachable!(),
         }
     }
@@ -34,6 +36,7 @@ impl HaveComponent for ComponentExt {
             Video(c) => c.component(),
             Image(c) => c.component(),
             Sound(c) => c.component(),
+            Text(c) => c.component(),
         }
     }
 
@@ -44,6 +47,7 @@ impl HaveComponent for ComponentExt {
             Video(c) => c.component_mut(),
             Image(c) => c.component_mut(),
             Sound(c) => c.component_mut(),
+            Text(c) => c.component_mut(),
         }
     }
 
@@ -54,6 +58,7 @@ impl HaveComponent for ComponentExt {
             Video(c) => c.get_pixbuf(time),
             Image(c) => c.get_pixbuf(time),
             Sound(c) => c.get_pixbuf(time),
+            Text(c) => c.get_pixbuf(time),
         }
     }
 
@@ -64,6 +69,7 @@ impl HaveComponent for ComponentExt {
             Video(c) => c.get_audio_elements(),
             Image(c) => c.get_audio_elements(),
             Sound(c) => c.get_audio_elements(),
+            Text(c) => c.get_audio_elements(),
         }
     }
 }

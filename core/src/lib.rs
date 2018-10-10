@@ -1,7 +1,11 @@
 extern crate serde;
 #[macro_use] extern crate serde_derive;
 #[macro_use] extern crate serde_json;
+extern crate gdk;
 extern crate gdk_pixbuf;
+extern crate cairo;
+extern crate pango;
+extern crate pangocairo;
 extern crate gstreamer as gst;
 extern crate gstreamer_video as gstv;
 #[macro_use] extern crate maplit;
@@ -103,5 +107,6 @@ impl Madder {
 
 pub fn init() {
     gst::init().unwrap();
+    gdk::init();
 }
 
