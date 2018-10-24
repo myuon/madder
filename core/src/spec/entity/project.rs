@@ -35,14 +35,19 @@ pub struct Project {
     #[serde(serialize_with = "SerTime::serialize_time")]
     #[serde(deserialize_with = "SerTime::deserialize_time")]
     pub length: gst::ClockTime,
+
+    #[serde(serialize_with = "SerTime::serialize_time")]
+    #[serde(deserialize_with = "SerTime::deserialize_time")]
+    pub position: gst::ClockTime,
 }
 
 impl Project {
-    pub fn new(width: i32, height: i32, length: gst::ClockTime) -> Project {
+    pub fn new(width: i32, height: i32, length: gst::ClockTime, position: gst::ClockTime) -> Project {
         Project {
             layers: vec![Layer::new()],
             size: (width, height),
-            length: length
+            length: length,
+            position: position,
         }
     }
 

@@ -56,5 +56,7 @@ pub trait HaveComponent {
         vec![]
     }
 
-    fn tick(&self) -> Option<gdk_pixbuf::Pixbuf> {}
+    fn tick(&self) -> Option<gdk_pixbuf::Pixbuf> {
+        None
+    }
 }

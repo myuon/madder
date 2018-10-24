@@ -96,7 +96,7 @@ impl HaveAviRenderer for Madder {
 impl Madder {
     pub fn new() -> Madder {
         Madder {
-            project: Project::new(640, 480, 100 * gst::MSECOND),
+            project: Project::new(640, 480, 100 * gst::MSECOND, 0 * gst::MSECOND),
             component_repo: ComponentRepositoryImpl::new(),
             effect_repo: EffectRepositoryImpl::new(),
             server: ApiServer::new(),

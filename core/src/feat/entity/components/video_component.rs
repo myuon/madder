@@ -102,8 +102,8 @@ impl HaveComponent for VideoComponent {
         );
 
         let appsink = pipeline.get_by_name("appsink").unwrap();
-        let pixbuf = appsink.get_property("last-pixbuf").map_err(|t| t.to_string())?;
-        pixbuf.get().ok_or("failed to fetch last-pixbuf".to_string())
+        let pixbuf = appsink.get_property("last-pixbuf").map_err(|t| t.to_string()).unwrap();
+        pixbuf.get()
     }
 }
 
