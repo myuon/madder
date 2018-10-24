@@ -3,6 +3,7 @@
     <screen :fetchScreen="fetchScreen" :position="position" />
     <vs-slider @change="changePosition" v-model.number="position" type="number" :min=0 :max=100 />
     {{ this.position }} sec
+    <vs-button @click="tickProject">next</vs-button>
     <timeline ref="timeline" :components="components" :selected="selected" v-on:select="selectById" />
     <add-component v-on:submit-new-component="createNewComponent" />
     <component-detail ref="componentDetail" :component="selectedComponent" v-on:change-attr="changeAttrOnSelected" />
@@ -108,6 +109,12 @@
           Receiver.receiveUntil(data => {
             console.log(`rendering finished! ${data}`);
           }, data => data === "")
+        );
+      },
+      tickProject () {
+        this.comm.send(
+          Request.Create('/project/tick', {}),
+          Receiver.discard(),
         );
       },
     },

@@ -303,6 +303,16 @@ paths:
           description: OK
           schema:
             type: string
+  
+  /project/tick:
+    post:
+      tags:
+      - project
+      responses:
+        200:
+          description: OK
+          schema:
+            type: string
 
 definitions:
   Component:

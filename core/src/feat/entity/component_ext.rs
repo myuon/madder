@@ -72,6 +72,17 @@ impl HaveComponent for ComponentExt {
             Text(c) => c.get_audio_elements(),
         }
     }
+
+    fn tick(&self) -> Option<gdk_pixbuf::Pixbuf> {
+        use ComponentExt::*;
+
+        match self {
+            Video(c) => c.tick(),
+            Image(c) => c.tick(),
+            Sound(c) => c.tick(),
+            Text(c) => c.tick(),
+        }
+    }
 }
 
 impl From<serde_json::Value> for ComponentExt {

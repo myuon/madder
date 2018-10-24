@@ -55,4 +55,6 @@ pub trait HaveComponent {
     fn get_audio_elements(&self) -> Vec<gst::Element> {
         vec![]
     }
+
+    fn tick(&self) -> Option<gdk_pixbuf::Pixbuf> {}
 }

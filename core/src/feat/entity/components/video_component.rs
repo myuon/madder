@@ -55,7 +55,12 @@ impl VideoComponent {
         // TODO: fix the dirty hack
         thread::sleep(time::Duration::from_secs(1));
 
-        sink.set_property("post-messages", &glib::Value::from(&false)).unwrap();
+        sink.set_property("post-messages", &glib::Value::from(&true)).unwrap();
+
+        let bus = pipeline.get_bus().unwrap();
+        bus.connect_message(|_, mes| {
+            println!("{:?}", mes);
+        });
 
         pipeline
     }
@@ -81,6 +86,24 @@ impl HaveComponent for VideoComponent {
 
     fn get_pixbuf(&self, time: gst::ClockTime) -> Option<gdk_pixbuf::Pixbuf> {
         self.peek_pixbuf(time).ok()
+    }
+
+    fn tick(&self) -> Option<gdk_pixbuf::Pixbuf> {
+        println!("tick!");
+        
+        let pipeline = self.pipeline.as_ref().unwrap();
+        pipeline.send_event(
+            gst::GstRc::new_step(
+                gst::format::Buffers(Some(1 as u64)),
+                30.0,
+                true,
+                false,
+            ).build()
+        );
+
+        let appsink = pipeline.get_by_name("appsink").unwrap();
+        let pixbuf = appsink.get_property("last-pixbuf").map_err(|t| t.to_string())?;
+        pixbuf.get().ok_or("failed to fetch last-pixbuf".to_string())
     }
 }
 

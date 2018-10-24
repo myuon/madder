@@ -98,6 +98,9 @@ impl ApiServer {
                 (Get, "mapper_get_project_yaml"),
                 (Update, "mapper_update_project_yaml"),
             ],
+            "/project/tick" => vec![
+                (Create, "mapper_create_project_tick"),
+            ],
             "/screen/:time" => vec![
                 (Get, "mapper_get_screen"),
             ],
@@ -142,6 +145,7 @@ pub trait HaveApiServer : HavePresenter + ProjectLoader {
             "mapper_create_component_effect" => self.mapper_create_component_effect(ParamHolder(matcher.params), entity),
             "mapper_insert_component_effect" => self.mapper_insert_component_effect(ParamHolder(matcher.params), entity),
             "mapper_create_effet_intermed" => self.mapper_create_effect_intermed(ParamHolder(matcher.params), entity),
+            "mapper_create_project_tick" => self.mapper_create_project_tick(ParamHolder(matcher.params), entity),
             _ => unreachable!("{}", path),
         }
     }
@@ -256,6 +260,18 @@ pub trait HaveApiServer : HavePresenter + ProjectLoader {
     fn mapper_create_effect_intermed(&mut self, params: ParamHolder, entity: serde_json::Value) -> Result<(), String> {
         let effect_id = params.find("effect_id").unwrap();
         self.effect_repo_mut().create_intermed(effect_id, serde_json::from_value(entity).unwrap());
+
+        Ok(())
+    }
+
+    fn mapper_create_project_tick(&mut self, _params: ParamHolder, _entity: serde_json::Value) -> Result<(), String> {
+        for layer in self.project().list_layers().iter().rev() {
+            for component in layer.list().iter().map(|component_id| {
+                self.component_repo().get(component_id)
+            }) {
+                component.tick();
+            }
+        }
 
         Ok(())
     }
