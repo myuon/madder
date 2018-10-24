@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+import "google/protobuf/empty.proto";
+
+package component;
+
+message Component {
+  enum ComponentType {
+    Video = 0;
+    Image = 1;
+    Sound = 2;
+    Text = 3;
+  }
+
+  ComponentType component_type = 1;
+  uint64 start_time = 2;
+  uint64 length = 3;
+  google.protobuf.Any attributes = 4;
+  repeated int32 effect = 5;
+}
+
+service ComponentService {
+  rpc ListComponent (google.protobuf.Empty) returns (ListComponentOut) {}
+  rpc CreateComponent (Component) returns (google.protobuf.Empty) {}
+}
+
+message ListComponentOut {
+  repeated Component components = 1;
+}

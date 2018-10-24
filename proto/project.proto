@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+package project;
+
+message Project {
+  int32 width = 1;
+  int32 height = 2;
+  uint64 length = 3;
+  uint64 position = 4;
+}
+
+service ProjectService {
+  rpc GetProject (google.protobuf.Empty) returns (Project) {}
+  rpc GetProjectYaml (google.protobuf.Empty) returns (Yaml) {}
+  rpc PutProjectYaml (Yaml) returns (google.protobuf.Empty) {}
+  rpc Seek (SeekOption) returns (google.protobuf.Empty) {}
+  rpc GetScreen (google.protobuf.Empty) returns (Screen) {}
+}
+
+message Yaml {
+  string repr = 1;
+}
+
+message SeekOption {
+  uint64 position = 1;
+}
+
+message Screen {
+  bytes image = 1;
+}

@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+package effect;
+
+enum Transition {
+  Linear = 0;
+  Ease = 1;
+  EaseIn = 2;
+  EaseOut = 3;
+  EaseInOut = 4;
+}
+
+message EffectPoint {
+  Transition transition = 1;
+  double position = 2;
+  double value = 3;
+}
+
+message Effect {
+  enum EffectType {
+    CoordinateX = 0;
+    CoordinateY = 1;
+    Rotate = 2;
+    ScaleX = 3;
+    ScaleY = 4;
+    Alpha = 5;
+  }
+  
+  EffectType effect_type = 1;
+  Transition transition = 2;
+  double start_value = 3;
+  double end_value = 4;
+  repeated EffectPoint intervals = 5;
+}
+
+service EffectService {
+  rpc ListEffect (google.protobuf.Empty) returns (ListEffectOut) {}
+  rpc GetEffect (GetEffectIn) returns (Effect) {}
+  rpc CreateIntermed (CreateIntermedIn) returns (google.protobuf.Empty) {}
+  rpc GetValue (GetValueIn) returns (GetValueOut) {}
+}
+
+message ListEffectOut {
+  repeated Effect list = 1;
+}
+
+message GetEffectIn {
+  uint32 index = 1;
+}
+
+message CreateIntermedIn {
+  uint32 index = 1;
+  EffectPoint point = 2;
+}
+
+message GetValueIn {
+  uint32 index = 1;
+  uint64 time = 2;
+}
+
+message GetValueOut {
+  double value = 1;
+}
