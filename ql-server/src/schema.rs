@@ -40,7 +40,7 @@ pub struct QueryRoot;
 graphql_object!(QueryRoot: Context |&self| {
     field screenSize(&executor) -> FieldResult<ScreenSize> {
         let context = executor.context();
-        let madder = context.0.read().unwrap();
+        let madder = context.0.read()?;
 
         Ok(madder.size.clone())
     }
@@ -50,6 +50,13 @@ pub struct MutationRoot;
 
 graphql_object!(MutationRoot: Context |&self| {
     field setScreenSize(&executor, width: i32, height: i32) -> FieldResult<ScreenSize> {
+        let context = executor.context();
+        let mut madder = context.0.write()?;
+        madder.size = ScreenSize {
+            width: width,
+            height: height,
+        };
+
         Ok(ScreenSize {
             width: width,
             height: height,
