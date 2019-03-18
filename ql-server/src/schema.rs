@@ -1,7 +1,7 @@
 use std::sync::RwLock;
 use juniper::{FieldResult, RootNode};
 
-#[derive(GraphQLObject)]
+#[derive(Clone, GraphQLObject)]
 #[graphql(description = "Screen size")]
 pub struct ScreenSize {
     width: i32,
@@ -39,10 +39,10 @@ pub struct QueryRoot;
 
 graphql_object!(QueryRoot: Context |&self| {
     field screenSize(&executor) -> FieldResult<ScreenSize> {
-        Ok(ScreenSize {
-            width: 1280,
-            height: 720,
-        })
+        let context = executor.context();
+        let madder = context.0.read().unwrap();
+
+        Ok(madder.size.clone())
     }
 });
 
