@@ -19,9 +19,7 @@ use juniper::http::GraphQLRequest;
 
 mod schema;
 
-use schema::create_schema;
-use schema::Schema;
-
+use schema::{Schema, create_schema};
 
 struct AppState {
     executor: Addr<GraphQLExecutor>,
@@ -36,11 +34,15 @@ impl Message for GraphQLData {
 
 pub struct GraphQLExecutor {
     schema: std::sync::Arc<Schema>,
+    context: schema::Context,
 }
 
 impl GraphQLExecutor {
-    fn new(schema: std::sync::Arc<Schema>) -> GraphQLExecutor {
-        GraphQLExecutor { schema: schema }
+    fn new(schema: std::sync::Arc<Schema>, context: schema::Context) -> GraphQLExecutor {
+        GraphQLExecutor {
+            schema: schema,
+            context: context,
+        }
     }
 }
 
@@ -52,7 +54,7 @@ impl Handler<GraphQLData> for GraphQLExecutor {
     type Result = Result<String, Error>;
 
     fn handle(&mut self, msg: GraphQLData, _: &mut Self::Context) -> Self::Result {
-        let res = msg.0.execute(&self.schema, &());
+        let res = msg.0.execute(&self.schema, &self.context);
         let res_text = serde_json::to_string(&res)?;
         Ok(res_text)
     }
@@ -86,23 +88,21 @@ fn main() {
     let sys = actix::System::new("juniper-example");
 
     let schema = std::sync::Arc::new(create_schema());
-    let addr = SyncArbiter::start(3, move || GraphQLExecutor::new(schema.clone()));
+    let addr = SyncArbiter::start(3, move || GraphQLExecutor::new(schema.clone(), schema::Context::new()));
 
-    // Start http server
     server::new(move || {
-        App::with_state(AppState{executor: addr.clone()})
-            // enable logger
-            .middleware(middleware::Logger::default())
-            .resource("/graphiql", |r| r.method(http::Method::GET).h(graphiql))
-            .configure(|app| {
-                Cors::for_app(app)
-                    .supports_credentials()
-                    .allowed_origin("http://localhost:9029")
-                    .allowed_headers(vec![ http::header::AUTHORIZATION, http::header::ACCEPT, http::header::ORIGIN, http::header::CONTENT_TYPE ])
-                    .allowed_methods(vec![ "GET", "POST", "OPTIONS" ])
-                    .resource("/graphql", |r| r.method(http::Method::POST).with(graphql))
-                    .register()
-            })
+        App::with_state(AppState{ executor: addr.clone() })
+        .middleware(middleware::Logger::default())
+        .resource("/graphiql", |r| r.method(http::Method::GET).h(graphiql))
+        .configure(|app| {
+            Cors::for_app(app)
+                .supports_credentials()
+                .allowed_origin("http://localhost:9029")
+                .allowed_headers(vec![ http::header::AUTHORIZATION, http::header::ACCEPT, http::header::ORIGIN, http::header::CONTENT_TYPE ])
+                .allowed_methods(vec![ "GET", "POST", "OPTIONS" ])
+                .resource("/graphql", |r| r.method(http::Method::POST).with(graphql))
+                .register()
+        })
     }).bind("127.0.0.1:9029")
         .unwrap()
         .start();

@@ -1,3 +1,4 @@
+use std::sync::RwLock;
 use juniper::{FieldResult, RootNode};
 
 #[derive(GraphQLObject)]
@@ -13,9 +14,30 @@ pub struct Madder {
     size: ScreenSize,
 }
 
+impl Madder {
+    pub fn new() -> Madder {
+        Madder {
+            size: ScreenSize {
+                width: 1280,
+                height: 720,
+            }
+        }
+    }
+}
+
+pub struct Context(RwLock<Madder>);
+
+impl juniper::Context for Context {}
+
+impl Context {
+    pub fn new() -> Context {
+        Context(RwLock::new(Madder::new()))
+    }
+}
+
 pub struct QueryRoot;
 
-graphql_object!(QueryRoot: () |&self| {
+graphql_object!(QueryRoot: Context |&self| {
     field screenSize(&executor) -> FieldResult<ScreenSize> {
         Ok(ScreenSize {
             width: 1280,
@@ -26,8 +48,8 @@ graphql_object!(QueryRoot: () |&self| {
 
 pub struct MutationRoot;
 
-graphql_object!(MutationRoot: () |&self| {
-    field setScreenSize(width: i32, height: i32) -> FieldResult<ScreenSize> {
+graphql_object!(MutationRoot: Context |&self| {
+    field setScreenSize(&executor, width: i32, height: i32) -> FieldResult<ScreenSize> {
         Ok(ScreenSize {
             width: width,
             height: height,

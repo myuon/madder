@@ -2,18 +2,16 @@ extern crate ql_server;
 
 use std::iter::FromIterator;
 use juniper::{Variables};
-use ql_server::schema::{Schema, QueryRoot, MutationRoot};
+use ql_server::schema::{Schema, QueryRoot, MutationRoot, Context};
 
 #[test]
 fn default_screen_size_should_be_1280x720() {
-    let context = ();
-
     let (res, _errors) = juniper::execute(
         "query { screenSize { width height } }",
         None,
         &Schema::new(QueryRoot, MutationRoot),
         &Variables::new(),
-        &context,
+        &Context::new(),
     ).unwrap();
 
     assert_eq!(
@@ -26,6 +24,7 @@ fn default_screen_size_should_be_1280x720() {
                 ])))
             ])
         )
-    )
+    );
+    assert_eq!(_errors.len(), 0);
 }
 
