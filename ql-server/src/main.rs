@@ -1,12 +1,7 @@
-//! Actix web juniper example
-//!
-//! A simple example integrating juniper in actix-web
 extern crate serde;
 extern crate serde_json;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate juniper;
+#[macro_use] extern crate serde_derive;
+#[macro_use] extern crate juniper;
 extern crate actix;
 extern crate actix_web;
 extern crate env_logger;
@@ -26,6 +21,7 @@ mod schema;
 
 use schema::create_schema;
 use schema::Schema;
+
 
 struct AppState {
     executor: Addr<GraphQLExecutor>,

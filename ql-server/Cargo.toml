@@ -1,5 +1,5 @@
 [package]
-name = "ql-server"
+name = "ql_server"
 version = "0.1.0"
 authors = ["myuon <ioi.joi.koi.loi@gmail.com>"]
 edition = "2018"

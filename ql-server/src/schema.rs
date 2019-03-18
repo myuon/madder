@@ -1,16 +1,15 @@
-use juniper::FieldResult;
-use juniper::RootNode;
+use juniper::{FieldResult, RootNode};
 
 #[derive(GraphQLObject)]
 #[graphql(description = "Screen size")]
-struct ScreenSize {
+pub struct ScreenSize {
     width: i32,
     height: i32,
 }
 
 #[derive(GraphQLObject)]
 #[graphql(description = "Madder object")]
-struct Madder {
+pub struct Madder {
     size: ScreenSize,
 }
 
