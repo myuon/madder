@@ -1,2 +1,2 @@
-mod video;
+pub mod video;
 
