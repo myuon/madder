@@ -1,7 +1,8 @@
-import Vue from 'vue'
-import Vuesax from 'vuesax'
+import Vue from 'vue';
+import Vuesax from 'vuesax';
 
-import 'vuesax/dist/vuesax.css'
-import 'material-icons/iconfont/material-icons.css'
+import 'vuesax/dist/vuesax.css';
+import 'material-icons/iconfont/material-icons.css';
 
-Vue.use(Vuesax)
+Vue.use(Vuesax);
+
