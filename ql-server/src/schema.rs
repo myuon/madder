@@ -1,8 +1,9 @@
 extern crate gstreamer as gst;
 
 use std::sync::RwLock;
-use juniper::{FieldResult, RootNode, GraphQLType, Registry};
-use juniper::meta::MetaType;
+use std::collections::HashMap;
+use juniper::{FieldResult, RootNode};
+use crate::util::ClockTime;
 
 #[derive(Clone, GraphQLObject)]
 #[graphql(description = "Screen size")]
@@ -11,41 +12,16 @@ pub struct ScreenSize {
     height: i32,
 }
 
-pub struct ClockTime(gst::ClockTime);
-
-impl<S> GraphQLType<S> for ClockTime where
-    S: juniper::ScalarValue,
-    for<'b> &'b S: juniper::ScalarRefValue<'b>
-{
-    type Context = ();
-    type TypeInfo = ();
-
-    fn name(_: &()) -> Option<&'static str> {
-        Some("ClockTime")
-    }
-
-    fn meta<'r>(_: &(), registry: &mut Registry<'r, S>) -> MetaType<'r, S>
-        where S: 'r
-    {
-        let fields = &[
-            registry.field::<&i32>("0", &())
-        ];
-        let builder = registry.build_object_type::<Project>(&(), fields);
-        let builder = builder.description("ClockTime");
-        builder.into_meta()
-    }
-}
-
-#[derive(GraphQLObject)]
+#[derive(Clone, GraphQLObject)]
 pub struct Project {
     size: ScreenSize,
     length: ClockTime,
 }
 
-#[derive(GraphQLObject)]
-#[graphql(description = "Madder object")]
+#[derive(Clone)]
 pub struct Madder {
     project: Project,
+    gst_elements: HashMap<String, gst::Element>,
 }
 
 impl Madder {
@@ -56,8 +32,9 @@ impl Madder {
                     width: 1280,
                     height: 720,
                 },
-                length: ClockTime(1 * gst::SECOND),
-            }
+                length: ClockTime::new(1 * gst::SECOND),
+            },
+            gst_elements: HashMap::new(),
         }
     }
 }

@@ -1,11 +1,12 @@
 extern crate serde;
 extern crate serde_json;
 #[macro_use] extern crate serde_derive;
-#[macro_use] extern crate juniper;
+extern crate juniper;
 extern crate actix;
 extern crate actix_web;
 extern crate env_logger;
 extern crate futures;
+extern crate ql_server;
 
 use actix::prelude::*;
 use actix_web::{
@@ -17,9 +18,7 @@ use futures::future::Future;
 use juniper::http::graphiql::graphiql_source;
 use juniper::http::GraphQLRequest;
 
-mod schema;
-
-use schema::{Schema, create_schema};
+use ql_server::schema::{self, Schema, create_schema};
 
 struct AppState {
     executor: Addr<GraphQLExecutor>,
