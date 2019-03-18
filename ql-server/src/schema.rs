@@ -1,5 +1,8 @@
+extern crate gstreamer as gst;
+
 use std::sync::RwLock;
-use juniper::{FieldResult, RootNode};
+use juniper::{FieldResult, RootNode, GraphQLType, Registry};
+use juniper::meta::MetaType;
 
 #[derive(Clone, GraphQLObject)]
 #[graphql(description = "Screen size")]
@@ -8,18 +11,52 @@ pub struct ScreenSize {
     height: i32,
 }
 
+pub struct ClockTime(gst::ClockTime);
+
+impl<S> GraphQLType<S> for ClockTime where
+    S: juniper::ScalarValue,
+    for<'b> &'b S: juniper::ScalarRefValue<'b>
+{
+    type Context = ();
+    type TypeInfo = ();
+
+    fn name(_: &()) -> Option<&'static str> {
+        Some("ClockTime")
+    }
+
+    fn meta<'r>(_: &(), registry: &mut Registry<'r, S>) -> MetaType<'r, S>
+        where S: 'r
+    {
+        let fields = &[
+            registry.field::<&i32>("0", &())
+        ];
+        let builder = registry.build_object_type::<Project>(&(), fields);
+        let builder = builder.description("ClockTime");
+        builder.into_meta()
+    }
+}
+
+#[derive(GraphQLObject)]
+pub struct Project {
+    size: ScreenSize,
+    length: ClockTime,
+}
+
 #[derive(GraphQLObject)]
 #[graphql(description = "Madder object")]
 pub struct Madder {
-    size: ScreenSize,
+    project: Project,
 }
 
 impl Madder {
     pub fn new() -> Madder {
         Madder {
-            size: ScreenSize {
-                width: 1280,
-                height: 720,
+            project: Project {
+                size: ScreenSize {
+                    width: 1280,
+                    height: 720,
+                },
+                length: ClockTime(1 * gst::SECOND),
             }
         }
     }
@@ -42,7 +79,7 @@ graphql_object!(QueryRoot: Context |&self| {
         let context = executor.context();
         let madder = context.0.read()?;
 
-        Ok(madder.size.clone())
+        Ok(madder.project.size.clone())
     }
 });
 
@@ -52,7 +89,7 @@ graphql_object!(MutationRoot: Context |&self| {
     field setScreenSize(&executor, width: i32, height: i32) -> FieldResult<ScreenSize> {
         let context = executor.context();
         let mut madder = context.0.write()?;
-        madder.size = ScreenSize {
+        madder.project.size = ScreenSize {
             width: width,
             height: height,
         };
