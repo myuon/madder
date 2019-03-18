@@ -16,6 +16,7 @@ pub struct ScreenSize {
 pub struct Project {
     size: ScreenSize,
     length: ClockTime,
+    position: ClockTime,
 }
 
 #[derive(Clone)]
@@ -33,6 +34,7 @@ impl Madder {
                     height: 720,
                 },
                 length: ClockTime::new(1 * gst::SECOND),
+                position: ClockTime::new(0 * gst::SECOND),
             },
             gst_elements: HashMap::new(),
         }
