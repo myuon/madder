@@ -1,8 +1,8 @@
 extern crate ql_server;
 
+use juniper::Variables;
+use ql_server::schema::{Context, MutationRoot, QueryRoot, Schema};
 use std::iter::FromIterator;
-use juniper::{Variables};
-use ql_server::schema::{Schema, QueryRoot, MutationRoot, Context};
 
 #[test]
 fn default_screen_size_should_be_1280x720() {
@@ -12,18 +12,18 @@ fn default_screen_size_should_be_1280x720() {
         &Schema::new(QueryRoot, MutationRoot),
         &Variables::new(),
         &Context::new(),
-    ).unwrap();
+    )
+    .unwrap();
 
     assert_eq!(
         res,
-        juniper::Value::object(
-            juniper::Object::from_iter(vec![
-                ("screenSize", juniper::Value::object(juniper::Object::from_iter(vec![
-                    ("width", juniper::Value::scalar(1280)),
-                    ("height", juniper::Value::scalar(720)),
-                ])))
-            ])
-        )
+        juniper::Value::object(juniper::Object::from_iter(vec![(
+            "screenSize",
+            juniper::Value::object(juniper::Object::from_iter(vec![
+                ("width", juniper::Value::scalar(1280)),
+                ("height", juniper::Value::scalar(720)),
+            ]))
+        )]))
     );
     assert_eq!(_errors.len(), 0);
 }
@@ -34,26 +34,28 @@ fn can_update_screen_size() {
     let context = Context::new();
 
     let (res, _errors) = juniper::execute(
-        &format!("mutation {{ setScreenSize(width: {}, height: {}) {{ width height }} }}", new_size.0, new_size.1),
+        &format!(
+            "mutation {{ setScreenSize(width: {}, height: {}) {{ width height }} }}",
+            new_size.0, new_size.1
+        ),
         None,
         &Schema::new(QueryRoot, MutationRoot),
         &Variables::new(),
         &context,
-    ).unwrap();
+    )
+    .unwrap();
 
     assert_eq!(
         res,
-        juniper::Value::object(
-            juniper::Object::from_iter(vec![
-                ("setScreenSize", juniper::Value::object(juniper::Object::from_iter(vec![
-                    ("width", juniper::Value::scalar(new_size.0)),
-                    ("height", juniper::Value::scalar(new_size.1)),
-                ])))
-            ])
-        )
+        juniper::Value::object(juniper::Object::from_iter(vec![(
+            "setScreenSize",
+            juniper::Value::object(juniper::Object::from_iter(vec![
+                ("width", juniper::Value::scalar(new_size.0)),
+                ("height", juniper::Value::scalar(new_size.1)),
+            ]))
+        )]))
     );
     assert_eq!(_errors.len(), 0);
-
 
     let (res, _errors) = juniper::execute(
         "query { screenSize { width height } }",
@@ -61,19 +63,18 @@ fn can_update_screen_size() {
         &Schema::new(QueryRoot, MutationRoot),
         &Variables::new(),
         &context,
-    ).unwrap();
+    )
+    .unwrap();
 
     assert_eq!(
         res,
-        juniper::Value::object(
-            juniper::Object::from_iter(vec![
-                ("screenSize", juniper::Value::object(juniper::Object::from_iter(vec![
-                    ("width", juniper::Value::scalar(new_size.0)),
-                    ("height", juniper::Value::scalar(new_size.1)),
-                ])))
-            ])
-        )
+        juniper::Value::object(juniper::Object::from_iter(vec![(
+            "screenSize",
+            juniper::Value::object(juniper::Object::from_iter(vec![
+                ("width", juniper::Value::scalar(new_size.0)),
+                ("height", juniper::Value::scalar(new_size.1)),
+            ]))
+        )]))
     );
     assert_eq!(_errors.len(), 0);
 }
-

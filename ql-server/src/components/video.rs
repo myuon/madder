@@ -1,5 +1,5 @@
-use gst::prelude::*;
 use crate::util::ClockTime;
+use gst::prelude::*;
 
 #[derive(Clone, GraphQLObject)]
 pub struct VideoComponent {
@@ -17,10 +17,14 @@ pub struct ComponentRecord {
 impl VideoComponent {
     fn create_pipeline(uri: &str) -> Result<gst::Element, failure::Error> {
         let pipeline = gst::Pipeline::new(None);
-        let src = gst::ElementFactory::make("filesrc", None).ok_or(failure::err_msg("make filesrc"))?;
-        let decodebin = gst::ElementFactory::make("decodebin", None).ok_or(failure::err_msg("make decodebin"))?;
-        let videoconvert = gst::ElementFactory::make("videoconvert", None).ok_or(failure::err_msg("make videoconvert"))?;
-        let appsink = gst::ElementFactory::make("appsink", None).ok_or(failure::err_msg("make appsink"))?;
+        let src =
+            gst::ElementFactory::make("filesrc", None).ok_or(failure::err_msg("make filesrc"))?;
+        let decodebin = gst::ElementFactory::make("decodebin", None)
+            .ok_or(failure::err_msg("make decodebin"))?;
+        let videoconvert = gst::ElementFactory::make("videoconvert", None)
+            .ok_or(failure::err_msg("make videoconvert"))?;
+        let appsink =
+            gst::ElementFactory::make("appsink", None).ok_or(failure::err_msg("make appsink"))?;
         src.set_property("location", &gst::Value::from(uri))?;
 
         pipeline.add_many(&[&src, &decodebin, &videoconvert, &appsink])?;
@@ -40,4 +44,3 @@ impl VideoComponent {
         }
     }
 }
-

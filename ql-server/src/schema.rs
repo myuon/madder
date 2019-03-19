@@ -1,10 +1,10 @@
 extern crate gstreamer as gst;
 
-use std::sync::RwLock;
-use std::collections::HashMap;
-use juniper::{FieldResult, RootNode};
 use crate::components::video;
 use crate::util::ClockTime;
+use juniper::{FieldResult, RootNode};
+use std::collections::HashMap;
+use std::sync::RwLock;
 
 #[derive(Clone, GraphQLObject)]
 #[graphql(description = "Screen size")]
@@ -45,7 +45,8 @@ impl Madder {
 
     pub fn add_video_component(&mut self, start_time: ClockTime, uri: &str) {
         let loaded = video::VideoComponent::load(start_time, uri);
-        self.gst_elements.insert(loaded.component.id.clone(), loaded.gst_element);
+        self.gst_elements
+            .insert(loaded.component.id.clone(), loaded.gst_element);
         self.project.components.push(loaded.component);
     }
 }
@@ -94,4 +95,3 @@ pub type Schema = RootNode<'static, QueryRoot, MutationRoot>;
 pub fn create_schema() -> Schema {
     Schema::new(QueryRoot {}, MutationRoot {})
 }
-

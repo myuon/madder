@@ -1,5 +1,5 @@
-use juniper::{Registry, GraphQLType};
 use juniper::meta::MetaType;
+use juniper::{GraphQLType, Registry};
 
 #[derive(Clone)]
 pub struct ClockTime(gst::ClockTime);
@@ -10,9 +10,10 @@ impl ClockTime {
     }
 }
 
-impl<S> GraphQLType<S> for ClockTime where
+impl<S> GraphQLType<S> for ClockTime
+where
     S: juniper::ScalarValue,
-    for<'b> &'b S: juniper::ScalarRefValue<'b>
+    for<'b> &'b S: juniper::ScalarRefValue<'b>,
 {
     type Context = ();
     type TypeInfo = ();
@@ -22,14 +23,12 @@ impl<S> GraphQLType<S> for ClockTime where
     }
 
     fn meta<'r>(_: &(), registry: &mut Registry<'r, S>) -> MetaType<'r, S>
-        where S: 'r
+    where
+        S: 'r,
     {
-        let fields = &[
-            registry.field::<&i32>("0", &())
-        ];
+        let fields = &[registry.field::<&i32>("0", &())];
         let builder = registry.build_object_type::<ClockTime>(&(), fields);
         let builder = builder.description("ClockTime");
         builder.into_meta()
     }
 }
-
