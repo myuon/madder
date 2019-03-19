@@ -1,0 +1,44 @@
+version: 2
+
+jobs:
+  build:
+    docker:
+      - image: circleci/rust:1.33
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: build
+          working_directory: ql-server
+          command: |
+            sudo apt install -y libgstreamer1.0-dev libgstreamer-plugins-bad1.0-dev cmake curl
+            cargo build
+      - run:
+          name: lint
+          working_directory: ql-server
+          command: |
+            rustup component add clippy
+            cargo clippy
+      - run:
+          name: test
+          working_directory: ql-server
+          command: |
+            cargo test
+      - run:
+          name: coverage
+          working_directory: ql-server
+          command: |
+            cargo install cargo-kcov
+
+            sudo apt install cmake g++ pkg-config jq
+            sudo apt install libcurl4-openssl-dev libelf-dev libdw-dev binutils-dev libiberty-dev
+            cargo kcov --print-install-kcov-sh | sh
+
+            for file in target/debug/ql_server*[^\.d]; do
+              mkdir -p "target/cov/$(basename $file)";
+              cargo kcov -- --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file";
+            done
+
+            bash <(curl -s https://codecov.io/bash)
+            echo "Uploaded code coverage"
+
