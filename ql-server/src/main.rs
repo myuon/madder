@@ -40,8 +40,8 @@ pub struct GraphQLExecutor {
 impl GraphQLExecutor {
     fn new(schema: std::sync::Arc<Schema>, context: schema::Context) -> GraphQLExecutor {
         GraphQLExecutor {
-            schema: schema,
-            context: context,
+            schema,
+            context,
         }
     }
 }

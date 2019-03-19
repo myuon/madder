@@ -35,8 +35,8 @@ impl Madder {
                     width: 1280,
                     height: 720,
                 },
-                length: ClockTime::new(1 * gst::SECOND),
-                position: ClockTime::new(0 * gst::SECOND),
+                length: ClockTime::new(gst::ClockTime::from_seconds(1)),
+                position: ClockTime::new(gst::ClockTime::from_seconds(0)),
                 components: vec![],
             },
             gst_elements: HashMap::new(),
@@ -51,6 +51,12 @@ impl Madder {
     }
 }
 
+impl Default for Madder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct Context(RwLock<Madder>);
 
 impl juniper::Context for Context {}
@@ -58,6 +64,12 @@ impl juniper::Context for Context {}
 impl Context {
     pub fn new() -> Context {
         Context(RwLock::new(Madder::new()))
+    }
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

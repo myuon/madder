@@ -36,7 +36,7 @@ impl VideoComponent {
         ComponentRecord {
             component: VideoComponent {
                 id: "<uuid>".to_string(),
-                start_time: start_time,
+                start_time,
                 length: ClockTime::new(10 * gst::MSECOND),
                 uri: uri.to_string(),
             },
