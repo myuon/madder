@@ -43,11 +43,17 @@ impl Madder {
         }
     }
 
-    pub fn add_video_component(&mut self, start_time: ClockTime, uri: &str) {
+    pub fn add_video_component(
+        &mut self,
+        start_time: ClockTime,
+        uri: &str,
+    ) -> video::VideoComponent {
         let loaded = video::VideoComponent::load(start_time, uri);
         self.gst_elements
             .insert(loaded.component.id.clone(), loaded.gst_element);
-        self.project.components.push(loaded.component);
+        self.project.components.push(loaded.component.clone());
+
+        loaded.component
     }
 }
 
@@ -99,6 +105,14 @@ graphql_object!(MutationRoot: Context |&self| {
             width: width,
             height: height,
         })
+    }
+
+    field newComponent(&executor, start_time: i32, uri: String) -> FieldResult<video::VideoComponent> {
+        let context = executor.context();
+        let mut madder = context.0.write()?;
+        let video_component = madder.add_video_component(ClockTime::new(gst::ClockTime::from_mseconds(start_time as u64)), &uri);
+
+        Ok(video_component)
     }
 });
 
