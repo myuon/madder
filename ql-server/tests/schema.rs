@@ -1,13 +1,14 @@
 extern crate ql_server;
+#[macro_use]
+extern crate juniper;
 
 use juniper::Variables;
 use ql_server::schema::{Context, MutationRoot, QueryRoot, Schema};
-use std::iter::FromIterator;
 
 #[test]
 fn default_screen_size_should_be_1280x720() {
     let (res, _errors) = juniper::execute(
-        "query { screenSize { width height } }",
+        "query { project { size { width height } } }",
         None,
         &Schema::new(QueryRoot, MutationRoot),
         &Variables::new(),
@@ -17,13 +18,14 @@ fn default_screen_size_should_be_1280x720() {
 
     assert_eq!(
         res,
-        juniper::Value::object(juniper::Object::from_iter(vec![(
-            "screenSize",
-            juniper::Value::object(juniper::Object::from_iter(vec![
-                ("width", juniper::Value::scalar(1280)),
-                ("height", juniper::Value::scalar(720)),
-            ]))
-        )]))
+        graphql_value!({
+            "project": {
+                "size": {
+                    "width": 1280,
+                    "height": 720,
+                }
+            }
+        })
     );
     assert_eq!(_errors.len(), 0);
 }
@@ -45,20 +47,21 @@ fn can_update_screen_size() {
     )
     .unwrap();
 
+    let w = new_size.0;
+    let h = new_size.1;
     assert_eq!(
         res,
-        juniper::Value::object(juniper::Object::from_iter(vec![(
-            "setScreenSize",
-            juniper::Value::object(juniper::Object::from_iter(vec![
-                ("width", juniper::Value::scalar(new_size.0)),
-                ("height", juniper::Value::scalar(new_size.1)),
-            ]))
-        )]))
+        graphql_value!({
+            "setScreenSize": {
+                "width": w,
+                "height": h,
+            },
+        })
     );
     assert_eq!(_errors.len(), 0);
 
     let (res, _errors) = juniper::execute(
-        "query { screenSize { width height } }",
+        "query { project { size { width height } } }",
         None,
         &Schema::new(QueryRoot, MutationRoot),
         &Variables::new(),
@@ -68,13 +71,14 @@ fn can_update_screen_size() {
 
     assert_eq!(
         res,
-        juniper::Value::object(juniper::Object::from_iter(vec![(
-            "screenSize",
-            juniper::Value::object(juniper::Object::from_iter(vec![
-                ("width", juniper::Value::scalar(new_size.0)),
-                ("height", juniper::Value::scalar(new_size.1)),
-            ]))
-        )]))
+        graphql_value!({
+            "project": {
+                "size": {
+                    "width": w,
+                    "height": h,
+                }
+            }
+        })
     );
     assert_eq!(_errors.len(), 0);
 }

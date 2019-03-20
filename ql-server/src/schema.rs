@@ -76,11 +76,11 @@ impl Default for Context {
 pub struct QueryRoot;
 
 graphql_object!(QueryRoot: Context |&self| {
-    field screenSize(&executor) -> FieldResult<ScreenSize> {
+    field project(&executor) -> FieldResult<Project> {
         let context = executor.context();
         let madder = context.0.read()?;
 
-        Ok(madder.project.size.clone())
+        Ok(madder.project.clone())
     }
 });
 
