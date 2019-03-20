@@ -107,10 +107,10 @@ graphql_object!(MutationRoot: Context |&self| {
         })
     }
 
-    field newComponent(&executor, start_time: i32, uri: String) -> FieldResult<video::VideoComponent> {
+    field newComponent(&executor, startTime: i32, uri: String) -> FieldResult<video::VideoComponent> {
         let context = executor.context();
         let mut madder = context.0.write()?;
-        let video_component = madder.add_video_component(ClockTime::new(gst::ClockTime::from_mseconds(start_time as u64)), &uri);
+        let video_component = madder.add_video_component(ClockTime::new(gst::ClockTime::from_mseconds(startTime as u64)), &uri);
 
         Ok(video_component)
     }
