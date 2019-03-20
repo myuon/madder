@@ -24,21 +24,3 @@ jobs:
           working_directory: ql-server
           command: |
             cargo test
-      - run:
-          name: coverage
-          working_directory: ql-server
-          command: |
-            cargo install cargo-kcov
-
-            sudo apt install cmake g++ pkg-config jq
-            sudo apt install libcurl4-openssl-dev libelf-dev libdw-dev binutils-dev libiberty-dev
-            cargo kcov --print-install-kcov-sh | sh
-
-            for file in target/debug/ql_server*[^\.d]; do
-              mkdir -p "target/cov/$(basename $file)";
-              cargo kcov -- --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file";
-            done
-
-            bash <(curl -s https://codecov.io/bash)
-            echo "Uploaded code coverage"
-
