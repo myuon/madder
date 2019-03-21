@@ -23,13 +23,23 @@ impl VideoComponent {
             .ok_or(failure::err_msg("make decodebin"))?;
         let videoconvert = gst::ElementFactory::make("videoconvert", None)
             .ok_or(failure::err_msg("make videoconvert"))?;
-        let appsink = gst::ElementFactory::make("appsink", Some("sink"))
+        let sink = gst::ElementFactory::make("appsink", Some("sink"))
             .ok_or(failure::err_msg("make appsink"))?;
         src.set_property("location", &gst::Value::from(uri))?;
 
-        pipeline.add_many(&[&src, &decodebin, &videoconvert, &appsink])?;
+        pipeline.add_many(&[&src, &decodebin, &videoconvert, &sink])?;
+        gst::Element::link_many(&[&src, &decodebin, &videoconvert, &sink])?;
 
-        Ok(appsink)
+        let appsink = sink
+            .clone()
+            .dynamic_cast::<gsta::AppSink>()
+            .map_err(|_| failure::err_msg("dynamic_cast to AppSink"))?;
+        appsink.set_caps(&gst::Caps::new_simple(
+            "audit/x-raw",
+            &[("format", &gstv::VideoFormat::Rgba)],
+        ));
+
+        Ok(sink)
     }
 
     pub fn load(start_time: ClockTime, uri: &str) -> ComponentRecord {
@@ -63,8 +73,8 @@ impl VideoComponent {
         sink.seek_simple(flags, position)?;
 
         let appsink = sink
-            .downcast::<gsta::AppSink>()
-            .map_err(|_| failure::err_msg("downcast to AppSink"))?;
+            .dynamic_cast::<gsta::AppSink>()
+            .map_err(|_| failure::err_msg("dynamic_cast to AppSink"))?;
 
         appsink.pull_sample().ok_or(failure::err_msg("pull_sample"))
     }
