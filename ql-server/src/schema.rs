@@ -1,7 +1,7 @@
 extern crate gstreamer as gst;
 
 use crate::components::video;
-use crate::util::ClockTime;
+use crate::util::*;
 use juniper::{FieldResult, RootNode};
 use std::collections::HashMap;
 use std::sync::RwLock;
@@ -25,6 +25,7 @@ pub struct Project {
 pub struct Madder {
     project: Project,
     gst_elements: HashMap<String, gst::Element>,
+    gsta_appsinks: HashMap<String, gsta::AppSink>,
 }
 
 impl Madder {
@@ -40,6 +41,7 @@ impl Madder {
                 components: vec![],
             },
             gst_elements: HashMap::new(),
+            gsta_appsinks: HashMap::new(),
         }
     }
 
@@ -50,14 +52,25 @@ impl Madder {
     ) -> video::VideoComponent {
         let loaded = video::VideoComponent::load(start_time, uri);
         self.gst_elements
-            .insert(loaded.component.id.clone(), loaded.gst_element);
+            .insert(loaded.component.id.clone(), loaded.element);
+        self.gsta_appsinks
+            .insert(loaded.component.id.clone(), loaded.appsink);
         self.project.components.push(loaded.component.clone());
 
         loaded.component
     }
 
-    pub fn get_sample(&self) -> gst::sample::Sample {
-        unimplemented!()
+    pub fn query_pixbuf(&self) -> Result<Pixbuf, failure::Error> {
+        let mut pixbuf = Pixbuf::new(
+            self.project.size.width as u32,
+            self.project.size.height as u32,
+        );
+
+        for (_, appsink) in &self.gsta_appsinks {
+            pixbuf.copy_from(&video::VideoComponent::query_pixbuf(appsink)?, 0, 0);
+        }
+
+        Ok(pixbuf)
     }
 }
 

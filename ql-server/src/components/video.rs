@@ -1,4 +1,4 @@
-use crate::util::ClockTime;
+use crate::util::*;
 use gst::prelude::*;
 
 #[derive(Clone, GraphQLObject)]
@@ -11,11 +11,12 @@ pub struct VideoComponent {
 
 pub struct ComponentRecord {
     pub component: VideoComponent,
-    pub gst_element: gst::Element,
+    pub appsink: gsta::AppSink,
+    pub element: gst::Element,
 }
 
 impl VideoComponent {
-    fn create_pipeline(uri: &str) -> Result<gst::Element, failure::Error> {
+    fn create_pipeline(uri: &str) -> Result<(gsta::AppSink, gst::Element), failure::Error> {
         let pipeline = gst::Pipeline::new(None);
         let src =
             gst::ElementFactory::make("filesrc", None).ok_or(failure::err_msg("make filesrc"))?;
@@ -39,10 +40,12 @@ impl VideoComponent {
             &[("format", &gstv::VideoFormat::Rgba)],
         ));
 
-        Ok(sink)
+        Ok((appsink, sink))
     }
 
     pub fn load(start_time: ClockTime, uri: &str) -> ComponentRecord {
+        let (appsink, sink) = VideoComponent::create_pipeline(uri).unwrap();
+
         ComponentRecord {
             component: VideoComponent {
                 id: "<uuid>".to_string(),
@@ -50,12 +53,12 @@ impl VideoComponent {
                 length: ClockTime::new(10 * gst::MSECOND),
                 uri: uri.to_string(),
             },
-            gst_element: VideoComponent::create_pipeline(uri).unwrap(),
+            appsink,
+            element: sink,
         }
     }
 
-    pub fn query_sample(sink: gst::Element) -> Result<gst::sample::Sample, failure::Error> {
-        // Set to PAUSED
+    pub fn query_seek(sink: &gst::Element) -> Result<(), failure::Error> {
         sink.set_state(gst::State::Paused)?;
         sink.get_state(5 * gst::MSECOND).0?;
 
@@ -72,10 +75,14 @@ impl VideoComponent {
 
         sink.seek_simple(flags, position)?;
 
-        let appsink = sink
-            .dynamic_cast::<gsta::AppSink>()
-            .map_err(|_| failure::err_msg("dynamic_cast to AppSink"))?;
+        Ok(())
+    }
 
-        appsink.pull_sample().ok_or(failure::err_msg("pull_sample"))
+    pub fn query_pixbuf(appsink: &gsta::AppSink) -> Result<Pixbuf, failure::Error> {
+        let sample = appsink
+            .pull_sample()
+            .ok_or(failure::err_msg("pull_sample"))?;
+
+        Pixbuf::new_from_gst_sample(sample)
     }
 }
