@@ -55,6 +55,10 @@ impl Madder {
 
         loaded.component
     }
+
+    pub fn get_sample(&self) -> gst::sample::Sample {
+        unimplemented!()
+    }
 }
 
 impl Default for Madder {
