@@ -3,6 +3,7 @@ extern crate juniper;
 extern crate failure;
 extern crate gstreamer as gst;
 extern crate gstreamer_app as gsta;
+extern crate image;
 
 pub mod components;
 pub mod schema;
