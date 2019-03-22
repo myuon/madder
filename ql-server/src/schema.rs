@@ -32,6 +32,13 @@ graphql_object!(QueryRoot: Context |&self| {
         Ok(editor.project.clone())
     }
 
+    field components(&executor) -> FieldResult<Vec<Component>> {
+        let context = executor.context();
+        let editor = context.0.read()?;
+
+        Ok(editor.components.values().cloned().collect())
+    }
+
     field component(&executor, id: String) -> FieldResult<Component> {
         let context = executor.context();
         let editor = context.0.read()?;

@@ -91,7 +91,7 @@ fn can_add_video_component() {
     let context = Context::new();
 
     let (_res, errors) = juniper::execute(
-        "mutation { newComponent(startTime: 0, uri: \"\") { id } }",
+        "mutation { newVideoTestComponent(startTime: 0) }",
         None,
         &Schema::new(QueryRoot, MutationRoot),
         &Variables::new(),
@@ -101,7 +101,7 @@ fn can_add_video_component() {
     assert_eq!(errors.len(), 0);
 
     let (res, errors) = juniper::execute(
-        "query { project { components { id } } }",
+        "query { components { id } }",
         None,
         &Schema::new(QueryRoot, MutationRoot),
         &Variables::new(),
@@ -110,10 +110,6 @@ fn can_add_video_component() {
     .unwrap();
     assert_eq!(
         res.as_object_value()
-            .unwrap()
-            .get_field_value("project")
-            .unwrap()
-            .as_object_value()
             .unwrap()
             .get_field_value("components")
             .unwrap()
