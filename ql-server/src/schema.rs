@@ -1,6 +1,6 @@
 extern crate gstreamer as gst;
 
-use crate::components::video;
+use crate::components::{video, video_test, Component};
 use crate::util::*;
 use juniper::{FieldResult, RootNode};
 use std::collections::HashMap;
@@ -18,7 +18,7 @@ pub struct Project {
     size: ScreenSize,
     length: ClockTime,
     position: ClockTime,
-    components: Vec<video::VideoComponent>,
+    components: Vec<Component>,
 }
 
 #[derive(Clone)]
@@ -55,7 +55,25 @@ impl Madder {
             .insert(loaded.component.id.clone(), loaded.element);
         self.gsta_appsinks
             .insert(loaded.component.id.clone(), loaded.appsink);
-        self.project.components.push(loaded.component.clone());
+        self.project
+            .components
+            .push(Component::VideoComponent(loaded.component.clone()));
+
+        loaded.component
+    }
+
+    pub fn add_video_test_component(
+        &mut self,
+        start_time: ClockTime,
+    ) -> video_test::VideoTestComponent {
+        let loaded = video_test::VideoTestComponent::load(start_time);
+        self.gst_elements
+            .insert(loaded.component.id.clone(), loaded.element);
+        self.gsta_appsinks
+            .insert(loaded.component.id.clone(), loaded.appsink);
+        self.project
+            .components
+            .push(Component::VideoTestComponent(loaded.component.clone()));
 
         loaded.component
     }
@@ -131,7 +149,7 @@ graphql_object!(MutationRoot: Context |&self| {
         })
     }
 
-    field newComponent(&executor, startTime: i32, uri: String) -> FieldResult<video::VideoComponent> {
+    field newVideoComponent(&executor, startTime: i32, uri: String) -> FieldResult<video::VideoComponent> {
         let context = executor.context();
         let mut madder = context.0.write()?;
         let video_component = madder.add_video_component(ClockTime::new(gst::ClockTime::from_mseconds(startTime as u64)), &uri);
