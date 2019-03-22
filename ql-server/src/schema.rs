@@ -1,110 +1,18 @@
 extern crate gstreamer as gst;
 
 use crate::components::{video, video_test, Component};
+use crate::editor::*;
 use crate::util::*;
 use juniper::{FieldResult, RootNode};
-use std::collections::HashMap;
 use std::sync::RwLock;
 
-#[derive(Clone, GraphQLObject)]
-#[graphql(description = "Screen size")]
-pub struct ScreenSize {
-    width: i32,
-    height: i32,
-}
-
-#[derive(Clone, GraphQLObject)]
-pub struct Project {
-    size: ScreenSize,
-    length: ClockTime,
-    position: ClockTime,
-    components: Vec<Component>,
-}
-
-#[derive(Clone)]
-pub struct Madder {
-    project: Project,
-    gst_elements: HashMap<String, gst::Element>,
-    gsta_appsinks: HashMap<String, gsta::AppSink>,
-}
-
-impl Madder {
-    pub fn new() -> Madder {
-        Madder {
-            project: Project {
-                size: ScreenSize {
-                    width: 1280,
-                    height: 720,
-                },
-                length: ClockTime::new(gst::ClockTime::from_seconds(1)),
-                position: ClockTime::new(gst::ClockTime::from_seconds(0)),
-                components: vec![],
-            },
-            gst_elements: HashMap::new(),
-            gsta_appsinks: HashMap::new(),
-        }
-    }
-
-    pub fn add_video_component(
-        &mut self,
-        start_time: ClockTime,
-        uri: &str,
-    ) -> video::VideoComponent {
-        let loaded = video::VideoComponent::load(start_time, uri);
-        self.gst_elements
-            .insert(loaded.component.id.clone(), loaded.element);
-        self.gsta_appsinks
-            .insert(loaded.component.id.clone(), loaded.appsink);
-        self.project
-            .components
-            .push(Component::VideoComponent(loaded.component.clone()));
-
-        loaded.component
-    }
-
-    pub fn add_video_test_component(
-        &mut self,
-        start_time: ClockTime,
-    ) -> video_test::VideoTestComponent {
-        let loaded = video_test::VideoTestComponent::load(start_time);
-        self.gst_elements
-            .insert(loaded.component.id.clone(), loaded.element);
-        self.gsta_appsinks
-            .insert(loaded.component.id.clone(), loaded.appsink);
-        self.project
-            .components
-            .push(Component::VideoTestComponent(loaded.component.clone()));
-
-        loaded.component
-    }
-
-    pub fn query_pixbuf(&self) -> Result<Pixbuf, failure::Error> {
-        let mut pixbuf = Pixbuf::new(
-            self.project.size.width as u32,
-            self.project.size.height as u32,
-        );
-
-        for (_, appsink) in &self.gsta_appsinks {
-            pixbuf.copy_from(&video::VideoComponent::query_pixbuf(appsink)?, 0, 0)?;
-        }
-
-        Ok(pixbuf)
-    }
-}
-
-impl Default for Madder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-pub struct Context(RwLock<Madder>);
+pub struct Context(RwLock<Editor>);
 
 impl juniper::Context for Context {}
 
 impl Context {
     pub fn new() -> Context {
-        Context(RwLock::new(Madder::new()))
+        Context(RwLock::new(Editor::new()))
     }
 }
 
@@ -139,13 +47,13 @@ graphql_object!(MutationRoot: Context |&self| {
         let context = executor.context();
         let mut madder = context.0.write()?;
         madder.project.size = ScreenSize {
-            width: width,
-            height: height,
+            width: width as u32,
+            height: height as u32,
         };
 
         Ok(ScreenSize {
-            width: width,
-            height: height,
+            width: width as u32,
+            height: height as u32,
         })
     }
 

@@ -8,5 +8,6 @@ extern crate gstreamer_video as gstv;
 extern crate image;
 
 pub mod components;
+pub mod editor;
 pub mod schema;
 pub mod util;
