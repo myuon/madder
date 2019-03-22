@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate juniper;
+extern crate base64;
 extern crate failure;
 extern crate gstreamer as gst;
 extern crate gstreamer_app as gsta;

@@ -67,7 +67,7 @@ impl Madder {
         );
 
         for (_, appsink) in &self.gsta_appsinks {
-            pixbuf.copy_from(&video::VideoComponent::query_pixbuf(appsink)?, 0, 0);
+            pixbuf.copy_from(&video::VideoComponent::query_pixbuf(appsink)?, 0, 0)?;
         }
 
         Ok(pixbuf)
@@ -104,6 +104,13 @@ graphql_object!(QueryRoot: Context |&self| {
         let madder = context.0.read()?;
 
         Ok(madder.project.clone())
+    }
+
+    field pixbuf(&executor) -> FieldResult<String> {
+        let context = executor.context();
+        let madder = context.0.read()?;
+
+        Ok(madder.query_pixbuf()?.to_png_base64_string())
     }
 });
 

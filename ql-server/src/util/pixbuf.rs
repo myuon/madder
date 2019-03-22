@@ -46,4 +46,8 @@ impl Pixbuf {
             Err(failure::err_msg("copy failed"))
         }
     }
+
+    pub fn to_png_base64_string(self) -> String {
+        base64::encode(&self.0.into_vec())
+    }
 }
