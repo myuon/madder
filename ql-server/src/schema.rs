@@ -1,6 +1,5 @@
 extern crate gstreamer as gst;
 
-use crate::components::{video, video_test, Component};
 use crate::editor::*;
 use crate::util::*;
 use juniper::{FieldResult, RootNode};
@@ -27,16 +26,16 @@ pub struct QueryRoot;
 graphql_object!(QueryRoot: Context |&self| {
     field project(&executor) -> FieldResult<Project> {
         let context = executor.context();
-        let madder = context.0.read()?;
+        let editor = context.0.read()?;
 
-        Ok(madder.project.clone())
+        Ok(editor.project.clone())
     }
 
     field pixbuf(&executor) -> FieldResult<String> {
         let context = executor.context();
-        let madder = context.0.read()?;
+        let editor = context.0.read()?;
 
-        Ok(madder.query_pixbuf()?.to_png_base64_string())
+        Ok(editor.query_pixbuf()?.to_png_base64_string())
     }
 });
 
@@ -45,24 +44,29 @@ pub struct MutationRoot;
 graphql_object!(MutationRoot: Context |&self| {
     field setScreenSize(&executor, width: i32, height: i32) -> FieldResult<ScreenSize> {
         let context = executor.context();
-        let mut madder = context.0.write()?;
-        madder.project.size = ScreenSize {
-            width: width as u32,
-            height: height as u32,
+        let mut editor = context.0.write()?;
+        editor.project.size = ScreenSize {
+            width: U32::from_i32(width),
+            height: U32::from_i32(height),
         };
 
-        Ok(ScreenSize {
-            width: width as u32,
-            height: height as u32,
-        })
+        Ok(editor.project.size.clone())
     }
 
-    field newVideoComponent(&executor, startTime: i32, uri: String) -> FieldResult<video::VideoComponent> {
+    field newVideoComponent(&executor, startTime: i32, uri: String) -> FieldResult<String> {
         let context = executor.context();
-        let mut madder = context.0.write()?;
-        let video_component = madder.add_video_component(ClockTime::new(gst::ClockTime::from_mseconds(startTime as u64)), &uri);
+        let mut editor = context.0.write()?;
+        let video_component = editor.add_video_component(ClockTime::new(gst::ClockTime::from_mseconds(startTime as u64)), &uri);
 
-        Ok(video_component)
+        Ok(video_component.id)
+    }
+
+    field newVideoTestComponent(&executor, startTime: i32) -> FieldResult<String> {
+        let context = executor.context();
+        let mut editor = context.0.write()?;
+        let video_component = editor.add_video_test_component(ClockTime::new(gst::ClockTime::from_mseconds(startTime as u64)));
+
+        Ok(video_component.id)
     }
 });
 

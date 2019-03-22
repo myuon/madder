@@ -2,13 +2,13 @@ use crate::components::*;
 use crate::util::*;
 use std::collections::HashMap;
 
-#[derive(Clone)]
+#[derive(Clone, GraphQLObject)]
 pub struct ScreenSize {
-    width: u32,
-    height: u32,
+    width: U32,
+    height: U32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, GraphQLObject)]
 pub struct Project {
     pub size: ScreenSize,
     length: ClockTime,
@@ -19,8 +19,7 @@ pub struct Project {
 #[derive(Clone)]
 pub struct Editor {
     pub project: Project,
-    gst_elements: HashMap<String, gst::Element>,
-    gsta_appsinks: HashMap<String, gsta::AppSink>,
+    cache_appsink: HashMap<String, gsta::AppSink>,
 }
 
 impl Editor {
@@ -28,15 +27,14 @@ impl Editor {
         Editor {
             project: Project {
                 size: ScreenSize {
-                    width: 1280,
-                    height: 720,
+                    width: U32::from_i32(1280),
+                    height: U32::from_i32(720),
                 },
                 length: ClockTime::new(gst::ClockTime::from_seconds(1)),
                 position: ClockTime::new(gst::ClockTime::from_seconds(0)),
                 components: vec![],
             },
-            gst_elements: HashMap::new(),
-            gsta_appsinks: HashMap::new(),
+            cache_appsink: HashMap::new(),
         }
     }
 
@@ -46,9 +44,7 @@ impl Editor {
         uri: &str,
     ) -> video::VideoComponent {
         let loaded = video::VideoComponent::load(start_time, uri);
-        self.gst_elements
-            .insert(loaded.component.id.clone(), loaded.element);
-        self.gsta_appsinks
+        self.cache_appsink
             .insert(loaded.component.id.clone(), loaded.appsink);
         self.project
             .components
@@ -62,9 +58,7 @@ impl Editor {
         start_time: ClockTime,
     ) -> video_test::VideoTestComponent {
         let loaded = video_test::VideoTestComponent::load(start_time);
-        self.gst_elements
-            .insert(loaded.component.id.clone(), loaded.element);
-        self.gsta_appsinks
+        self.cache_appsink
             .insert(loaded.component.id.clone(), loaded.appsink);
         self.project
             .components
@@ -75,11 +69,11 @@ impl Editor {
 
     pub fn query_pixbuf(&self) -> Result<Pixbuf, failure::Error> {
         let mut pixbuf = Pixbuf::new(
-            self.project.size.width as u32,
-            self.project.size.height as u32,
+            self.project.size.width.as_u32(),
+            self.project.size.height.as_u32(),
         );
 
-        for (_, appsink) in &self.gsta_appsinks {
+        for (_, appsink) in &self.cache_appsink {
             pixbuf.copy_from(&video::VideoComponent::query_pixbuf(appsink)?, 0, 0)?;
         }
 
