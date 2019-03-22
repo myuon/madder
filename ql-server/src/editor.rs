@@ -4,36 +4,36 @@ use std::collections::HashMap;
 
 #[derive(Clone, GraphQLObject)]
 pub struct ScreenSize {
-    width: U32,
-    height: U32,
+    pub width: U32,
+    pub height: U32,
 }
 
 #[derive(Clone, GraphQLObject)]
-pub struct Project {
+pub struct ProjectInfo {
     pub size: ScreenSize,
     length: ClockTime,
     position: ClockTime,
-    components: Vec<Component>,
 }
 
 #[derive(Clone)]
 pub struct Editor {
-    pub project: Project,
+    pub project: ProjectInfo,
+    pub components: HashMap<String, Component>,
     cache_appsink: HashMap<String, gsta::AppSink>,
 }
 
 impl Editor {
     pub fn new() -> Editor {
         Editor {
-            project: Project {
+            project: ProjectInfo {
                 size: ScreenSize {
                     width: U32::from_i32(1280),
                     height: U32::from_i32(720),
                 },
                 length: ClockTime::new(gst::ClockTime::from_seconds(1)),
                 position: ClockTime::new(gst::ClockTime::from_seconds(0)),
-                components: vec![],
             },
+            components: HashMap::new(),
             cache_appsink: HashMap::new(),
         }
     }
@@ -46,9 +46,10 @@ impl Editor {
         let loaded = video::VideoComponent::load(start_time, uri);
         self.cache_appsink
             .insert(loaded.component.id.clone(), loaded.appsink);
-        self.project
-            .components
-            .push(Component::VideoComponent(loaded.component.clone()));
+        self.components.insert(
+            loaded.component.id.clone(),
+            Component::VideoComponent(loaded.component.clone()),
+        );
 
         loaded.component
     }
@@ -60,9 +61,10 @@ impl Editor {
         let loaded = video_test::VideoTestComponent::load(start_time);
         self.cache_appsink
             .insert(loaded.component.id.clone(), loaded.appsink);
-        self.project
-            .components
-            .push(Component::VideoTestComponent(loaded.component.clone()));
+        self.components.insert(
+            loaded.component.id.clone(),
+            Component::VideoTestComponent(loaded.component.clone()),
+        );
 
         loaded.component
     }

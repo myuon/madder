@@ -1,5 +1,6 @@
 extern crate gstreamer as gst;
 
+use crate::components::*;
 use crate::editor::*;
 use crate::util::*;
 use juniper::{FieldResult, RootNode};
@@ -24,11 +25,18 @@ impl Default for Context {
 pub struct QueryRoot;
 
 graphql_object!(QueryRoot: Context |&self| {
-    field project(&executor) -> FieldResult<Project> {
+    field project(&executor) -> FieldResult<ProjectInfo> {
         let context = executor.context();
         let editor = context.0.read()?;
 
         Ok(editor.project.clone())
+    }
+
+    field component(&executor, id: String) -> FieldResult<Component> {
+        let context = executor.context();
+        let editor = context.0.read()?;
+
+        Ok(editor.components.get(&id).unwrap().clone())
     }
 
     field pixbuf(&executor) -> FieldResult<String> {

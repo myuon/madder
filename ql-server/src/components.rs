@@ -1,8 +1,13 @@
+use crate::util::*;
+
+pub trait ComponentObject {
+    fn id(&self) -> &String;
+    fn start_time(&self) -> &ClockTime;
+    fn length(&self) -> &ClockTime;
+}
+
 pub mod video;
 pub mod video_test;
-
-use video::VideoComponent;
-use video_test::VideoTestComponent;
 
 #[derive(Clone)]
 pub enum Component {
@@ -10,9 +15,45 @@ pub enum Component {
     VideoTestComponent(video_test::VideoTestComponent),
 }
 
-graphql_union!(Component: () |&self| {
-    instance_resolvers: |_| {
-        &VideoComponent => match *self { Component::VideoComponent(ref c) => Some(c), _ => None },
-        &VideoTestComponent => match *self { Component::VideoTestComponent(ref c) => Some(c), _ => None },
+impl ComponentObject for Component {
+    fn id(&self) -> &String {
+        use Component::*;
+
+        match self {
+            VideoComponent(c) => &c.id,
+            VideoTestComponent(c) => &c.id,
+        }
+    }
+
+    fn start_time(&self) -> &ClockTime {
+        use Component::*;
+
+        match self {
+            VideoComponent(c) => &c.start_time,
+            VideoTestComponent(c) => &c.start_time,
+        }
+    }
+
+    fn length(&self) -> &ClockTime {
+        use Component::*;
+
+        match self {
+            VideoComponent(c) => &c.length,
+            VideoTestComponent(c) => &c.length,
+        }
+    }
+}
+
+graphql_object!(Component: () |&self| {
+    field id() -> &String {
+        self.id()
+    }
+
+    field start_time() -> &ClockTime {
+        self.start_time()
+    }
+
+    field length() -> &ClockTime {
+        self.length()
     }
 });
