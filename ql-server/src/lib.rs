@@ -6,6 +6,7 @@ extern crate gstreamer as gst;
 extern crate gstreamer_app as gsta;
 extern crate gstreamer_video as gstv;
 extern crate image;
+extern crate uuid;
 
 pub mod components;
 pub mod editor;

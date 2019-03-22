@@ -43,7 +43,7 @@ impl Editor {
         start_time: ClockTime,
         uri: &str,
     ) -> video::VideoComponent {
-        let loaded = video::VideoComponent::load(start_time, uri);
+        let loaded = video::VideoComponent::new(start_time, uri);
         self.cache_appsink
             .insert(loaded.component.id.clone(), loaded.appsink);
         self.components.insert(
@@ -58,7 +58,7 @@ impl Editor {
         &mut self,
         start_time: ClockTime,
     ) -> video_test::VideoTestComponent {
-        let loaded = video_test::VideoTestComponent::load(start_time);
+        let loaded = video_test::VideoTestComponent::new(start_time);
         self.cache_appsink
             .insert(loaded.component.id.clone(), loaded.appsink);
         self.components.insert(

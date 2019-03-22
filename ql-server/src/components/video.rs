@@ -49,12 +49,12 @@ impl VideoComponent {
         Ok((appsink, sink))
     }
 
-    pub fn load(start_time: ClockTime, uri: &str) -> ComponentRecord {
+    pub fn new(start_time: ClockTime, uri: &str) -> ComponentRecord {
         let (appsink, sink) = VideoComponent::create_pipeline(uri).unwrap();
 
         ComponentRecord {
             component: VideoComponent {
-                id: "<uuid>".to_string(),
+                id: uuid::Uuid::new_v4().to_string(),
                 start_time,
                 length: ClockTime::new(10 * gst::MSECOND),
                 uri: uri.to_string(),

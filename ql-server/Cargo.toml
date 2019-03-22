@@ -27,3 +27,4 @@ failure = "0.1.5"
 
 image = "*"
 base64 = "0.10.1"
+uuid = { version = "0.7.2", features = ["v4"] }
