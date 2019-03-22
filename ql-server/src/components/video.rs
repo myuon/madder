@@ -29,7 +29,13 @@ impl VideoComponent {
         src.set_property("location", &gst::Value::from(uri))?;
 
         pipeline.add_many(&[&src, &decodebin, &videoconvert, &sink])?;
-        gst::Element::link_many(&[&src, &decodebin, &videoconvert, &sink])?;
+        gst::Element::link_many(&[&src, &decodebin])?;
+        gst::Element::link_many(&[&videoconvert, &sink])?;
+
+        decodebin.connect_pad_added(move |_, src_pad| {
+            let sink_pad = videoconvert.get_static_pad("sink").unwrap();
+            src_pad.link(&sink_pad).unwrap();
+        });
 
         let appsink = sink
             .clone()
